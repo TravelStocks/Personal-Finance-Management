@@ -1499,6 +1499,9 @@ export default function FinanceDashboard() {
     { label: "必须支出", value: totals.requiredSpending, color: palette[1] },
     { label: "可取消支出", value: Math.max(totals.spendingPlan - totals.requiredSpending, 0), color: palette[2] },
   ];
+  const cashflowMonthlyInflow = forecast[0]?.inflow ?? 0;
+  const cashflowMonthlyOutflow = totals.cashflowSpendingPlan + totals.assetOutflow;
+  const cashflowExpectedIncrease = cashflowMonthlyInflow - cashflowMonthlyOutflow;
   const cashflowBuiltinRows: CashflowTableRow[] = [
     {
       id: "builtin-salary",
@@ -1623,6 +1626,15 @@ export default function FinanceDashboard() {
       onDirectionChange: (value: CashflowDirection) => updateCashflowCustomItem(item.id, { direction: value }),
       onDelete: () => deleteCashflowCustomItem(item.id),
     })),
+    {
+      id: "calculated-cashflow-expected-increase",
+      name: "现金流预计增加",
+      amount: cashflowExpectedIncrease,
+      direction: cashflowExpectedIncrease >= 0 ? "inflow" : "outflow",
+      source: "月流入 - 月流出，自动同步",
+      readonlyAmount: true,
+      summaryOnly: true,
+    },
   ];
   const outflowData = cashflowRows
     .filter((item) => item.direction === "outflow" && !item.summaryOnly)
@@ -2081,8 +2093,8 @@ export default function FinanceDashboard() {
                           <EditableCashflowInputsTable
                             accountTotal={totals.accountTotal}
                             addCashflowCustomItem={addCashflowCustomItem}
-                            monthlyInflow={forecast[0]?.inflow ?? 0}
-                            monthlyOutflow={totals.cashflowSpendingPlan + totals.assetOutflow}
+                            monthlyInflow={cashflowMonthlyInflow}
+                            monthlyOutflow={cashflowMonthlyOutflow}
                             rows={cashflowRows}
                           />
                           <EditableReminderTable
@@ -2098,7 +2110,7 @@ export default function FinanceDashboard() {
                           <ChartPanel title="余额趋势" summary="未来 6 个月">
                             <LineChart data={cashflowLine} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="月度流出压力" summary={`每月流出 ${money(totals.cashflowSpendingPlan + totals.assetOutflow)}`}>
+                          <ChartPanel title="月度流出压力" summary={`每月流出 ${money(cashflowMonthlyOutflow)}`}>
                             <VerticalBarChart data={cashflowOutflowBars} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="现金瀑布" summary="本月资金变化">

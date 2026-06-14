@@ -13851,6 +13851,9 @@ function FinanceDashboard() {
     { label: "\u5FC5\u987B\u652F\u51FA", value: totals.requiredSpending, color: palette[1] },
     { label: "\u53EF\u53D6\u6D88\u652F\u51FA", value: Math.max(totals.spendingPlan - totals.requiredSpending, 0), color: palette[2] }
   ];
+  const cashflowMonthlyInflow = forecast[0]?.inflow ?? 0;
+  const cashflowMonthlyOutflow = totals.cashflowSpendingPlan + totals.assetOutflow;
+  const cashflowExpectedIncrease = cashflowMonthlyInflow - cashflowMonthlyOutflow;
   const cashflowBuiltinRows = [
     {
       id: "builtin-salary",
@@ -13974,7 +13977,16 @@ function FinanceDashboard() {
       onAmountChange: (value) => updateCashflowCustomItem(item.id, { amount: value }),
       onDirectionChange: (value) => updateCashflowCustomItem(item.id, { direction: value }),
       onDelete: () => deleteCashflowCustomItem(item.id)
-    }))
+    })),
+    {
+      id: "calculated-cashflow-expected-increase",
+      name: "\u73B0\u91D1\u6D41\u9884\u8BA1\u589E\u52A0",
+      amount: cashflowExpectedIncrease,
+      direction: cashflowExpectedIncrease >= 0 ? "inflow" : "outflow",
+      source: "\u6708\u6D41\u5165 - \u6708\u6D41\u51FA\uFF0C\u81EA\u52A8\u540C\u6B65",
+      readonlyAmount: true,
+      summaryOnly: true
+    }
   ];
   const outflowData = cashflowRows.filter((item) => item.direction === "outflow" && !item.summaryOnly).map((item, index) => ({ item, index })).sort((left, right) => right.item.amount - left.item.amount || left.index - right.index).map(({ item }, index) => ({
     label: item.name,
@@ -14349,8 +14361,8 @@ function FinanceDashboard() {
                   {
                     accountTotal: totals.accountTotal,
                     addCashflowCustomItem,
-                    monthlyInflow: forecast[0]?.inflow ?? 0,
-                    monthlyOutflow: totals.cashflowSpendingPlan + totals.assetOutflow,
+                    monthlyInflow: cashflowMonthlyInflow,
+                    monthlyOutflow: cashflowMonthlyOutflow,
                     rows: cashflowRows
                   }
                 ),
@@ -14366,7 +14378,7 @@ function FinanceDashboard() {
               ] }),
               charts: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chart-grid two", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u4F59\u989D\u8D8B\u52BF", summary: "\u672A\u6765 6 \u4E2A\u6708", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LineChart, { data: cashflowLine, valueFormatter: money }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u6708\u5EA6\u6D41\u51FA\u538B\u529B", summary: `\u6BCF\u6708\u6D41\u51FA ${money(totals.cashflowSpendingPlan + totals.assetOutflow)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(VerticalBarChart, { data: cashflowOutflowBars, valueFormatter: money }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u6708\u5EA6\u6D41\u51FA\u538B\u529B", summary: `\u6BCF\u6708\u6D41\u51FA ${money(cashflowMonthlyOutflow)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(VerticalBarChart, { data: cashflowOutflowBars, valueFormatter: money }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u73B0\u91D1\u7011\u5E03", summary: "\u672C\u6708\u8D44\u91D1\u53D8\u5316", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(WaterfallChart, { data: waterfallData }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u73B0\u91D1\u6D41\u65E5\u5386", summary: "\u8D26\u5355\u4E0E\u5DE5\u8D44\u8054\u52A8", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CashflowCalendar, { events: cashflowEvents }) })
               ] })
