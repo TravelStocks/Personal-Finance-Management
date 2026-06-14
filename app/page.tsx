@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 
 type Period = "周" | "月" | "季" | "年";
 type Tone = "blue" | "green" | "amber" | "red" | "violet";
@@ -70,6 +70,34 @@ type Goal = {
   target: number;
   current: number;
   monthly: number;
+};
+
+type FutureCapability = {
+  id: string;
+  name: string;
+  score: number;
+};
+
+type PersistedFinanceData = {
+  monthlyRecords: MonthRecord[];
+  accounts: Account[];
+  holdings: Holding[];
+  fxUsd: number;
+  fxHkd: number;
+  aSharePlan: number;
+  usSharePlan: number;
+  hkSharePlan: number;
+  travelSaving: number;
+  learningSaving: number;
+  emergencyFund: number;
+  emergencyMonths: number;
+  emergencyMonthlyNeed: number;
+  houseDebt: number;
+  carDebt: number;
+  otherDebt: number;
+  reminders: Reminder[];
+  goals: Goal[];
+  futureCapabilities: FutureCapability[];
 };
 
 type ChartDatum = {
@@ -177,6 +205,21 @@ const initialReminders: Reminder[] = [
   { id: "deposit-reminder", name: "定期存款到期提醒", date: "2026-07-12", amount: 2000, kind: "定存" },
 ];
 
+const initialGoals: Goal[] = [
+  { id: "travel", name: "旅游基金", target: 18000, current: 3000, monthly: 3000 },
+  { id: "learning", name: "学习成长", target: 12000, current: 1750, monthly: 1750 },
+  { id: "emergency-goal", name: "应急储备", target: 13500, current: 2000, monthly: 2000 },
+];
+
+const initialFutureCapabilities: FutureCapability[] = [
+  { id: "debt-strategy", name: "债务策略", score: 70 },
+  { id: "insurance", name: "保险管理", score: 20 },
+  { id: "data-quality", name: "数据质量", score: 55 },
+  { id: "rules-engine", name: "规则引擎", score: 35 },
+];
+
+const financeStorageKey = "personal-finance-management-data-v2";
+
 const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "income", title: "收入", desc: "税后工资、实际到账、炒股月结算记录" },
   { id: "spending", title: "支出", desc: "实际花费、必要支出、可取消支出" },
@@ -222,16 +265,8 @@ function recordIncome(record: MonthRecord) {
   return record.salary + Math.max(record.stockIncome, 0) + record.otherIncome;
 }
 
-function recordSpendingPlan(record: MonthRecord) {
-  return record.budgets.reduce((sum, item) => sum + item.plan, 0);
-}
-
 function recordSpendingActual(record: MonthRecord) {
   return record.budgets.reduce((sum, item) => sum + item.actual, 0);
-}
-
-function recordFixedSpending(record: MonthRecord) {
-  return record.budgets.filter((item) => item.fixed).reduce((sum, item) => sum + item.plan, 0);
 }
 
 function dayDistance(date: string) {
@@ -268,30 +303,6 @@ function EditableNumber({
   );
 }
 
-function EditableText({
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <input
-        placeholder={placeholder}
-        type="text"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
-  );
-}
-
 export default function FinanceDashboard() {
   const [activeModules, setActiveModules] = useState<ModuleId[]>([]);
   const [period, setPeriod] = useState<Period>("月");
@@ -313,15 +324,94 @@ export default function FinanceDashboard() {
   const [carDebt, setCarDebt] = useState(0);
   const [otherDebt, setOtherDebt] = useState(0);
   const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
-  const [goals, setGoals] = useState<Goal[]>([
-    { id: "travel", name: "旅游基金", target: 18000, current: 3000, monthly: 3000 },
-    { id: "learning", name: "学习成长", target: 12000, current: 1750, monthly: 1750 },
-    { id: "emergency-goal", name: "应急储备", target: 13500, current: 2000, monthly: 2000 },
+  const [goals, setGoals] = useState<Goal[]>(initialGoals);
+  const [futureCapabilities, setFutureCapabilities] = useState<FutureCapability[]>(initialFutureCapabilities);
+  const [savedDataReady, setSavedDataReady] = useState(false);
+
+  useEffect(() => {
+    const loadSavedData = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(financeStorageKey);
+        if (raw) {
+          const saved = JSON.parse(raw) as Partial<PersistedFinanceData>;
+          if (Array.isArray(saved.monthlyRecords)) setMonthlyRecords(saved.monthlyRecords);
+          if (Array.isArray(saved.accounts)) setAccounts(saved.accounts);
+          if (Array.isArray(saved.holdings)) setHoldings(saved.holdings);
+          if (typeof saved.fxUsd === "number") setFxUsd(saved.fxUsd);
+          if (typeof saved.fxHkd === "number") setFxHkd(saved.fxHkd);
+          if (typeof saved.aSharePlan === "number") setASharePlan(saved.aSharePlan);
+          if (typeof saved.usSharePlan === "number") setUsSharePlan(saved.usSharePlan);
+          if (typeof saved.hkSharePlan === "number") setHkSharePlan(saved.hkSharePlan);
+          if (typeof saved.travelSaving === "number") setTravelSaving(saved.travelSaving);
+          if (typeof saved.learningSaving === "number") setLearningSaving(saved.learningSaving);
+          if (typeof saved.emergencyFund === "number") setEmergencyFund(saved.emergencyFund);
+          if (typeof saved.emergencyMonths === "number") setEmergencyMonths(saved.emergencyMonths);
+          if (typeof saved.emergencyMonthlyNeed === "number") setEmergencyMonthlyNeed(saved.emergencyMonthlyNeed);
+          if (typeof saved.houseDebt === "number") setHouseDebt(saved.houseDebt);
+          if (typeof saved.carDebt === "number") setCarDebt(saved.carDebt);
+          if (typeof saved.otherDebt === "number") setOtherDebt(saved.otherDebt);
+          if (Array.isArray(saved.reminders)) setReminders(saved.reminders);
+          if (Array.isArray(saved.goals)) setGoals(saved.goals);
+          if (Array.isArray(saved.futureCapabilities)) setFutureCapabilities(saved.futureCapabilities);
+        }
+      } catch {
+        window.localStorage.removeItem(financeStorageKey);
+      } finally {
+        setSavedDataReady(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(loadSavedData);
+  }, []);
+
+  useEffect(() => {
+    if (!savedDataReady) return;
+    const data: PersistedFinanceData = {
+      monthlyRecords,
+      accounts,
+      holdings,
+      fxUsd,
+      fxHkd,
+      aSharePlan,
+      usSharePlan,
+      hkSharePlan,
+      travelSaving,
+      learningSaving,
+      emergencyFund,
+      emergencyMonths,
+      emergencyMonthlyNeed,
+      houseDebt,
+      carDebt,
+      otherDebt,
+      reminders,
+      goals,
+      futureCapabilities,
+    };
+    window.localStorage.setItem(financeStorageKey, JSON.stringify(data));
+  }, [
+    savedDataReady,
+    monthlyRecords,
+    accounts,
+    holdings,
+    fxUsd,
+    fxHkd,
+    aSharePlan,
+    usSharePlan,
+    hkSharePlan,
+    travelSaving,
+    learningSaving,
+    emergencyFund,
+    emergencyMonths,
+    emergencyMonthlyNeed,
+    houseDebt,
+    carDebt,
+    otherDebt,
+    reminders,
+    goals,
+    futureCapabilities,
   ]);
 
   const activeMonth = monthlyRecords.find((item) => item.id === selectedMonth) ?? monthlyRecords[0];
   const salary = activeMonth.salary;
-  const payday = activeMonth.payday;
   const stockIncome = activeMonth.stockIncome;
   const otherIncome = activeMonth.otherIncome;
   const budgets = activeMonth.budgets;
@@ -399,7 +489,6 @@ export default function FinanceDashboard() {
     houseDebt,
     carDebt,
     otherDebt,
-    salary,
     aSharePlan,
     usSharePlan,
     hkSharePlan,
@@ -433,11 +522,16 @@ export default function FinanceDashboard() {
       { date: "2026-07-10", item: "工资到账", inflow: salary, outflow: 0, kind: "收入" },
       { date: "2026-07-15", item: "月度资产分配", inflow: 0, outflow: totals.assetOutflow, kind: "分配" },
     ].sort((a, b) => a.date.localeCompare(b.date));
-    let balance = totals.accountTotal;
-    return rawEvents.map((item) => {
-      balance += item.inflow - item.outflow;
-      return { ...item, balance };
-    });
+    return rawEvents.reduce<{ balance: number; rows: CashflowEvent[] }>(
+      (state, item) => {
+        const nextBalance = state.balance + item.inflow - item.outflow;
+        return {
+          balance: nextBalance,
+          rows: [...state.rows, { ...item, balance: nextBalance }],
+        };
+      },
+      { balance: totals.accountTotal, rows: [] },
+    ).rows;
   }, [reminders, salary, totals.accountTotal, totals.assetOutflow]);
 
   function updateAccount(id: string, patch: Partial<Account>) {
@@ -463,26 +557,22 @@ export default function FinanceDashboard() {
     setAccounts((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
   }
 
-  function updateMonthRecord(patch: Partial<Omit<MonthRecord, "id" | "label" | "budgets">>) {
+  function updateMonthRecord(monthId: string, patch: Partial<Omit<MonthRecord, "id" | "label" | "budgets">>) {
     setMonthlyRecords((records) =>
-      records.map((record) => (record.id === selectedMonth ? { ...record, ...patch } : record)),
+      records.map((record) => (record.id === monthId ? { ...record, ...patch } : record)),
     );
   }
 
   function setSalary(value: number) {
-    updateMonthRecord({ salary: value });
-  }
-
-  function setPayday(value: number) {
-    updateMonthRecord({ payday: value });
+    updateMonthRecord(selectedMonth, { salary: value });
   }
 
   function setStockIncome(value: number) {
-    updateMonthRecord({ stockIncome: value });
+    updateMonthRecord(selectedMonth, { stockIncome: value });
   }
 
   function setOtherIncome(value: number) {
-    updateMonthRecord({ otherIncome: value });
+    updateMonthRecord(selectedMonth, { otherIncome: value });
   }
 
   function updateBudget(id: string, patch: Partial<Budget>) {
@@ -495,16 +585,105 @@ export default function FinanceDashboard() {
     );
   }
 
+  function addBudget() {
+    setMonthlyRecords((records) =>
+      records.map((record) =>
+        record.id === selectedMonth
+          ? {
+              ...record,
+              budgets: [
+                ...record.budgets,
+                {
+                  id: `budget-${Date.now()}`,
+                  name: `新分类 ${record.budgets.length + 1}`,
+                  plan: 0,
+                  actual: 0,
+                  required: false,
+                  fixed: false,
+                },
+              ],
+            }
+          : record,
+      ),
+    );
+  }
+
+  function deleteBudget(id: string) {
+    setMonthlyRecords((records) =>
+      records.map((record) =>
+        record.id === selectedMonth && record.budgets.length > 1
+          ? { ...record, budgets: record.budgets.filter((item) => item.id !== id) }
+          : record,
+      ),
+    );
+  }
+
   function updateHolding(id: string, patch: Partial<Holding>) {
     setHoldings((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
-  function updateReminder(id: string, amount: number) {
-    setReminders((items) => items.map((item) => (item.id === id ? { ...item, amount } : item)));
+  function addHolding() {
+    setHoldings((items) => [
+      ...items,
+      {
+        id: `holding-${Date.now()}`,
+        name: `新投资 ${items.length + 1}`,
+        market: "A股",
+        cost: 0,
+        value: 0,
+        currency: "CNY",
+      },
+    ]);
+  }
+
+  function deleteHolding(id: string) {
+    setHoldings((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+  }
+
+  function updateReminder(id: string, patch: Partial<Reminder>) {
+    setReminders((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  function addReminder() {
+    setReminders((items) => [
+      ...items,
+      {
+        id: `reminder-${Date.now()}`,
+        name: `新提醒 ${items.length + 1}`,
+        date: "2026-07-01",
+        amount: 0,
+        kind: "账单",
+      },
+    ]);
+  }
+
+  function deleteReminder(id: string) {
+    setReminders((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
   }
 
   function updateGoal(id: string, patch: Partial<Goal>) {
     setGoals((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  function addGoal() {
+    setGoals((items) => [
+      ...items,
+      {
+        id: `goal-${Date.now()}`,
+        name: `新目标 ${items.length + 1}`,
+        target: 0,
+        current: 0,
+        monthly: 0,
+      },
+    ]);
+  }
+
+  function deleteGoal(id: string) {
+    setGoals((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+  }
+
+  function updateFutureCapability(id: string, patch: Partial<FutureCapability>) {
+    setFutureCapabilities((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
   function toggleModule(id: ModuleId) {
@@ -566,45 +745,17 @@ export default function FinanceDashboard() {
     },
   ];
 
-  const incomeRows = [
-    ["工资", money(salary), "计入", `约每月 ${payday} 日到账`],
-    ["炒股收入", money(stockIncome), "不计入", "盈利/亏损不影响未来现金流预测"],
-    ["其他收入", money(otherIncome), "按实际口径", "手动录入"],
-    ["当前月合计", money(actualIncome), "工资计入预测", `${activeMonth.label} 实际收入口径`],
-  ];
   const incomeChartData = [
     { label: "工资", value: salary, color: palette[0] },
     { label: "炒股月结", value: Math.max(stockIncome, 0), color: palette[1] },
     { label: "其他收入", value: otherIncome, color: palette[3] },
   ];
-  const monthlyIncomeRows = monthlyRecords.map((record) => [
-    record.label,
-    money(record.salary),
-    money(record.stockIncome),
-    money(record.otherIncome),
-    money(recordIncome(record)),
-    record.id === selectedMonth ? "当前查看" : "可切换",
-  ]);
   const monthlyIncomeTrend = monthlyRecords.map((record, index) => ({
     label: shortMonth(record.label),
     value: recordIncome(record),
     color: record.id === selectedMonth ? palette[0] : palette[index % palette.length],
     detail: record.id === selectedMonth ? "当前月" : "月度",
   }));
-  const monthlySpendingRows = monthlyRecords.map((record) => {
-    const plan = recordSpendingPlan(record);
-    const actual = recordSpendingActual(record);
-    const fixed = recordFixedSpending(record);
-    const income = recordIncome(record);
-    return [
-      record.label,
-      money(plan),
-      money(actual),
-      money(plan - actual),
-      income ? percent(fixed / income) : "0%",
-      record.id === selectedMonth ? "当前查看" : "可切换",
-    ];
-  });
   const monthlySpendingTrend = monthlyRecords.map((record, index) => ({
     label: shortMonth(record.label),
     value: recordSpendingActual(record),
@@ -670,14 +821,6 @@ export default function FinanceDashboard() {
   });
   const cashflowLine = forecast.map((item) => ({ label: item.month, value: item.balance }));
   const cashflowOutflowBars = forecast.map((item) => ({ label: item.month, value: item.outflow, color: palette[4] }));
-  const cashflowEventRows = cashflowEvents.map((item) => [
-    item.date,
-    item.item,
-    item.inflow ? money(item.inflow) : "-",
-    item.outflow ? money(item.outflow) : "-",
-    money(item.balance),
-    item.kind,
-  ]);
   const waterfallData: WaterfallDatum[] = [
     { label: "期初现金", value: totals.accountTotal, kind: "start", color: palette[0] },
     { label: "工资", value: salary, kind: "positive", color: palette[1] },
@@ -715,27 +858,6 @@ export default function FinanceDashboard() {
   const totalGoalTarget = goals.reduce((sum, item) => sum + item.target, 0);
   const totalGoalMonthlyInput = goals.reduce((sum, item) => sum + item.monthly, 0);
   const selectedMonthIndex = Math.max(0, monthlyRecords.findIndex((item) => item.id === selectedMonth));
-  const monthlyGoalHeaders = [
-    "月份",
-    ...goals.map((item) => `${item.name}投入`),
-    "投入合计",
-    "实际支出",
-    "目标后结余",
-    "累计准备",
-  ];
-  const monthlyGoalRows = monthlyRecords.map((record, index) => {
-    const monthOffset = Math.max(0, index - selectedMonthIndex);
-    const spending = recordSpendingActual(record);
-    const projectedTotal = Math.min(totalGoalTarget, totalGoalCurrent + totalGoalMonthlyInput * monthOffset);
-    return [
-      record.label,
-      ...goals.map((item) => money(item.monthly)),
-      money(totalGoalMonthlyInput),
-      money(spending),
-      money(recordIncome(record) - spending - totalGoalMonthlyInput),
-      `${money(projectedTotal)} / ${percent(totalGoalTarget ? projectedTotal / totalGoalTarget : 0)}`,
-    ];
-  });
   const monthlyGoalInputTrend = monthlyRecords.map((record, index) => ({
     label: shortMonth(record.label),
     value: totalGoalMonthlyInput,
@@ -836,12 +958,11 @@ export default function FinanceDashboard() {
       color: totals.investmentPnL >= 0 ? palette[1] : palette[4],
     },
   ];
-  const futureCapabilityData = [
-    { label: "债务策略", value: totals.totalDebt > 0 ? 45 : 70, color: palette[4] },
-    { label: "保险管理", value: 20, color: palette[2] },
-    { label: "数据质量", value: 55, color: palette[0] },
-    { label: "规则引擎", value: 35, color: palette[3] },
-  ];
+  const futureCapabilityData = futureCapabilities.map((item, index) => ({
+    label: item.name,
+    value: item.score,
+    color: palette[index % palette.length],
+  }));
 
   return (
     <main className="finance-page">
@@ -969,17 +1090,12 @@ export default function FinanceDashboard() {
                   <Module title="收入" desc="收入只看实际到账；炒股月结算单独记录，不进入现金流预测。">
                     <DataChartLayout
                       data={
-                        <>
-                          <MonthSelector records={monthlyRecords} selectedMonth={selectedMonth} onChange={setSelectedMonth} />
-                          <div className="form-grid">
-                            <EditableNumber label="税后实发工资" value={salary} onChange={setSalary} />
-                            <EditableNumber label="工资到账日" value={payday} onChange={setPayday} step={1} />
-                            <EditableNumber label="炒股月结算" value={stockIncome} onChange={setStockIncome} />
-                            <EditableNumber label="其他收入" value={otherIncome} onChange={setOtherIncome} />
-                          </div>
-                          <DataTable headers={["收入项", "金额", "现金流预测", "说明"]} rows={incomeRows} />
-                          <DataTable headers={["月份", "工资", "炒股月结", "其他", "实际收入", "状态"]} rows={monthlyIncomeRows} />
-                        </>
+                        <EditableMonthlyIncomeTable
+                          records={monthlyRecords}
+                          selectedMonth={selectedMonth}
+                          onSelect={setSelectedMonth}
+                          updateMonthRecord={updateMonthRecord}
+                        />
                       }
                       charts={
                         <div className="chart-grid two">
@@ -1004,8 +1120,7 @@ export default function FinanceDashboard() {
                       data={
                         <>
                           <MonthSelector records={monthlyRecords} selectedMonth={selectedMonth} onChange={setSelectedMonth} />
-                          <EditableBudgetTable budgets={budgets} updateBudget={updateBudget} />
-                          <DataTable headers={["月份", "预算", "实际", "剩余", "固定支出率", "状态"]} rows={monthlySpendingRows} />
+                          <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} updateBudget={updateBudget} />
                         </>
                       }
                       charts={
@@ -1033,17 +1148,30 @@ export default function FinanceDashboard() {
                     <DataChartLayout
                       data={
                         <>
-                          <DataTable
-                            headers={["月份", "流入", "流出", "预计余额", "状态"]}
-                            rows={forecast.map((item) => [
-                              item.month,
-                              money(item.inflow),
-                              money(item.outflow),
-                              money(item.balance),
-                              item.balance < totals.spendingPlan * 2 ? "现金偏紧" : "安全",
-                            ])}
+                          <EditableCashflowInputsTable
+                            accountTotal={totals.accountTotal}
+                            aSharePlan={aSharePlan}
+                            emergencyFund={emergencyFund}
+                            hkSharePlan={hkSharePlan}
+                            learningSaving={learningSaving}
+                            salary={salary}
+                            setASharePlan={setASharePlan}
+                            setEmergencyFund={setEmergencyFund}
+                            setHkSharePlan={setHkSharePlan}
+                            setLearningSaving={setLearningSaving}
+                            setSalary={setSalary}
+                            setTravelSaving={setTravelSaving}
+                            setUSSharePlan={setUsSharePlan}
+                            spendingPlan={totals.spendingPlan}
+                            travelSaving={travelSaving}
+                            usSharePlan={usSharePlan}
                           />
-                          <DataTable headers={["日期", "项目", "流入", "流出", "预计余额", "类型"]} rows={cashflowEventRows} />
+                          <EditableReminderTable
+                            reminders={reminders}
+                            addReminder={addReminder}
+                            deleteReminder={deleteReminder}
+                            updateReminder={updateReminder}
+                          />
                         </>
                       }
                       charts={
@@ -1071,64 +1199,14 @@ export default function FinanceDashboard() {
                     <DataChartLayout
                       data={
                         <>
-                          <div className="account-toolbar">
-                            <div>
-                              <strong>{accounts.length} 个账户</strong>
-                              <span>账户合计 {money(totals.accountTotal)} / 可动用 {money(totals.liquidAccountTotal)}</span>
-                            </div>
-                            <button className="secondary-button" type="button" onClick={addAccount}>新增账户</button>
-                          </div>
-                          <div className="cards-grid three">
-                            {accounts.map((item) => (
-                              <article className="edit-card account-editor" key={item.id}>
-                                <div className="card-head">
-                                  <strong>{item.name.trim() || "未命名账户"}</strong>
-                                  <span className="pill">{item.type.trim() || "未分类"}</span>
-                                </div>
-                                <EditableText
-                                  label="账户名称"
-                                  value={item.name}
-                                  placeholder="例如 工行 2616"
-                                  onChange={(value) => updateAccount(item.id, { name: value })}
-                                />
-                                <EditableText
-                                  label="账户类型"
-                                  value={item.type}
-                                  placeholder="银行卡 / 支付宝 / 微信 / 现金"
-                                  onChange={(value) => updateAccount(item.id, { type: value })}
-                                />
-                                <EditableNumber
-                                  label="余额"
-                                  value={item.balance}
-                                  onChange={(value) => updateAccount(item.id, { balance: value })}
-                                />
-                                <EditableText
-                                  label="用途"
-                                  value={item.purpose}
-                                  placeholder="例如 工资主账户"
-                                  onChange={(value) => updateAccount(item.id, { purpose: value })}
-                                />
-                                <div className="account-actions">
-                                  <label className="check-row">
-                                    <input
-                                      checked={item.liquid}
-                                      type="checkbox"
-                                      onChange={(event) => updateAccount(item.id, { liquid: event.target.checked })}
-                                    />
-                                    可立即动用
-                                  </label>
-                                  <button
-                                    className="danger-button"
-                                    disabled={accounts.length <= 1}
-                                    type="button"
-                                    onClick={() => deleteAccount(item.id)}
-                                  >
-                                    删除
-                                  </button>
-                                </div>
-                              </article>
-                            ))}
-                          </div>
+                          <EditableAccountsTable
+                            accounts={accounts}
+                            addAccount={addAccount}
+                            deleteAccount={deleteAccount}
+                            liquidAccountTotal={totals.liquidAccountTotal}
+                            total={totals.accountTotal}
+                            updateAccount={updateAccount}
+                          />
                         </>
                       }
                       charts={
@@ -1160,7 +1238,7 @@ export default function FinanceDashboard() {
                             <Stat label="固定支出率" value={percent(totals.fixedRatio)} />
                             <Stat label="预算剩余" value={money(totals.spendingPlan - totals.spendingActual)} />
                           </div>
-                          <EditableBudgetTable budgets={budgets} updateBudget={updateBudget} />
+                          <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} updateBudget={updateBudget} />
                         </>
                       }
                       charts={
@@ -1192,27 +1270,14 @@ export default function FinanceDashboard() {
                             <EditableNumber label="美股月计划投入" value={usSharePlan} onChange={setUsSharePlan} />
                             <EditableNumber label="港股月计划投入" value={hkSharePlan} onChange={setHkSharePlan} />
                           </div>
-                          <div className="cards-grid three">
-                            {holdings.map((item) => (
-                              <article className="edit-card" key={item.id}>
-                                <div className="card-head">
-                                  <strong>{item.market}</strong>
-                                  <span className="pill">{item.currency}</span>
-                                </div>
-                                <EditableNumber
-                                  label="成本"
-                                  value={item.cost}
-                                  onChange={(value) => updateHolding(item.id, { cost: value })}
-                                />
-                                <EditableNumber
-                                  label="当前市值"
-                                  value={item.value}
-                                  onChange={(value) => updateHolding(item.id, { value })}
-                                />
-                                <p>折人民币：{money(toCny(item.value, item.currency, fxUsd, fxHkd))}</p>
-                              </article>
-                            ))}
-                          </div>
+                          <EditableHoldingTable
+                            holdings={holdings}
+                            addHolding={addHolding}
+                            deleteHolding={deleteHolding}
+                            fxHkd={fxHkd}
+                            fxUsd={fxUsd}
+                            updateHolding={updateHolding}
+                          />
                         </>
                       }
                       charts={
@@ -1237,11 +1302,14 @@ export default function FinanceDashboard() {
                     <DataChartLayout
                       data={
                         <>
-                          <div className="form-grid">
-                            <EditableNumber label="房子负债" value={houseDebt} onChange={setHouseDebt} />
-                            <EditableNumber label="车子负债" value={carDebt} onChange={setCarDebt} />
-                            <EditableNumber label="其他负债" value={otherDebt} onChange={setOtherDebt} />
-                          </div>
+                          <EditableDebtTable
+                            carDebt={carDebt}
+                            houseDebt={houseDebt}
+                            otherDebt={otherDebt}
+                            setCarDebt={setCarDebt}
+                            setHouseDebt={setHouseDebt}
+                            setOtherDebt={setOtherDebt}
+                          />
                           <div className="stat-strip">
                             <Stat label="总资产" value={money(totals.totalAssets)} />
                             <Stat label="总负债" value={money(totals.totalDebt)} />
@@ -1272,11 +1340,14 @@ export default function FinanceDashboard() {
                     <DataChartLayout
                       data={
                         <>
-                          <div className="form-grid">
-                            <EditableNumber label="当前应急金" value={emergencyFund} onChange={setEmergencyFund} />
-                            <EditableNumber label="目标覆盖月数" value={emergencyMonths} onChange={setEmergencyMonths} step={1} />
-                            <EditableNumber label="月均必要支出" value={emergencyMonthlyNeed} onChange={setEmergencyMonthlyNeed} />
-                          </div>
+                          <EditableEmergencyTable
+                            emergencyFund={emergencyFund}
+                            emergencyMonthlyNeed={emergencyMonthlyNeed}
+                            emergencyMonths={emergencyMonths}
+                            setEmergencyFund={setEmergencyFund}
+                            setEmergencyMonthlyNeed={setEmergencyMonthlyNeed}
+                            setEmergencyMonths={setEmergencyMonths}
+                          />
                           <div className="stat-strip">
                             <Stat label="覆盖月数" value={`${totals.emergencyCoverage.toFixed(1)} 个月`} />
                             <Stat label="目标金额" value={money(totals.emergencyTarget)} />
@@ -1321,18 +1392,12 @@ export default function FinanceDashboard() {
                   <Module title="账单与提醒" desc="网页内提醒，默认提前 7 天；金额可先手动维护。">
                     <DataChartLayout
                       data={
-                        <div className="cards-grid three">
-                          {reminders.map((item) => (
-                            <article className="edit-card" key={item.id}>
-                              <div className="card-head">
-                                <strong>{item.name}</strong>
-                                <span className="pill">{item.kind}</span>
-                              </div>
-                              <p>{item.date} 前 7 天提醒</p>
-                              <EditableNumber label="金额" value={item.amount} onChange={(value) => updateReminder(item.id, value)} />
-                            </article>
-                          ))}
-                        </div>
+                        <EditableReminderTable
+                          reminders={reminders}
+                          addReminder={addReminder}
+                          deleteReminder={deleteReminder}
+                          updateReminder={updateReminder}
+                        />
                       }
                       charts={
                         <div className="chart-grid two">
@@ -1357,17 +1422,12 @@ export default function FinanceDashboard() {
                       data={
                         <>
                           <MonthSelector records={monthlyRecords} selectedMonth={selectedMonth} onChange={setSelectedMonth} />
-                          <div className="cards-grid three">
-                            {goals.map((item) => (
-                              <article className="edit-card" key={item.id}>
-                                <strong>{item.name}</strong>
-                                <EditableNumber label="目标金额" value={item.target} onChange={(value) => updateGoal(item.id, { target: value })} />
-                                <EditableNumber label="当前金额" value={item.current} onChange={(value) => updateGoal(item.id, { current: value })} />
-                                <EditableNumber label="每月准备" value={item.monthly} onChange={(value) => updateGoal(item.id, { monthly: value })} />
-                              </article>
-                            ))}
-                          </div>
-                          <DataTable headers={monthlyGoalHeaders} rows={monthlyGoalRows} />
+                          <EditableGoalsTable
+                            goals={goals}
+                            addGoal={addGoal}
+                            deleteGoal={deleteGoal}
+                            updateGoal={updateGoal}
+                          />
                         </>
                       }
                       charts={
@@ -1412,6 +1472,24 @@ export default function FinanceDashboard() {
                             <Stat label="结余" value={money(totals.monthlySurplus)} />
                             <Stat label="储蓄率" value={percent(totals.savingsRate)} />
                           </div>
+                          <EditableReportInputsTable
+                            aSharePlan={aSharePlan}
+                            hkSharePlan={hkSharePlan}
+                            learningSaving={learningSaving}
+                            otherIncome={otherIncome}
+                            salary={salary}
+                            setASharePlan={setASharePlan}
+                            setHkSharePlan={setHkSharePlan}
+                            setLearningSaving={setLearningSaving}
+                            setOtherIncome={setOtherIncome}
+                            setSalary={setSalary}
+                            setStockIncome={setStockIncome}
+                            setTravelSaving={setTravelSaving}
+                            setUSSharePlan={setUsSharePlan}
+                            stockIncome={stockIncome}
+                            travelSaving={travelSaving}
+                            usSharePlan={usSharePlan}
+                          />
                           <p className="review-copy">
                             {activeMonth.label} 实际收入 {money(actualIncome)}，已记录支出 {money(totals.spendingActual)}，
                             资产分配 {money(totals.assetOutflow)}。投资浮动盈亏 {money(totals.investmentPnL)}。
@@ -1451,6 +1529,18 @@ export default function FinanceDashboard() {
                             <strong>{totals.score}</strong>
                             <span>财务健康分</span>
                           </div>
+                          <EditableHealthInputsTable
+                            carDebt={carDebt}
+                            emergencyMonthlyNeed={emergencyMonthlyNeed}
+                            emergencyMonths={emergencyMonths}
+                            houseDebt={houseDebt}
+                            otherDebt={otherDebt}
+                            setCarDebt={setCarDebt}
+                            setEmergencyMonthlyNeed={setEmergencyMonthlyNeed}
+                            setEmergencyMonths={setEmergencyMonths}
+                            setHouseDebt={setHouseDebt}
+                            setOtherDebt={setOtherDebt}
+                          />
                           <div className="stat-strip">
                             <Stat label="固定支出率" value={percent(totals.fixedRatio)} />
                             <Stat label="应急覆盖" value={`${totals.emergencyCoverage.toFixed(1)}个月`} />
@@ -1480,14 +1570,7 @@ export default function FinanceDashboard() {
                   <Module title="数据能力" desc="债务、保险、数据质量、规则引擎先放结构，等后续数据补齐再激活。">
                     <DataChartLayout
                       data={
-                        <div className="cards-grid four">
-                          {["债务策略", "保险管理", "数据质量", "规则引擎"].map((item) => (
-                            <article className="empty-card" key={item}>
-                              <strong>{item}</strong>
-                              <span>后续补充数据后开启。</span>
-                            </article>
-                          ))}
-                        </div>
+                        <EditableCapabilityTable capabilities={futureCapabilities} updateCapability={updateFutureCapability} />
                       }
                       charts={
                         <div className="chart-grid two">
@@ -1599,28 +1682,831 @@ function ChartPanel({ title, summary, children }: { title: string; summary: stri
   );
 }
 
-function DataTable({ headers, rows }: { headers: string[]; rows: ReactNode[][] }) {
+function TableNumberInput({
+  value,
+  onChange,
+  min = 0,
+  max,
+  step = 100,
+  ariaLabel,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  ariaLabel: string;
+}) {
   return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            {headers.map((item) => (
-              <th key={item}>{item}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={index}>
-              {row.map((cell, cellIndex) => (
-                <td key={cellIndex}>{cell}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <input
+      aria-label={ariaLabel}
+      className="table-input"
+      inputMode="decimal"
+      max={max}
+      min={min}
+      step={step}
+      type="number"
+      value={Number.isFinite(value) ? value : 0}
+      onChange={(event) => onChange(numberValue(event.target.value))}
+    />
+  );
+}
+
+function TableTextInput({
+  value,
+  onChange,
+  ariaLabel,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      aria-label={ariaLabel}
+      className="table-input text"
+      placeholder={placeholder}
+      type="text"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
+function TableDateInput({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <input
+      aria-label={ariaLabel}
+      className="table-input"
+      type="date"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
+function TableSelect({
+  value,
+  options,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <select className="table-input" aria-label={ariaLabel} value={value} onChange={(event) => onChange(event.target.value)}>
+      {options.map((item) => (
+        <option key={item} value={item}>
+          {item}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function TableCheckbox({ checked, onChange, ariaLabel }: { checked: boolean; onChange: (checked: boolean) => void; ariaLabel: string }) {
+  return (
+    <input
+      aria-label={ariaLabel}
+      checked={checked}
+      className="table-check"
+      type="checkbox"
+      onChange={(event) => onChange(event.target.checked)}
+    />
+  );
+}
+
+function TableToolbar({ title, meta, action }: { title: string; meta: string; action?: ReactNode }) {
+  return (
+    <div className="table-toolbar">
+      <div>
+        <strong>{title}</strong>
+        <span>{meta}</span>
+      </div>
+      {action}
     </div>
+  );
+}
+
+function EditableMonthlyIncomeTable({
+  records,
+  selectedMonth,
+  onSelect,
+  updateMonthRecord,
+}: {
+  records: MonthRecord[];
+  selectedMonth: string;
+  onSelect: (month: string) => void;
+  updateMonthRecord: (monthId: string, patch: Partial<Omit<MonthRecord, "id" | "label" | "budgets">>) => void;
+}) {
+  const active = records.find((record) => record.id === selectedMonth) ?? records[0];
+  return (
+    <>
+      <TableToolbar title="月度收入底表" meta={`当前 ${active.label} / 实际收入 ${money(recordIncome(active))}`} />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>月份</th>
+              <th>工资</th>
+              <th>到账日</th>
+              <th>炒股月结</th>
+              <th>其他收入</th>
+              <th>实际收入</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.map((record) => (
+              <tr className={record.id === selectedMonth ? "selected-row" : ""} key={record.id}>
+                <td>
+                  <button className="row-select-button" type="button" onClick={() => onSelect(record.id)}>
+                    {record.label}
+                  </button>
+                </td>
+                <td>
+                  <TableNumberInput ariaLabel={`${record.label} 工资`} value={record.salary} onChange={(value) => updateMonthRecord(record.id, { salary: value })} />
+                </td>
+                <td>
+                  <TableNumberInput
+                    ariaLabel={`${record.label} 到账日`}
+                    max={31}
+                    min={1}
+                    step={1}
+                    value={record.payday}
+                    onChange={(value) => updateMonthRecord(record.id, { payday: value })}
+                  />
+                </td>
+                <td>
+                  <TableNumberInput
+                    ariaLabel={`${record.label} 炒股月结`}
+                    value={record.stockIncome}
+                    onChange={(value) => updateMonthRecord(record.id, { stockIncome: value })}
+                  />
+                </td>
+                <td>
+                  <TableNumberInput
+                    ariaLabel={`${record.label} 其他收入`}
+                    value={record.otherIncome}
+                    onChange={(value) => updateMonthRecord(record.id, { otherIncome: value })}
+                  />
+                </td>
+                <td className="calculated-cell">{money(recordIncome(record))}</td>
+                <td><span className={record.id === selectedMonth ? "pill good" : "pill"}>{record.id === selectedMonth ? "当前" : "可选"}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableCashflowInputsTable({
+  accountTotal,
+  salary,
+  setSalary,
+  spendingPlan,
+  travelSaving,
+  setTravelSaving,
+  learningSaving,
+  setLearningSaving,
+  emergencyFund,
+  setEmergencyFund,
+  aSharePlan,
+  setASharePlan,
+  usSharePlan,
+  setUSSharePlan,
+  hkSharePlan,
+  setHkSharePlan,
+}: {
+  accountTotal: number;
+  salary: number;
+  setSalary: (value: number) => void;
+  spendingPlan: number;
+  travelSaving: number;
+  setTravelSaving: (value: number) => void;
+  learningSaving: number;
+  setLearningSaving: (value: number) => void;
+  emergencyFund: number;
+  setEmergencyFund: (value: number) => void;
+  aSharePlan: number;
+  setASharePlan: (value: number) => void;
+  usSharePlan: number;
+  setUSSharePlan: (value: number) => void;
+  hkSharePlan: number;
+  setHkSharePlan: (value: number) => void;
+}) {
+  const totalOutflow = spendingPlan + travelSaving + learningSaving + emergencyFund + aSharePlan + usSharePlan + hkSharePlan;
+  return (
+    <>
+      <TableToolbar title="现金流参数底表" meta={`月流出 ${money(totalOutflow)} / 期初现金 ${money(accountTotal)}`} />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>项目</th>
+              <th>数值</th>
+              <th>口径</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>工资流入</td>
+              <td><TableNumberInput ariaLabel="工资流入" value={salary} onChange={setSalary} /></td>
+              <td>计入预测</td>
+            </tr>
+            <tr>
+              <td>生活支出预算</td>
+              <td className="calculated-cell">{money(spendingPlan)}</td>
+              <td>来自预算表</td>
+            </tr>
+            <tr>
+              <td>旅游储蓄</td>
+              <td><TableNumberInput ariaLabel="旅游储蓄" value={travelSaving} onChange={setTravelSaving} /></td>
+              <td>现金流出</td>
+            </tr>
+            <tr>
+              <td>学习储蓄</td>
+              <td><TableNumberInput ariaLabel="学习储蓄" value={learningSaving} onChange={setLearningSaving} /></td>
+              <td>现金流出</td>
+            </tr>
+            <tr>
+              <td>应急金投入</td>
+              <td><TableNumberInput ariaLabel="应急金投入" value={emergencyFund} onChange={setEmergencyFund} /></td>
+              <td>现金流出</td>
+            </tr>
+            <tr>
+              <td>A股计划</td>
+              <td><TableNumberInput ariaLabel="A股计划" value={aSharePlan} onChange={setASharePlan} /></td>
+              <td>现金流出</td>
+            </tr>
+            <tr>
+              <td>美股计划</td>
+              <td><TableNumberInput ariaLabel="美股计划" value={usSharePlan} onChange={setUSSharePlan} /></td>
+              <td>现金流出</td>
+            </tr>
+            <tr>
+              <td>港股计划</td>
+              <td><TableNumberInput ariaLabel="港股计划" value={hkSharePlan} onChange={setHkSharePlan} /></td>
+              <td>现金流出</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableAccountsTable({
+  accounts,
+  total,
+  liquidAccountTotal,
+  updateAccount,
+  addAccount,
+  deleteAccount,
+}: {
+  accounts: Account[];
+  total: number;
+  liquidAccountTotal: number;
+  updateAccount: (id: string, patch: Partial<Account>) => void;
+  addAccount: () => void;
+  deleteAccount: (id: string) => void;
+}) {
+  return (
+    <>
+      <TableToolbar
+        title="账户底表"
+        meta={`${accounts.length} 个账户 / 合计 ${money(total)} / 可动用 ${money(liquidAccountTotal)}`}
+        action={<button className="secondary-button" type="button" onClick={addAccount}>新增账户</button>}
+      />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>账户名称</th>
+              <th>类型</th>
+              <th>余额</th>
+              <th>用途</th>
+              <th>可动用</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {accounts.map((item) => (
+              <tr key={item.id}>
+                <td><TableTextInput ariaLabel={`${item.name} 账户名称`} value={item.name} onChange={(value) => updateAccount(item.id, { name: value })} /></td>
+                <td><TableTextInput ariaLabel={`${item.name} 类型`} value={item.type} onChange={(value) => updateAccount(item.id, { type: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 余额`} value={item.balance} onChange={(value) => updateAccount(item.id, { balance: value })} /></td>
+                <td><TableTextInput ariaLabel={`${item.name} 用途`} value={item.purpose} onChange={(value) => updateAccount(item.id, { purpose: value })} /></td>
+                <td><TableCheckbox ariaLabel={`${item.name} 可动用`} checked={item.liquid} onChange={(value) => updateAccount(item.id, { liquid: value })} /></td>
+                <td>
+                  <button className="danger-button compact" disabled={accounts.length <= 1} type="button" onClick={() => deleteAccount(item.id)}>
+                    删除
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableHoldingTable({
+  holdings,
+  fxUsd,
+  fxHkd,
+  updateHolding,
+  addHolding,
+  deleteHolding,
+}: {
+  holdings: Holding[];
+  fxUsd: number;
+  fxHkd: number;
+  updateHolding: (id: string, patch: Partial<Holding>) => void;
+  addHolding: () => void;
+  deleteHolding: (id: string) => void;
+}) {
+  const totalValue = holdings.reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
+  return (
+    <>
+      <TableToolbar
+        title="投资持仓底表"
+        meta={`持仓 ${holdings.length} 项 / 市值 ${money(totalValue)}`}
+        action={<button className="secondary-button" type="button" onClick={addHolding}>新增持仓</button>}
+      />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>市场</th>
+              <th>币种</th>
+              <th>成本</th>
+              <th>当前市值</th>
+              <th>折人民币</th>
+              <th>盈亏</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {holdings.map((item) => {
+              const valueCny = toCny(item.value, item.currency, fxUsd, fxHkd);
+              const costCny = toCny(item.cost, item.currency, fxUsd, fxHkd);
+              return (
+                <tr key={item.id}>
+                  <td><TableTextInput ariaLabel={`${item.name} 名称`} value={item.name} onChange={(value) => updateHolding(item.id, { name: value })} /></td>
+                  <td>
+                    <TableSelect
+                      ariaLabel={`${item.name} 市场`}
+                      options={["A股", "美股", "港股"]}
+                      value={item.market}
+                      onChange={(value) => updateHolding(item.id, { market: value as Holding["market"] })}
+                    />
+                  </td>
+                  <td>
+                    <TableSelect
+                      ariaLabel={`${item.name} 币种`}
+                      options={["CNY", "USD", "HKD"]}
+                      value={item.currency}
+                      onChange={(value) => updateHolding(item.id, { currency: value as Holding["currency"] })}
+                    />
+                  </td>
+                  <td><TableNumberInput ariaLabel={`${item.name} 成本`} value={item.cost} onChange={(value) => updateHolding(item.id, { cost: value })} /></td>
+                  <td><TableNumberInput ariaLabel={`${item.name} 当前市值`} value={item.value} onChange={(value) => updateHolding(item.id, { value })} /></td>
+                  <td className="calculated-cell">{money(valueCny)}</td>
+                  <td className={valueCny >= costCny ? "positive" : "negative"}>{money(valueCny - costCny)}</td>
+                  <td>
+                    <button className="danger-button compact" disabled={holdings.length <= 1} type="button" onClick={() => deleteHolding(item.id)}>
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableDebtTable({
+  houseDebt,
+  setHouseDebt,
+  carDebt,
+  setCarDebt,
+  otherDebt,
+  setOtherDebt,
+}: {
+  houseDebt: number;
+  setHouseDebt: (value: number) => void;
+  carDebt: number;
+  setCarDebt: (value: number) => void;
+  otherDebt: number;
+  setOtherDebt: (value: number) => void;
+}) {
+  const rows = [
+    { label: "房子负债", value: houseDebt, onChange: setHouseDebt },
+    { label: "车子负债", value: carDebt, onChange: setCarDebt },
+    { label: "其他负债", value: otherDebt, onChange: setOtherDebt },
+  ];
+  const total = rows.reduce((sum, item) => sum + item.value, 0);
+  return (
+    <>
+      <TableToolbar title="负债底表" meta={`总负债 ${money(total)}`} />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>负债项</th>
+              <th>金额</th>
+              <th>占比</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((item) => (
+              <tr key={item.label}>
+                <td>{item.label}</td>
+                <td><TableNumberInput ariaLabel={item.label} value={item.value} onChange={item.onChange} /></td>
+                <td className="calculated-cell">{percent(total ? item.value / total : 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableEmergencyTable({
+  emergencyFund,
+  setEmergencyFund,
+  emergencyMonths,
+  setEmergencyMonths,
+  emergencyMonthlyNeed,
+  setEmergencyMonthlyNeed,
+}: {
+  emergencyFund: number;
+  setEmergencyFund: (value: number) => void;
+  emergencyMonths: number;
+  setEmergencyMonths: (value: number) => void;
+  emergencyMonthlyNeed: number;
+  setEmergencyMonthlyNeed: (value: number) => void;
+}) {
+  const target = emergencyMonthlyNeed * emergencyMonths;
+  return (
+    <>
+      <TableToolbar title="应急金底表" meta={`目标 ${money(target)} / 当前 ${money(emergencyFund)}`} />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>项目</th>
+              <th>数值</th>
+              <th>结果</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>当前应急金</td>
+              <td><TableNumberInput ariaLabel="当前应急金" value={emergencyFund} onChange={setEmergencyFund} /></td>
+              <td className="calculated-cell">覆盖 {emergencyMonthlyNeed ? (emergencyFund / emergencyMonthlyNeed).toFixed(1) : "0.0"} 月</td>
+            </tr>
+            <tr>
+              <td>目标覆盖月数</td>
+              <td><TableNumberInput ariaLabel="目标覆盖月数" step={1} value={emergencyMonths} onChange={setEmergencyMonths} /></td>
+              <td className="calculated-cell">{emergencyMonths} 个月</td>
+            </tr>
+            <tr>
+              <td>月均必要支出</td>
+              <td><TableNumberInput ariaLabel="月均必要支出" value={emergencyMonthlyNeed} onChange={setEmergencyMonthlyNeed} /></td>
+              <td className="calculated-cell">缺口 {money(Math.max(0, target - emergencyFund))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableReminderTable({
+  reminders,
+  updateReminder,
+  addReminder,
+  deleteReminder,
+}: {
+  reminders: Reminder[];
+  updateReminder: (id: string, patch: Partial<Reminder>) => void;
+  addReminder: () => void;
+  deleteReminder: (id: string) => void;
+}) {
+  const total = reminders.reduce((sum, item) => sum + item.amount, 0);
+  return (
+    <>
+      <TableToolbar
+        title="提醒底表"
+        meta={`${reminders.length} 条 / 金额 ${money(total)}`}
+        action={<button className="secondary-button" type="button" onClick={addReminder}>新增提醒</button>}
+      />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>事项</th>
+              <th>日期</th>
+              <th>金额</th>
+              <th>类型</th>
+              <th>距离</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {reminders.map((item) => (
+              <tr key={item.id}>
+                <td><TableTextInput ariaLabel={`${item.name} 事项`} value={item.name} onChange={(value) => updateReminder(item.id, { name: value })} /></td>
+                <td><TableDateInput ariaLabel={`${item.name} 日期`} value={item.date} onChange={(value) => updateReminder(item.id, { date: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 金额`} value={item.amount} onChange={(value) => updateReminder(item.id, { amount: value })} /></td>
+                <td><TableTextInput ariaLabel={`${item.name} 类型`} value={item.kind} onChange={(value) => updateReminder(item.id, { kind: value })} /></td>
+                <td className="calculated-cell">{Math.max(0, dayDistance(item.date))} 天</td>
+                <td>
+                  <button className="danger-button compact" disabled={reminders.length <= 1} type="button" onClick={() => deleteReminder(item.id)}>
+                    删除
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableGoalsTable({
+  goals,
+  updateGoal,
+  addGoal,
+  deleteGoal,
+}: {
+  goals: Goal[];
+  updateGoal: (id: string, patch: Partial<Goal>) => void;
+  addGoal: () => void;
+  deleteGoal: (id: string) => void;
+}) {
+  const totalTarget = goals.reduce((sum, item) => sum + item.target, 0);
+  const totalCurrent = goals.reduce((sum, item) => sum + item.current, 0);
+  return (
+    <>
+      <TableToolbar
+        title="目标底表"
+        meta={`当前 ${money(totalCurrent)} / 目标 ${money(totalTarget)}`}
+        action={<button className="secondary-button" type="button" onClick={addGoal}>新增目标</button>}
+      />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>目标</th>
+              <th>目标金额</th>
+              <th>当前金额</th>
+              <th>每月准备</th>
+              <th>进度</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {goals.map((item) => (
+              <tr key={item.id}>
+                <td><TableTextInput ariaLabel={`${item.name} 名称`} value={item.name} onChange={(value) => updateGoal(item.id, { name: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 目标金额`} value={item.target} onChange={(value) => updateGoal(item.id, { target: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 当前金额`} value={item.current} onChange={(value) => updateGoal(item.id, { current: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 每月准备`} value={item.monthly} onChange={(value) => updateGoal(item.id, { monthly: value })} /></td>
+                <td className="calculated-cell">{percent(item.target ? item.current / item.target : 0)}</td>
+                <td>
+                  <button className="danger-button compact" disabled={goals.length <= 1} type="button" onClick={() => deleteGoal(item.id)}>
+                    删除
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableReportInputsTable({
+  salary,
+  setSalary,
+  stockIncome,
+  setStockIncome,
+  otherIncome,
+  setOtherIncome,
+  travelSaving,
+  setTravelSaving,
+  learningSaving,
+  setLearningSaving,
+  aSharePlan,
+  setASharePlan,
+  usSharePlan,
+  setUSSharePlan,
+  hkSharePlan,
+  setHkSharePlan,
+}: {
+  salary: number;
+  setSalary: (value: number) => void;
+  stockIncome: number;
+  setStockIncome: (value: number) => void;
+  otherIncome: number;
+  setOtherIncome: (value: number) => void;
+  travelSaving: number;
+  setTravelSaving: (value: number) => void;
+  learningSaving: number;
+  setLearningSaving: (value: number) => void;
+  aSharePlan: number;
+  setASharePlan: (value: number) => void;
+  usSharePlan: number;
+  setUSSharePlan: (value: number) => void;
+  hkSharePlan: number;
+  setHkSharePlan: (value: number) => void;
+}) {
+  return (
+    <>
+      <TableToolbar title="报表输入底表" meta={`收入 ${money(salary + Math.max(stockIncome, 0) + otherIncome)}`} />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>项目</th>
+              <th>数值</th>
+              <th>流向</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>工资</td>
+              <td><TableNumberInput ariaLabel="报表工资" value={salary} onChange={setSalary} /></td>
+              <td>收入</td>
+            </tr>
+            <tr>
+              <td>炒股月结</td>
+              <td><TableNumberInput ariaLabel="报表炒股月结" value={stockIncome} onChange={setStockIncome} /></td>
+              <td>收入</td>
+            </tr>
+            <tr>
+              <td>其他收入</td>
+              <td><TableNumberInput ariaLabel="报表其他收入" value={otherIncome} onChange={setOtherIncome} /></td>
+              <td>收入</td>
+            </tr>
+            <tr>
+              <td>旅游储蓄</td>
+              <td><TableNumberInput ariaLabel="报表旅游储蓄" value={travelSaving} onChange={setTravelSaving} /></td>
+              <td>资产分配</td>
+            </tr>
+            <tr>
+              <td>学习储蓄</td>
+              <td><TableNumberInput ariaLabel="报表学习储蓄" value={learningSaving} onChange={setLearningSaving} /></td>
+              <td>资产分配</td>
+            </tr>
+            <tr>
+              <td>A股计划</td>
+              <td><TableNumberInput ariaLabel="报表A股计划" value={aSharePlan} onChange={setASharePlan} /></td>
+              <td>资产分配</td>
+            </tr>
+            <tr>
+              <td>美股计划</td>
+              <td><TableNumberInput ariaLabel="报表美股计划" value={usSharePlan} onChange={setUSSharePlan} /></td>
+              <td>资产分配</td>
+            </tr>
+            <tr>
+              <td>港股计划</td>
+              <td><TableNumberInput ariaLabel="报表港股计划" value={hkSharePlan} onChange={setHkSharePlan} /></td>
+              <td>资产分配</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableHealthInputsTable({
+  emergencyMonths,
+  setEmergencyMonths,
+  emergencyMonthlyNeed,
+  setEmergencyMonthlyNeed,
+  houseDebt,
+  setHouseDebt,
+  carDebt,
+  setCarDebt,
+  otherDebt,
+  setOtherDebt,
+}: {
+  emergencyMonths: number;
+  setEmergencyMonths: (value: number) => void;
+  emergencyMonthlyNeed: number;
+  setEmergencyMonthlyNeed: (value: number) => void;
+  houseDebt: number;
+  setHouseDebt: (value: number) => void;
+  carDebt: number;
+  setCarDebt: (value: number) => void;
+  otherDebt: number;
+  setOtherDebt: (value: number) => void;
+}) {
+  return (
+    <>
+      <TableToolbar title="健康评分输入底表" meta={`目标覆盖 ${emergencyMonths} 月 / 负债 ${money(houseDebt + carDebt + otherDebt)}`} />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>项目</th>
+              <th>数值</th>
+              <th>影响</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>目标覆盖月数</td>
+              <td><TableNumberInput ariaLabel="健康目标覆盖月数" step={1} value={emergencyMonths} onChange={setEmergencyMonths} /></td>
+              <td>抗风险能力</td>
+            </tr>
+            <tr>
+              <td>月均必要支出</td>
+              <td><TableNumberInput ariaLabel="健康月均必要支出" value={emergencyMonthlyNeed} onChange={setEmergencyMonthlyNeed} /></td>
+              <td>应急覆盖</td>
+            </tr>
+            <tr>
+              <td>房子负债</td>
+              <td><TableNumberInput ariaLabel="健康房子负债" value={houseDebt} onChange={setHouseDebt} /></td>
+              <td>负债率</td>
+            </tr>
+            <tr>
+              <td>车子负债</td>
+              <td><TableNumberInput ariaLabel="健康车子负债" value={carDebt} onChange={setCarDebt} /></td>
+              <td>负债率</td>
+            </tr>
+            <tr>
+              <td>其他负债</td>
+              <td><TableNumberInput ariaLabel="健康其他负债" value={otherDebt} onChange={setOtherDebt} /></td>
+              <td>负债率</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableCapabilityTable({
+  capabilities,
+  updateCapability,
+}: {
+  capabilities: FutureCapability[];
+  updateCapability: (id: string, patch: Partial<FutureCapability>) => void;
+}) {
+  const average = capabilities.reduce((sum, item) => sum + item.score, 0) / Math.max(capabilities.length, 1);
+  return (
+    <>
+      <TableToolbar title="数据能力底表" meta={`平均成熟度 ${average.toFixed(0)} 分`} />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>能力</th>
+              <th>成熟度</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            {capabilities.map((item) => (
+              <tr key={item.id}>
+                <td><TableTextInput ariaLabel={`${item.name} 名称`} value={item.name} onChange={(value) => updateCapability(item.id, { name: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 成熟度`} max={100} step={1} value={item.score} onChange={(value) => updateCapability(item.id, { score: clamp(value) })} /></td>
+                <td><span className={item.score >= 70 ? "pill good" : item.score >= 40 ? "pill warn" : "pill"}>{item.score >= 70 ? "可用" : item.score >= 40 ? "建设中" : "待补齐"}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -1861,13 +2747,12 @@ function WaterfallChart({ data }: { data: WaterfallDatum[] }) {
   const width = 360;
   const height = 190;
   const pad = 24;
-  let running = 0;
-  const bars = data.map((item) => {
+  const bars = data.reduce<Array<WaterfallDatum & { before: number; after: number }>>((items, item) => {
+    const running = items.at(-1)?.after ?? 0;
     const before = item.kind === "start" || item.kind === "end" ? 0 : running;
     const after = item.kind === "start" || item.kind === "end" ? item.value : running + item.value;
-    if (item.kind !== "end") running = after;
-    return { ...item, before, after };
-  });
+    return [...items, { ...item, before, after }];
+  }, []);
   const values = bars.flatMap((item) => [item.before, item.after, 0]);
   const min = Math.min(...values);
   const max = Math.max(...values, 1);
@@ -2011,53 +2896,61 @@ function ScatterPlot({ data, xLabel, yLabel }: { data: ScatterPoint[]; xLabel: s
 function EditableBudgetTable({
   budgets,
   updateBudget,
+  addBudget,
+  deleteBudget,
 }: {
   budgets: Budget[];
   updateBudget: (id: string, patch: Partial<Budget>) => void;
+  addBudget: () => void;
+  deleteBudget: (id: string) => void;
 }) {
+  const plan = budgets.reduce((sum, item) => sum + item.plan, 0);
+  const actual = budgets.reduce((sum, item) => sum + item.actual, 0);
   return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>分类</th>
-            <th>预算</th>
-            <th>实际</th>
-            <th>剩余</th>
-            <th>性质</th>
-          </tr>
-        </thead>
-        <tbody>
-          {budgets.map((item) => (
-            <tr key={item.id}>
-              <td>{item.name}</td>
-              <td>
-                <input
-                  className="table-input"
-                  min="0"
-                  type="number"
-                  value={item.plan}
-                  onChange={(event) => updateBudget(item.id, { plan: numberValue(event.target.value) })}
-                />
-              </td>
-              <td>
-                <input
-                  className="table-input"
-                  min="0"
-                  type="number"
-                  value={item.actual}
-                  onChange={(event) => updateBudget(item.id, { actual: numberValue(event.target.value) })}
-                />
-              </td>
-              <td>{money(item.plan - item.actual)}</td>
-              <td>
-                <span className={item.required ? "pill good" : "pill warn"}>{item.required ? "必须" : "可取消"}</span>
-                <span className={item.fixed ? "pill warn" : "pill"}>{item.fixed ? "固定" : "弹性"}</span>
-              </td>
+    <>
+      <TableToolbar
+        title="预算支出底表"
+        meta={`预算 ${money(plan)} / 实际 ${money(actual)} / 剩余 ${money(plan - actual)}`}
+        action={<button className="secondary-button" type="button" onClick={addBudget}>新增分类</button>}
+      />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>分类</th>
+              <th>预算</th>
+              <th>实际</th>
+              <th>剩余</th>
+              <th>必须</th>
+              <th>固定</th>
+              <th>操作</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {budgets.map((item) => (
+              <tr key={item.id}>
+                <td>
+                  <TableTextInput ariaLabel={`${item.name} 分类`} value={item.name} onChange={(value) => updateBudget(item.id, { name: value })} />
+                </td>
+                <td>
+                  <TableNumberInput ariaLabel={`${item.name} 预算`} value={item.plan} onChange={(value) => updateBudget(item.id, { plan: value })} />
+                </td>
+                <td>
+                  <TableNumberInput ariaLabel={`${item.name} 实际`} value={item.actual} onChange={(value) => updateBudget(item.id, { actual: value })} />
+                </td>
+                <td className="calculated-cell">{money(item.plan - item.actual)}</td>
+                <td><TableCheckbox ariaLabel={`${item.name} 必须`} checked={item.required} onChange={(value) => updateBudget(item.id, { required: value })} /></td>
+                <td><TableCheckbox ariaLabel={`${item.name} 固定`} checked={item.fixed} onChange={(value) => updateBudget(item.id, { fixed: value })} /></td>
+                <td>
+                  <button className="danger-button compact" disabled={budgets.length <= 1} type="button" onClick={() => deleteBudget(item.id)}>
+                    删除
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
