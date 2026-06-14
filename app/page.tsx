@@ -187,6 +187,8 @@ type ScatterPoint = {
   color?: string;
 };
 
+type GoalKind = "travel" | "learning" | "emergency" | "other";
+
 const palette = ["#1f5fbf", "#07835f", "#b7791f", "#6852bd", "#c53030", "#2b6cb0", "#0f766e", "#805ad5"];
 const today = new Date("2026-06-14T00:00:00+08:00");
 
@@ -255,7 +257,7 @@ const initialReminders: Reminder[] = [
 
 const initialGoals: Goal[] = [
   { id: "travel", name: "旅游基金", target: 18000, current: 3000, monthly: 3000 },
-  { id: "learning", name: "学习成长", target: 12000, current: 1750, monthly: 1750 },
+  { id: "learning", name: "学习成长", target: 12000, current: 500, monthly: 500 },
   { id: "emergency-goal", name: "应急储备", target: 13500, current: 2000, monthly: 2000 },
 ];
 
@@ -334,6 +336,55 @@ function isInvestmentReserveAccount(account: Account) {
   return text.includes("余额宝") || text.includes("投资理财") || text.includes("待投资") || text.includes("投资储蓄");
 }
 
+function isTravelSavingsAccount(account: Account) {
+  const text = `${account.name} ${account.type} ${account.purpose}`.toLowerCase();
+  return !isInvestmentReserveAccount(account) && (text.includes("旅游") || text.includes("旅行"));
+}
+
+function isLearningSavingsAccount(account: Account) {
+  const text = `${account.name} ${account.type} ${account.purpose}`.toLowerCase();
+  return !isInvestmentReserveAccount(account) && (text.includes("学习") || text.includes("教育") || text.includes("成长"));
+}
+
+function goalKind(goal: Goal): GoalKind {
+  const text = goal.name.toLowerCase();
+  if (text.includes("旅游") || text.includes("旅行")) return "travel";
+  if (text.includes("学习") || text.includes("教育") || text.includes("成长")) return "learning";
+  if (text.includes("应急") || text.includes("紧急")) return "emergency";
+  return "other";
+}
+
+function summarizeGoals(goals: Goal[]) {
+  const summary = {
+    travelCurrent: 0,
+    travelMonthly: 0,
+    learningCurrent: 0,
+    learningMonthly: 0,
+    otherCurrent: 0,
+    otherMonthly: 0,
+    hasTravel: false,
+    hasLearning: false,
+  };
+
+  for (const goal of goals) {
+    const kind = goalKind(goal);
+    if (kind === "travel") {
+      summary.travelCurrent += goal.current;
+      summary.travelMonthly += goal.monthly;
+      summary.hasTravel = true;
+    } else if (kind === "learning") {
+      summary.learningCurrent += goal.current;
+      summary.learningMonthly += goal.monthly;
+      summary.hasLearning = true;
+    } else if (kind === "other") {
+      summary.otherCurrent += goal.current;
+      summary.otherMonthly += goal.monthly;
+    }
+  }
+
+  return summary;
+}
+
 function normalizeLiabilities(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value
@@ -408,7 +459,7 @@ export default function FinanceDashboard() {
   const [usSharePlan, setUsSharePlan] = useState(1500);
   const [hkSharePlan, setHkSharePlan] = useState(0);
   const [travelSaving, setTravelSaving] = useState(3000);
-  const [learningSaving, setLearningSaving] = useState(1750);
+  const [learningSaving, setLearningSaving] = useState(500);
   const [emergencyFund, setEmergencyFund] = useState(2000);
   const [emergencyMonths, setEmergencyMonths] = useState(3);
   const [emergencyMonthlyNeed, setEmergencyMonthlyNeed] = useState(4500);
@@ -523,7 +574,17 @@ export default function FinanceDashboard() {
   const totals = useMemo(() => {
     const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
     const investmentReserve = accounts.filter(isInvestmentReserveAccount).reduce((sum, item) => sum + item.balance, 0);
-    const operatingAccountTotal = accountTotal - investmentReserve;
+    const accountTravelSavings = accounts.filter(isTravelSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
+    const accountLearningSavings = accounts.filter(isLearningSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
+    const accountSpecialSavings = accountTravelSavings + accountLearningSavings;
+    const goalSummary = summarizeGoals(goals);
+    const travelSavings = accountTravelSavings > 0 ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
+    const learningSavings =
+      accountLearningSavings > 0 ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
+    const otherSavings = goalSummary.otherCurrent;
+    const totalSavings = travelSavings + learningSavings + otherSavings;
+    const savingsOutsideAccounts = Math.max(0, totalSavings - accountSpecialSavings);
+    const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings;
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
     const spendingActual = budgets.reduce((sum, item) => sum + item.actual, 0);
     const spendingPlan = budgets.reduce((sum, item) => sum + item.plan, 0);
@@ -534,16 +595,17 @@ export default function FinanceDashboard() {
     const aShareValue = holdings.filter((item) => item.market === "A股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const usShareValue = holdings.filter((item) => item.market === "美股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const hkShareValue = holdings.filter((item) => item.market === "港股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
-    const totalSavings = travelSaving + learningSaving;
     const totalDebt = liabilities.reduce((sum, item) => sum + item.amount, 0);
-    const totalAssets = accountTotal + investmentValue + totalSavings + emergencyFund;
+    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + emergencyFund;
     const customOutflow = cashflowCustomItems
       .filter((item) => item.direction === "outflow")
       .reduce((sum, item) => sum + item.amount, 0);
     const enabledCashflowValue = (id: CashflowBuiltinId, value: number) => (cashflowHiddenBuiltinIds.includes(id) ? 0 : value);
     const cashflowSpendingPlan = enabledCashflowValue("spendingPlan", spendingPlan);
-    const travelAllocation = enabledCashflowValue("travelSaving", travelSaving);
-    const learningAllocation = enabledCashflowValue("learningSaving", learningSaving);
+    const travelAllocationSource = goalSummary.hasTravel ? goalSummary.travelMonthly : travelSaving;
+    const learningAllocationSource = goalSummary.hasLearning ? goalSummary.learningMonthly : learningSaving;
+    const travelAllocation = enabledCashflowValue("travelSaving", travelAllocationSource);
+    const learningAllocation = enabledCashflowValue("learningSaving", learningAllocationSource);
     const emergencyAllocation = enabledCashflowValue("emergencyFund", emergencyFund);
     const investmentSavingAllocation =
       enabledCashflowValue("aSharePlan", aSharePlan) +
@@ -569,6 +631,7 @@ export default function FinanceDashboard() {
       accountTotal,
       operatingAccountTotal,
       investmentReserve,
+      accountSpecialSavings,
       liquidAccountTotal,
       spendingActual,
       spendingPlan,
@@ -586,7 +649,13 @@ export default function FinanceDashboard() {
       emergencyAllocation,
       investmentSavingAllocation,
       customOutflow,
+      travelAllocationSource,
+      learningAllocationSource,
+      travelSavings,
+      learningSavings,
+      otherSavings,
       totalSavings,
+      savingsOutsideAccounts,
       totalDebt,
       totalAssets,
       netWorth: totalAssets - totalDebt,
@@ -602,6 +671,7 @@ export default function FinanceDashboard() {
     };
   }, [
     accounts,
+    goals,
     budgets,
     actualIncome,
     holdings,
@@ -895,6 +965,24 @@ export default function FinanceDashboard() {
     setGoals((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
+  function updateFirstGoalByKind(kind: GoalKind, patch: Partial<Goal>) {
+    setGoals((items) => {
+      const target = items.find((item) => goalKind(item) === kind);
+      if (!target) return items;
+      return items.map((item) => (item.id === target.id ? { ...item, ...patch } : item));
+    });
+  }
+
+  function setTravelSavingFromInput(value: number) {
+    setTravelSaving(value);
+    updateFirstGoalByKind("travel", { monthly: value });
+  }
+
+  function setLearningSavingFromInput(value: number) {
+    setLearningSaving(value);
+    updateFirstGoalByKind("learning", { monthly: value });
+  }
+
   function addGoal() {
     setGoals((items) => [
       ...items,
@@ -937,11 +1025,24 @@ export default function FinanceDashboard() {
     `应急 ${money(totals.emergencyAllocation)}`,
     `投资储蓄 ${money(totals.investmentSavingAllocation)}`,
   ].join(" / ");
+  const specialSavingsDetail = [
+    `旅游 ${money(totals.travelSavings)}`,
+    `学习 ${money(totals.learningSavings)}`,
+    totals.otherSavings > 0 ? `其他 ${money(totals.otherSavings)}` : "",
+  ]
+    .filter(Boolean)
+    .join(" / ");
+  const accountCashDetail = [
+    totals.investmentReserve > 0 ? `待投资 ${money(totals.investmentReserve)}` : "",
+    totals.accountSpecialSavings > 0 ? `专项 ${money(totals.accountSpecialSavings)}` : "",
+  ]
+    .filter(Boolean)
+    .join(" / ");
   const totalAssetBreakdown = [
     {
       label: "账户现金",
       value: totals.operatingAccountTotal,
-      detail: totals.investmentReserve > 0 ? `不含投资待分配 ${money(totals.investmentReserve)}` : "日常账户余额",
+      detail: accountCashDetail ? `不含 ${accountCashDetail}` : "日常账户余额",
       color: palette[0],
     },
     {
@@ -959,7 +1060,7 @@ export default function FinanceDashboard() {
     {
       label: "专项储蓄",
       value: totals.totalSavings,
-      detail: `旅游 ${money(travelSaving)} / 学习 ${money(learningSaving)}`,
+      detail: specialSavingsDetail,
       color: palette[3],
     },
     {
@@ -990,16 +1091,16 @@ export default function FinanceDashboard() {
       tone: "violet" as Tone,
     },
     {
+      title: "当月余额",
+      value: money(totals.monthlySurplus),
+      detail: `收入 ${money(actualIncome)} - 支出 ${money(totals.spendingActual)} - 分配 ${money(totals.assetOutflow)}`,
+      tone: totals.monthlySurplus < 0 ? ("red" as Tone) : totals.monthlySurplus < actualIncome * 0.1 ? ("amber" as Tone) : ("green" as Tone),
+    },
+    {
       title: "当前现金流",
       value: money(totals.accountTotal),
       detail: `可动用 ${money(totals.liquidAccountTotal)} / 待投资 ${money(totals.investmentReserve)}`,
       tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? ("red" as Tone) : ("green" as Tone),
-    },
-    {
-      title: "资产分配",
-      value: money(totals.investmentValue),
-      detail: `A股 ${money(totals.aShareValue)} / 美股 ${money(totals.usShareValue)} / 港股 ${money(totals.hkShareValue)}`,
-      tone: "violet" as Tone,
     },
     {
       title: "目前总储蓄",
@@ -1093,20 +1194,20 @@ export default function FinanceDashboard() {
       id: "builtin-travel-saving",
       builtinId: "travelSaving",
       name: "旅游储蓄",
-      amount: travelSaving,
+      amount: totals.travelAllocationSource,
       direction: "outflow",
       source: "现金流出",
-      onAmountChange: setTravelSaving,
+      onAmountChange: setTravelSavingFromInput,
       onDelete: () => deleteCashflowBuiltinItem("travelSaving"),
     },
     {
       id: "builtin-learning-saving",
       builtinId: "learningSaving",
       name: "学习储蓄",
-      amount: learningSaving,
+      amount: totals.learningAllocationSource,
       direction: "outflow",
       source: "现金流出",
-      onAmountChange: setLearningSaving,
+      onAmountChange: setLearningSavingFromInput,
       onDelete: () => deleteCashflowBuiltinItem("learningSaving"),
     },
     {
@@ -1860,19 +1961,19 @@ export default function FinanceDashboard() {
                           <EditableReportInputsTable
                             aSharePlan={aSharePlan}
                             hkSharePlan={hkSharePlan}
-                            learningSaving={learningSaving}
+                            learningSaving={totals.learningAllocationSource}
                             otherIncome={otherIncome}
                             salary={salary}
                             setASharePlan={setASharePlan}
                             setHkSharePlan={setHkSharePlan}
-                            setLearningSaving={setLearningSaving}
+                            setLearningSaving={setLearningSavingFromInput}
                             setOtherIncome={setOtherIncome}
                             setSalary={setSalary}
                             setStockIncome={setStockIncome}
-                            setTravelSaving={setTravelSaving}
+                            setTravelSaving={setTravelSavingFromInput}
                             setUSSharePlan={setUsSharePlan}
                             stockIncome={stockIncome}
-                            travelSaving={travelSaving}
+                            travelSaving={totals.travelAllocationSource}
                             usSharePlan={usSharePlan}
                           />
                           <p className="review-copy">
