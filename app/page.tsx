@@ -1161,7 +1161,13 @@ export default function FinanceDashboard() {
                     <DataChartLayout
                       data={
                         <>
-                          <MonthSelector records={monthlyRecords} selectedMonth={selectedMonth} onChange={setSelectedMonth} />
+                          <MonthSelector
+                            records={monthlyRecords}
+                            selectedMonth={selectedMonth}
+                            onAddMonth={addMonthRecord}
+                            onChange={setSelectedMonth}
+                            onDeleteSelectedMonth={() => deleteMonthRecord(selectedMonth)}
+                          />
                           <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} updateBudget={updateBudget} />
                         </>
                       }
@@ -1689,25 +1695,50 @@ function Stat({ label, value }: { label: string; value: string }) {
 function MonthSelector({
   records,
   selectedMonth,
+  onAddMonth,
   onChange,
+  onDeleteSelectedMonth,
 }: {
   records: MonthRecord[];
   selectedMonth: string;
+  onAddMonth?: () => void;
   onChange: (month: string) => void;
+  onDeleteSelectedMonth?: () => void;
 }) {
   return (
-    <div className="month-selector" aria-label="月份切换">
-      {records.map((record) => (
-        <button
-          className={record.id === selectedMonth ? "active" : ""}
-          key={record.id}
-          type="button"
-          onClick={() => onChange(record.id)}
-        >
-          <strong>{shortMonth(record.label)}</strong>
-          <span>{record.id === selectedMonth ? "当前" : "切换"}</span>
-        </button>
-      ))}
+    <div className="month-selector-shell">
+      <div className="month-selector" aria-label="月份切换">
+        {records.map((record) => (
+          <button
+            className={record.id === selectedMonth ? "active" : ""}
+            key={record.id}
+            type="button"
+            onClick={() => onChange(record.id)}
+          >
+            <strong>{shortMonth(record.label)}</strong>
+            <span>{record.id === selectedMonth ? "当前" : "切换"}</span>
+          </button>
+        ))}
+      </div>
+      {(onAddMonth || onDeleteSelectedMonth) && (
+        <div className="month-selector-actions">
+          {onAddMonth && (
+            <button className="secondary-button" type="button" onClick={onAddMonth}>
+              新增月份
+            </button>
+          )}
+          {onDeleteSelectedMonth && (
+            <button
+              className="danger-button"
+              disabled={records.length <= 1}
+              type="button"
+              onClick={onDeleteSelectedMonth}
+            >
+              删除当前月
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

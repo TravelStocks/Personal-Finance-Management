@@ -398,11 +398,30 @@ select {
   font-weight: 900;
 }
 
+.month-selector-shell {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+}
+
 .month-selector {
+  flex: 1;
   display: flex;
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 2px;
+}
+
+.month-selector-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.month-selector-actions .secondary-button,
+.month-selector-actions .danger-button {
+  white-space: nowrap;
 }
 
 .month-selector button {
@@ -1246,10 +1265,20 @@ th {
     flex-direction: column;
   }
 
+  .month-selector-shell {
+    display: grid;
+    gap: 8px;
+  }
+
   .month-selector {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow-x: visible;
+  }
+
+  .month-selector-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .month-selector button {
