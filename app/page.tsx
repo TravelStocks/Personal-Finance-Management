@@ -1403,13 +1403,16 @@ export default function FinanceDashboard() {
       color: palette[index % palette.length],
       detail: item.type.trim() || "未分类",
     }));
-  const spendingChartData = budgets.map((item, index) => ({
-    label: item.name,
-    value: item.actual,
-    max: Math.max(item.plan, item.actual, 1),
-    color: item.actual > item.plan ? palette[4] : palette[index % palette.length],
-    detail: `${money(item.actual)} / ${money(item.plan)}`,
-  }));
+  const spendingChartData = budgets
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => right.item.actual - left.item.actual || right.item.plan - left.item.plan || left.index - right.index)
+    .map(({ item }, index) => ({
+      label: item.name.trim() || "未命名支出",
+      value: item.actual,
+      max: Math.max(item.plan, item.actual, 1),
+      color: item.actual > item.plan ? palette[4] : palette[index % palette.length],
+      detail: `${money(item.actual)} / ${money(item.plan)}`,
+    }));
   const actualSpendingItems = budgets
     .map((item, index) => ({
       label: item.name.trim() || "未命名支出",
@@ -1967,7 +1970,7 @@ export default function FinanceDashboard() {
                           <ChartPanel title="全部实际支出占比" summary="按实际金额">
                             <DonutChart data={spendingShareData} centerLabel="实际" centerValue={money(totals.spendingActual)} />
                           </ChartPanel>
-                          <ChartPanel title="分类预算执行" summary="实际 / 预算">
+                          <ChartPanel title="分类预算执行" summary="实际 / 预算 / 按实际金额降序">
                             <HorizontalBarChart data={spendingChartData} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="预算必要性结构" summary="必须 vs 可取消">
@@ -2085,7 +2088,7 @@ export default function FinanceDashboard() {
                           <ChartPanel title="固定 / 弹性支出" summary={fixedRatioLabel(totals.fixedRatio)}>
                             <DonutChart data={fixedFlexData} centerLabel="固定率" centerValue={percent(totals.fixedRatio)} />
                           </ChartPanel>
-                          <ChartPanel title="分类预算排行" summary="看哪里最容易超">
+                          <ChartPanel title="分类预算排行" summary="看哪里最容易超 / 按实际金额降序">
                             <HorizontalBarChart data={spendingChartData} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="预算使用热力" summary="实际 / 预算">

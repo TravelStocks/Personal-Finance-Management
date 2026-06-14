@@ -13777,8 +13777,8 @@ function FinanceDashboard() {
     color: palette[index % palette.length],
     detail: item.type.trim() || "\u672A\u5206\u7C7B"
   }));
-  const spendingChartData = budgets.map((item, index) => ({
-    label: item.name,
+  const spendingChartData = budgets.map((item, index) => ({ item, index })).sort((left, right) => right.item.actual - left.item.actual || right.item.plan - left.item.plan || left.index - right.index).map(({ item }, index) => ({
+    label: item.name.trim() || "\u672A\u547D\u540D\u652F\u51FA",
     value: item.actual,
     max: Math.max(item.plan, item.actual, 1),
     color: item.actual > item.plan ? palette[4] : palette[index % palette.length],
@@ -14271,7 +14271,7 @@ function FinanceDashboard() {
               charts: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chart-grid two", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u5B9E\u9645\u652F\u51FA\u6700\u9AD88\u9879", summary: `\u5DF2\u82B1 ${money(totals.spendingActual)}`, className: "spending-top-panel", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HorizontalBarChart, { data: topSpendingData, valueFormatter: money }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u5168\u90E8\u5B9E\u9645\u652F\u51FA\u5360\u6BD4", summary: "\u6309\u5B9E\u9645\u91D1\u989D", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DonutChart, { data: spendingShareData, centerLabel: "\u5B9E\u9645", centerValue: money(totals.spendingActual) }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u5206\u7C7B\u9884\u7B97\u6267\u884C", summary: "\u5B9E\u9645 / \u9884\u7B97", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HorizontalBarChart, { data: spendingChartData, valueFormatter: money }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u5206\u7C7B\u9884\u7B97\u6267\u884C", summary: "\u5B9E\u9645 / \u9884\u7B97 / \u6309\u5B9E\u9645\u91D1\u989D\u964D\u5E8F", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HorizontalBarChart, { data: spendingChartData, valueFormatter: money }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u9884\u7B97\u5FC5\u8981\u6027\u7ED3\u6784", summary: "\u5FC5\u987B vs \u53EF\u53D6\u6D88", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DonutChart, { data: requiredData, centerLabel: "\u9884\u7B97", centerValue: money(totals.spendingPlan) }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u6708\u5EA6\u652F\u51FA\u8D8B\u52BF", summary: "\u6BCF\u6708\u5B9E\u9645\u652F\u51FA", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(VerticalBarChart, { data: monthlySpendingTrend, valueFormatter: money }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u6708\u5EA6\u7ED3\u4F59\u8D8B\u52BF", summary: "\u6536\u5165 - \u5B9E\u9645\u652F\u51FA", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(VerticalBarChart, { data: monthlySurplusTrend, valueFormatter: money }) })
@@ -14357,7 +14357,7 @@ function FinanceDashboard() {
               ] }),
               charts: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chart-grid two", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u56FA\u5B9A / \u5F39\u6027\u652F\u51FA", summary: fixedRatioLabel(totals.fixedRatio), children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DonutChart, { data: fixedFlexData, centerLabel: "\u56FA\u5B9A\u7387", centerValue: percent(totals.fixedRatio) }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u5206\u7C7B\u9884\u7B97\u6392\u884C", summary: "\u770B\u54EA\u91CC\u6700\u5BB9\u6613\u8D85", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HorizontalBarChart, { data: spendingChartData, valueFormatter: money }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u5206\u7C7B\u9884\u7B97\u6392\u884C", summary: "\u770B\u54EA\u91CC\u6700\u5BB9\u6613\u8D85 / \u6309\u5B9E\u9645\u91D1\u989D\u964D\u5E8F", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HorizontalBarChart, { data: spendingChartData, valueFormatter: money }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u9884\u7B97\u4F7F\u7528\u70ED\u529B", summary: "\u5B9E\u9645 / \u9884\u7B97", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HeatmapGrid, { data: budgetHeatData }) })
               ] })
             }
