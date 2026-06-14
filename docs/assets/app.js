@@ -12816,9 +12816,10 @@ var initialReminders = [
   { id: "deposit-reminder", name: "\u5B9A\u671F\u5B58\u6B3E\u5230\u671F\u63D0\u9192", date: "2026-07-12", amount: 2e3, kind: "\u5B9A\u5B58" }
 ];
 var initialGoals = [
-  { id: "travel", name: "\u65C5\u6E38\u57FA\u91D1", target: 18e3, current: 3e3, monthly: 3e3 },
-  { id: "learning", name: "\u5B66\u4E60\u6210\u957F", target: 12e3, current: 500, monthly: 500 },
-  { id: "emergency-goal", name: "\u5E94\u6025\u50A8\u5907", target: 13500, current: 2e3, monthly: 2e3 }
+  { id: "travel", name: "\u65C5\u6E38\u57FA\u91D1", target: 18e3, current: 3e3, monthly: 3e3, actualMonthly: 3e3 },
+  { id: "learning", name: "\u5B66\u4E60\u6210\u957F", target: 12e3, current: 0, monthly: 0, actualMonthly: 0 },
+  { id: "partner", name: "\u4F34\u4FA3\u57FA\u91D1", target: 0, current: 0, monthly: 0, actualMonthly: 0 },
+  { id: "emergency-goal", name: "\u5E94\u6025\u50A8\u5907", target: 13500, current: 2e3, monthly: 2e3, actualMonthly: 0 }
 ];
 var initialFutureCapabilities = [
   { id: "debt-strategy", name: "\u503A\u52A1\u7B56\u7565", score: 70 },
@@ -12831,6 +12832,7 @@ var cashflowBuiltinIds = [
   "spendingPlan",
   "travelSaving",
   "learningSaving",
+  "partnerSaving",
   "emergencyFund",
   "aSharePlan",
   "usSharePlan",
@@ -12848,7 +12850,7 @@ var moduleList = [
   { id: "balance", title: "\u8D44\u4EA7\u8D1F\u503A\u8868", desc: "\u603B\u8D44\u4EA7\u3001\u8D1F\u503A\u9879\u53EF\u589E\u5220\u7F16\u8F91" },
   { id: "emergency", title: "\u5E94\u6025\u91D1", desc: "\u76EE\u6807\u6708\u6570\u3001\u5F53\u524D\u91D1\u989D\u3001\u8986\u76D6\u6708\u6570" },
   { id: "reminders", title: "\u8D26\u5355\u4E0E\u63D0\u9192", desc: "\u63D0\u524D 7 \u5929\u63D0\u9192\u8D26\u5355\u548C\u5230\u671F\u4E8B\u9879" },
-  { id: "goals", title: "\u76EE\u6807\u7BA1\u7406", desc: "\u65C5\u6E38\u3001\u5B66\u4E60\u3001\u5927\u989D\u652F\u51FA\u76EE\u6807" },
+  { id: "goals", title: "\u76EE\u6807\u7BA1\u7406", desc: "\u65C5\u6E38\u3001\u5B66\u4E60\u3001\u4F34\u4FA3\u57FA\u91D1\u548C\u5927\u989D\u652F\u51FA\u76EE\u6807" },
   { id: "reports", title: "\u8D22\u52A1\u62A5\u8868", desc: "\u6536\u5165\u3001\u652F\u51FA\u3001\u7ED3\u4F59\u3001\u6295\u8D44\u8868\u73B0" },
   { id: "health", title: "\u5065\u5EB7\u8BC4\u5206", desc: "100 \u5206\u5236\u8D22\u52A1\u5065\u5EB7\u72B6\u6001" },
   { id: "future", title: "\u6570\u636E\u80FD\u529B", desc: "\u4FDD\u9669\u3001\u503A\u52A1\u7B56\u7565\u3001\u89C4\u5219\u5F15\u64CE\u3001\u6570\u636E\u8D28\u91CF" }
@@ -12919,6 +12921,7 @@ function goalKind(goal) {
   const text = goal.name.toLowerCase();
   if (text.includes("\u65C5\u6E38") || text.includes("\u65C5\u884C")) return "travel";
   if (text.includes("\u5B66\u4E60") || text.includes("\u6559\u80B2") || text.includes("\u6210\u957F")) return "learning";
+  if (text.includes("\u4F34\u4FA3") || text.includes("\u60C5\u4FA3") || text.includes("\u5171\u540C")) return "partner";
   if (text.includes("\u5E94\u6025") || text.includes("\u7D27\u6025")) return "emergency";
   return "other";
 }
@@ -12926,29 +12929,71 @@ function summarizeGoals(goals) {
   const summary = {
     travelCurrent: 0,
     travelMonthly: 0,
+    travelActualMonthly: 0,
     learningCurrent: 0,
     learningMonthly: 0,
+    learningActualMonthly: 0,
+    partnerCurrent: 0,
+    partnerMonthly: 0,
+    partnerActualMonthly: 0,
+    emergencyMonthly: 0,
+    emergencyActualMonthly: 0,
     otherCurrent: 0,
     otherMonthly: 0,
+    otherActualMonthly: 0,
     hasTravel: false,
-    hasLearning: false
+    hasLearning: false,
+    hasPartner: false,
+    hasEmergency: false
   };
   for (const goal of goals) {
     const kind = goalKind(goal);
     if (kind === "travel") {
       summary.travelCurrent += goal.current;
       summary.travelMonthly += goal.monthly;
+      summary.travelActualMonthly += goal.actualMonthly;
       summary.hasTravel = true;
     } else if (kind === "learning") {
       summary.learningCurrent += goal.current;
       summary.learningMonthly += goal.monthly;
+      summary.learningActualMonthly += goal.actualMonthly;
       summary.hasLearning = true;
+    } else if (kind === "partner") {
+      summary.partnerCurrent += goal.current;
+      summary.partnerMonthly += goal.monthly;
+      summary.partnerActualMonthly += goal.actualMonthly;
+      summary.hasPartner = true;
+    } else if (kind === "emergency") {
+      summary.emergencyMonthly += goal.monthly;
+      summary.emergencyActualMonthly += goal.actualMonthly;
+      summary.hasEmergency = true;
     } else if (kind === "other") {
       summary.otherCurrent += goal.current;
       summary.otherMonthly += goal.monthly;
+      summary.otherActualMonthly += goal.actualMonthly;
     }
   }
   return summary;
+}
+function normalizeGoals(value) {
+  const savedGoals = Array.isArray(value) ? value : [];
+  const normalized = savedGoals.map((item, index) => {
+    if (!item || typeof item !== "object") return null;
+    const goal = item;
+    const monthly = typeof goal.monthly === "number" ? goal.monthly : 0;
+    return {
+      id: typeof goal.id === "string" && goal.id.trim() ? goal.id : `goal-${index}`,
+      name: typeof goal.name === "string" && goal.name.trim() ? goal.name : `\u76EE\u6807 ${index + 1}`,
+      target: typeof goal.target === "number" ? goal.target : 0,
+      current: typeof goal.current === "number" ? goal.current : 0,
+      monthly,
+      actualMonthly: typeof goal.actualMonthly === "number" ? goal.actualMonthly : monthly
+    };
+  }).filter((item) => item !== null);
+  const goals = normalized.length ? normalized : initialGoals;
+  if (goals.some((item) => goalKind(item) === "partner")) return goals;
+  const partnerGoal = initialGoals.find((item) => item.id === "partner");
+  return partnerGoal ? [...goals, partnerGoal] : goals;
 }
 function normalizeLiabilities(value) {
   if (!Array.isArray(value)) return [];
@@ -13045,7 +13090,7 @@ function FinanceDashboard() {
             setLiabilities(legacyLiabilitiesFromSaved(saved));
           }
           if (Array.isArray(saved.reminders)) setReminders(saved.reminders);
-          if (Array.isArray(saved.goals)) setGoals(saved.goals);
+          if (Array.isArray(saved.goals)) setGoals(normalizeGoals(saved.goals));
           if (Array.isArray(saved.futureCapabilities)) setFutureCapabilities(saved.futureCapabilities);
           if (Array.isArray(saved.cashflowHiddenBuiltinIds)) {
             setCashflowHiddenBuiltinIds(saved.cashflowHiddenBuiltinIds.filter((id) => cashflowBuiltinIds.includes(id)));
@@ -13123,8 +13168,9 @@ function FinanceDashboard() {
     const goalSummary = summarizeGoals(goals);
     const travelSavings = accountTravelSavings > 0 ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
     const learningSavings = accountLearningSavings > 0 ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
+    const partnerSavings = goalSummary.partnerCurrent;
     const otherSavings = goalSummary.otherCurrent;
-    const totalSavings = travelSavings + learningSavings + otherSavings;
+    const totalSavings = travelSavings + learningSavings + partnerSavings + otherSavings;
     const savingsOutsideAccounts = Math.max(0, totalSavings - accountSpecialSavings);
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings;
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
@@ -13142,13 +13188,20 @@ function FinanceDashboard() {
     const customOutflow = cashflowCustomItems.filter((item) => item.direction === "outflow").reduce((sum, item) => sum + item.amount, 0);
     const enabledCashflowValue = (id, value) => cashflowHiddenBuiltinIds.includes(id) ? 0 : value;
     const cashflowSpendingPlan = enabledCashflowValue("spendingPlan", spendingPlan);
-    const travelAllocationSource = goalSummary.hasTravel ? goalSummary.travelMonthly : travelSaving;
-    const learningAllocationSource = goalSummary.hasLearning ? goalSummary.learningMonthly : learningSaving;
+    const travelAllocationSource = goalSummary.hasTravel ? goalSummary.travelActualMonthly : travelSaving;
+    const learningAllocationSource = goalSummary.hasLearning ? goalSummary.learningActualMonthly : learningSaving;
+    const partnerAllocationSource = goalSummary.hasPartner ? goalSummary.partnerActualMonthly : 0;
+    const emergencyAllocationSource = goalSummary.hasEmergency ? goalSummary.emergencyActualMonthly : 0;
+    const travelExpectedSource = goalSummary.hasTravel ? goalSummary.travelMonthly : travelSaving;
+    const learningExpectedSource = goalSummary.hasLearning ? goalSummary.learningMonthly : learningSaving;
+    const partnerExpectedSource = goalSummary.hasPartner ? goalSummary.partnerMonthly : 0;
+    const emergencyExpectedSource = goalSummary.hasEmergency ? goalSummary.emergencyMonthly : 0;
     const travelAllocation = enabledCashflowValue("travelSaving", travelAllocationSource);
     const learningAllocation = enabledCashflowValue("learningSaving", learningAllocationSource);
-    const emergencyAllocation = enabledCashflowValue("emergencyFund", emergencyFund);
+    const partnerAllocation = enabledCashflowValue("partnerSaving", partnerAllocationSource);
+    const emergencyAllocation = enabledCashflowValue("emergencyFund", emergencyAllocationSource);
     const investmentSavingAllocation = enabledCashflowValue("aSharePlan", aSharePlan) + enabledCashflowValue("usSharePlan", usSharePlan) + enabledCashflowValue("hkSharePlan", hkSharePlan);
-    const assetOutflow = travelAllocation + learningAllocation + emergencyAllocation + investmentSavingAllocation + customOutflow;
+    const assetOutflow = travelAllocation + learningAllocation + partnerAllocation + emergencyAllocation + investmentSavingAllocation + customOutflow;
     const monthlySurplus = actualIncome - spendingActual - assetOutflow;
     const fixedRatio = actualIncome ? fixedSpending / actualIncome : 0;
     const savingsRate = actualIncome ? assetOutflow / actualIncome : 0;
@@ -13180,13 +13233,21 @@ function FinanceDashboard() {
       cashflowSpendingPlan,
       travelAllocation,
       learningAllocation,
+      partnerAllocation,
       emergencyAllocation,
       investmentSavingAllocation,
       customOutflow,
       travelAllocationSource,
       learningAllocationSource,
+      partnerAllocationSource,
+      emergencyAllocationSource,
+      travelExpectedSource,
+      learningExpectedSource,
+      partnerExpectedSource,
+      emergencyExpectedSource,
       travelSavings,
       learningSavings,
+      partnerSavings,
       otherSavings,
       totalSavings,
       savingsOutsideAccounts,
@@ -13478,11 +13539,17 @@ function FinanceDashboard() {
   }
   function setTravelSavingFromInput(value) {
     setTravelSaving(value);
-    updateFirstGoalByKind("travel", { monthly: value });
+    updateFirstGoalByKind("travel", { actualMonthly: value });
   }
   function setLearningSavingFromInput(value) {
     setLearningSaving(value);
-    updateFirstGoalByKind("learning", { monthly: value });
+    updateFirstGoalByKind("learning", { actualMonthly: value });
+  }
+  function setPartnerSavingFromInput(value) {
+    updateFirstGoalByKind("partner", { actualMonthly: value });
+  }
+  function setEmergencyAllocationFromInput(value) {
+    updateFirstGoalByKind("emergency", { actualMonthly: value });
   }
   function addGoal() {
     setGoals((items) => [
@@ -13492,7 +13559,8 @@ function FinanceDashboard() {
         name: `\u65B0\u76EE\u6807 ${items.length + 1}`,
         target: 0,
         current: 0,
-        monthly: 0
+        monthly: 0,
+        actualMonthly: 0
       }
     ]);
   }
@@ -13512,12 +13580,14 @@ function FinanceDashboard() {
   const monthlyAssetAllocationSummary = [
     `\u65C5\u6E38 ${money(totals.travelAllocation)}`,
     `\u5B66\u4E60 ${money(totals.learningAllocation)}`,
+    `\u4F34\u4FA3\u57FA\u91D1 ${money(totals.partnerAllocation)}`,
     `\u5E94\u6025 ${money(totals.emergencyAllocation)}`,
     `\u6295\u8D44\u50A8\u84C4 ${money(totals.investmentSavingAllocation)}`
   ].join(" / ");
   const specialSavingsDetail = [
     `\u65C5\u6E38 ${money(totals.travelSavings)}`,
     `\u5B66\u4E60 ${money(totals.learningSavings)}`,
+    `\u4F34\u4FA3 ${money(totals.partnerSavings)}`,
     totals.otherSavings > 0 ? `\u5176\u4ED6 ${money(totals.otherSavings)}` : ""
   ].filter(Boolean).join(" / ");
   const accountCashDetail = [
@@ -13685,7 +13755,7 @@ function FinanceDashboard() {
       name: "\u65C5\u6E38\u50A8\u84C4",
       amount: totals.travelAllocationSource,
       direction: "outflow",
-      source: "\u73B0\u91D1\u6D41\u51FA",
+      source: "\u6765\u81EA\u76EE\u6807\u5B9E\u9645\u6295\u5165",
       onAmountChange: setTravelSavingFromInput,
       onDelete: () => deleteCashflowBuiltinItem("travelSaving")
     },
@@ -13695,18 +13765,28 @@ function FinanceDashboard() {
       name: "\u5B66\u4E60\u50A8\u84C4",
       amount: totals.learningAllocationSource,
       direction: "outflow",
-      source: "\u73B0\u91D1\u6D41\u51FA",
+      source: "\u6765\u81EA\u76EE\u6807\u5B9E\u9645\u6295\u5165",
       onAmountChange: setLearningSavingFromInput,
       onDelete: () => deleteCashflowBuiltinItem("learningSaving")
+    },
+    {
+      id: "builtin-partner-saving",
+      builtinId: "partnerSaving",
+      name: "\u4F34\u4FA3\u57FA\u91D1",
+      amount: totals.partnerAllocationSource,
+      direction: "outflow",
+      source: "\u6765\u81EA\u76EE\u6807\u5B9E\u9645\u6295\u5165",
+      onAmountChange: setPartnerSavingFromInput,
+      onDelete: () => deleteCashflowBuiltinItem("partnerSaving")
     },
     {
       id: "builtin-emergency-fund",
       builtinId: "emergencyFund",
       name: "\u5E94\u6025\u91D1\u6295\u5165",
-      amount: emergencyFund,
+      amount: totals.emergencyAllocationSource,
       direction: "outflow",
-      source: "\u73B0\u91D1\u6D41\u51FA",
-      onAmountChange: setEmergencyFund,
+      source: "\u6765\u81EA\u76EE\u6807\u5B9E\u9645\u6295\u5165",
+      onAmountChange: setEmergencyAllocationFromInput,
       onDelete: () => deleteCashflowBuiltinItem("emergencyFund")
     },
     {
@@ -13813,27 +13893,31 @@ function FinanceDashboard() {
     value: item.current,
     max: item.target,
     color: palette[index % palette.length],
-    detail: `\u6BCF\u6708\u51C6\u5907 ${money(item.monthly)}`
+    detail: `\u9884\u671F ${money(item.monthly)} / \u5B9E\u9645 ${money(item.actualMonthly)}`
   }));
   const totalGoalCurrent = goals.reduce((sum, item) => sum + item.current, 0);
   const totalGoalTarget = goals.reduce((sum, item) => sum + item.target, 0);
-  const totalGoalMonthlyInput = goals.reduce((sum, item) => sum + item.monthly, 0);
+  const totalGoalExpectedInput = goals.reduce((sum, item) => sum + item.monthly, 0);
+  const totalGoalActualInput = goals.reduce((sum, item) => sum + item.actualMonthly, 0);
   const selectedMonthIndex = Math.max(0, reportMonthRecords.findIndex((item) => item.id === selectedMonth));
   const monthlyGoalInputTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: totalGoalMonthlyInput,
+    value: record.id === selectedMonth ? totalGoalActualInput : totalGoalExpectedInput,
     color: record.id === selectedMonth ? palette[1] : palette[index % palette.length],
-    detail: record.id === selectedMonth ? "\u5F53\u524D\u6708\u6295\u5165" : "\u9884\u8BA1\u6295\u5165"
+    detail: record.id === selectedMonth ? "\u5B9E\u9645\u6295\u5165" : "\u9884\u671F\u51C6\u5907"
   }));
   const monthlyGoalPressureTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: recordSpendingActual(record) + totalGoalMonthlyInput,
+    value: recordSpendingActual(record) + (record.id === selectedMonth ? totalGoalActualInput : totalGoalExpectedInput),
     color: record.id === selectedMonth ? palette[2] : palette[index % palette.length],
     detail: `\u652F\u51FA ${money(recordSpendingActual(record))}`
   }));
   const monthlyGoalBalanceTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: Math.min(totalGoalTarget, totalGoalCurrent + totalGoalMonthlyInput * Math.max(0, index - selectedMonthIndex))
+    value: Math.min(
+      totalGoalTarget,
+      totalGoalCurrent + totalGoalActualInput + totalGoalExpectedInput * Math.max(0, index - selectedMonthIndex - 1)
+    )
   }));
   const reminderAmountData = reminders.map((item, index) => ({
     label: item.name,
@@ -14276,7 +14360,7 @@ function FinanceDashboard() {
               ] })
             }
           ) }),
-          moduleId === "goals" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Module, { title: "\u76EE\u6807\u7BA1\u7406", desc: "\u65C5\u6E38\u3001\u5B66\u4E60\u3001\u5927\u989D\u652F\u51FA\u76EE\u6807\u90FD\u53EF\u4EE5\u7EF4\u62A4\u76EE\u6807\u91D1\u989D\uFF0C\u5E76\u67E5\u770B\u6BCF\u4E2A\u6708\u6295\u5165\u3001\u652F\u51FA\u548C\u7D2F\u8BA1\u53D8\u5316\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          moduleId === "goals" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Module, { title: "\u76EE\u6807\u7BA1\u7406", desc: "\u65C5\u6E38\u3001\u5B66\u4E60\u3001\u4F34\u4FA3\u57FA\u91D1\u548C\u5927\u989D\u652F\u51FA\u76EE\u6807\u90FD\u53EF\u4EE5\u7EF4\u62A4\u76EE\u6807\u91D1\u989D\uFF1B\u9884\u671F\u51C6\u5907\u7528\u4E8E\u89C4\u5212\uFF0C\u5B9E\u9645\u6295\u5165\u7528\u4E8E\u672C\u6708\u8BA1\u7B97\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             DataChartLayout,
             {
               data: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
@@ -14293,7 +14377,7 @@ function FinanceDashboard() {
               ] }),
               charts: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chart-grid two", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u76EE\u6807\u8FDB\u5EA6", summary: "\u5F53\u524D / \u76EE\u6807", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ProgressList, { data: goalProgress, valueFormatter: money }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u6BCF\u6708\u51C6\u5907\u7ED3\u6784", summary: "\u76EE\u6807\u73B0\u91D1\u6D41\u538B\u529B", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u6BCF\u6708\u9884\u671F\u51C6\u5907\u7ED3\u6784", summary: `\u9884\u671F ${money(totalGoalExpectedInput)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                   DonutChart,
                   {
                     data: goals.map((item, index) => ({
@@ -14302,11 +14386,11 @@ function FinanceDashboard() {
                       color: palette[index % palette.length]
                     })),
                     centerLabel: "\u6BCF\u6708",
-                    centerValue: money(goals.reduce((sum, item) => sum + item.monthly, 0))
+                    centerValue: money(totalGoalExpectedInput)
                   }
                 ) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u6708\u5EA6\u76EE\u6807\u6295\u5165", summary: `\u6BCF\u6708\u6295\u5165 ${money(totalGoalMonthlyInput)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(VerticalBarChart, { data: monthlyGoalInputTrend, valueFormatter: money }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u652F\u51FA\u4E0E\u6295\u5165\u538B\u529B", summary: "\u5B9E\u9645\u652F\u51FA + \u76EE\u6807\u6295\u5165", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(VerticalBarChart, { data: monthlyGoalPressureTrend, valueFormatter: money }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u6708\u5EA6\u5B9E\u9645\u76EE\u6807\u6295\u5165", summary: `\u5B9E\u9645\u6295\u5165 ${money(totalGoalActualInput)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(VerticalBarChart, { data: monthlyGoalInputTrend, valueFormatter: money }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u652F\u51FA\u4E0E\u6295\u5165\u538B\u529B", summary: "\u5B9E\u9645\u652F\u51FA + \u5B9E\u9645\u6295\u5165", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(VerticalBarChart, { data: monthlyGoalPressureTrend, valueFormatter: money }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u7D2F\u8BA1\u51C6\u5907\u53D8\u5316", summary: `\u5F53\u524D ${money(totalGoalCurrent)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LineChart, { data: monthlyGoalBalanceTrend, valueFormatter: money }) })
               ] })
             }
@@ -14988,12 +15072,13 @@ function EditableGoalsTable({
 }) {
   const totalTarget = goals.reduce((sum, item) => sum + item.target, 0);
   const totalCurrent = goals.reduce((sum, item) => sum + item.current, 0);
+  const totalActualMonthly = goals.reduce((sum, item) => sum + item.actualMonthly, 0);
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
       TableToolbar,
       {
         title: "\u76EE\u6807\u5E95\u8868",
-        meta: `\u5F53\u524D ${money(totalCurrent)} / \u76EE\u6807 ${money(totalTarget)}`,
+        meta: `\u5F53\u524D ${money(totalCurrent)} / \u76EE\u6807 ${money(totalTarget)} / \u672C\u6708\u5B9E\u9645\u6295\u5165 ${money(totalActualMonthly)}`,
         action: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "secondary-button", type: "button", onClick: addGoal, children: "\u65B0\u589E\u76EE\u6807" })
       }
     ),
@@ -15002,7 +15087,8 @@ function EditableGoalsTable({
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u76EE\u6807" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u76EE\u6807\u91D1\u989D" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u5F53\u524D\u91D1\u989D" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u6BCF\u6708\u51C6\u5907" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u6BCF\u6708\u9884\u671F\u51C6\u5907" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u672C\u6708\u5B9E\u9645\u6295\u5165" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u8FDB\u5EA6" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u64CD\u4F5C" })
       ] }) }),
@@ -15010,7 +15096,8 @@ function EditableGoalsTable({
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableTextInput, { ariaLabel: `${item.name} \u540D\u79F0`, value: item.name, onChange: (value) => updateGoal(item.id, { name: value }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: `${item.name} \u76EE\u6807\u91D1\u989D`, value: item.target, onChange: (value) => updateGoal(item.id, { target: value }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: `${item.name} \u5F53\u524D\u91D1\u989D`, value: item.current, onChange: (value) => updateGoal(item.id, { current: value }) }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: `${item.name} \u6BCF\u6708\u51C6\u5907`, value: item.monthly, onChange: (value) => updateGoal(item.id, { monthly: value }) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: `${item.name} \u6BCF\u6708\u9884\u671F\u51C6\u5907`, value: item.monthly, onChange: (value) => updateGoal(item.id, { monthly: value }) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: `${item.name} \u672C\u6708\u5B9E\u9645\u6295\u5165`, value: item.actualMonthly, onChange: (value) => updateGoal(item.id, { actualMonthly: value }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { className: "calculated-cell", children: percent(item.target ? item.current / item.target : 0) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "danger-button compact", disabled: goals.length <= 1, type: "button", onClick: () => deleteGoal(item.id), children: "\u5220\u9664" }) })
       ] }, item.id)) })

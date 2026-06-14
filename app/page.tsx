@@ -70,6 +70,7 @@ type Goal = {
   target: number;
   current: number;
   monthly: number;
+  actualMonthly: number;
 };
 
 type FutureCapability = {
@@ -91,6 +92,7 @@ type CashflowBuiltinId =
   | "spendingPlan"
   | "travelSaving"
   | "learningSaving"
+  | "partnerSaving"
   | "emergencyFund"
   | "aSharePlan"
   | "usSharePlan"
@@ -187,7 +189,7 @@ type ScatterPoint = {
   color?: string;
 };
 
-type GoalKind = "travel" | "learning" | "emergency" | "other";
+type GoalKind = "travel" | "learning" | "partner" | "emergency" | "other";
 
 const palette = ["#1f5fbf", "#07835f", "#b7791f", "#6852bd", "#c53030", "#2b6cb0", "#0f766e", "#805ad5"];
 const today = new Date("2026-06-14T00:00:00+08:00");
@@ -261,9 +263,10 @@ const initialReminders: Reminder[] = [
 ];
 
 const initialGoals: Goal[] = [
-  { id: "travel", name: "旅游基金", target: 18000, current: 3000, monthly: 3000 },
-  { id: "learning", name: "学习成长", target: 12000, current: 500, monthly: 500 },
-  { id: "emergency-goal", name: "应急储备", target: 13500, current: 2000, monthly: 2000 },
+  { id: "travel", name: "旅游基金", target: 18000, current: 3000, monthly: 3000, actualMonthly: 3000 },
+  { id: "learning", name: "学习成长", target: 12000, current: 0, monthly: 0, actualMonthly: 0 },
+  { id: "partner", name: "伴侣基金", target: 0, current: 0, monthly: 0, actualMonthly: 0 },
+  { id: "emergency-goal", name: "应急储备", target: 13500, current: 2000, monthly: 2000, actualMonthly: 0 },
 ];
 
 const initialFutureCapabilities: FutureCapability[] = [
@@ -278,6 +281,7 @@ const cashflowBuiltinIds: CashflowBuiltinId[] = [
   "spendingPlan",
   "travelSaving",
   "learningSaving",
+  "partnerSaving",
   "emergencyFund",
   "aSharePlan",
   "usSharePlan",
@@ -297,7 +301,7 @@ const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "balance", title: "资产负债表", desc: "总资产、负债项可增删编辑" },
   { id: "emergency", title: "应急金", desc: "目标月数、当前金额、覆盖月数" },
   { id: "reminders", title: "账单与提醒", desc: "提前 7 天提醒账单和到期事项" },
-  { id: "goals", title: "目标管理", desc: "旅游、学习、大额支出目标" },
+  { id: "goals", title: "目标管理", desc: "旅游、学习、伴侣基金和大额支出目标" },
   { id: "reports", title: "财务报表", desc: "收入、支出、结余、投资表现" },
   { id: "health", title: "健康评分", desc: "100 分制财务健康状态" },
   { id: "future", title: "数据能力", desc: "保险、债务策略、规则引擎、数据质量" },
@@ -388,6 +392,7 @@ function goalKind(goal: Goal): GoalKind {
   const text = goal.name.toLowerCase();
   if (text.includes("旅游") || text.includes("旅行")) return "travel";
   if (text.includes("学习") || text.includes("教育") || text.includes("成长")) return "learning";
+  if (text.includes("伴侣") || text.includes("情侣") || text.includes("共同")) return "partner";
   if (text.includes("应急") || text.includes("紧急")) return "emergency";
   return "other";
 }
@@ -396,12 +401,22 @@ function summarizeGoals(goals: Goal[]) {
   const summary = {
     travelCurrent: 0,
     travelMonthly: 0,
+    travelActualMonthly: 0,
     learningCurrent: 0,
     learningMonthly: 0,
+    learningActualMonthly: 0,
+    partnerCurrent: 0,
+    partnerMonthly: 0,
+    partnerActualMonthly: 0,
+    emergencyMonthly: 0,
+    emergencyActualMonthly: 0,
     otherCurrent: 0,
     otherMonthly: 0,
+    otherActualMonthly: 0,
     hasTravel: false,
     hasLearning: false,
+    hasPartner: false,
+    hasEmergency: false,
   };
 
   for (const goal of goals) {
@@ -409,18 +424,54 @@ function summarizeGoals(goals: Goal[]) {
     if (kind === "travel") {
       summary.travelCurrent += goal.current;
       summary.travelMonthly += goal.monthly;
+      summary.travelActualMonthly += goal.actualMonthly;
       summary.hasTravel = true;
     } else if (kind === "learning") {
       summary.learningCurrent += goal.current;
       summary.learningMonthly += goal.monthly;
+      summary.learningActualMonthly += goal.actualMonthly;
       summary.hasLearning = true;
+    } else if (kind === "partner") {
+      summary.partnerCurrent += goal.current;
+      summary.partnerMonthly += goal.monthly;
+      summary.partnerActualMonthly += goal.actualMonthly;
+      summary.hasPartner = true;
+    } else if (kind === "emergency") {
+      summary.emergencyMonthly += goal.monthly;
+      summary.emergencyActualMonthly += goal.actualMonthly;
+      summary.hasEmergency = true;
     } else if (kind === "other") {
       summary.otherCurrent += goal.current;
       summary.otherMonthly += goal.monthly;
+      summary.otherActualMonthly += goal.actualMonthly;
     }
   }
 
   return summary;
+}
+
+function normalizeGoals(value: unknown) {
+  const savedGoals = Array.isArray(value) ? value : [];
+  const normalized = savedGoals
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
+      const goal = item as Partial<Goal>;
+      const monthly = typeof goal.monthly === "number" ? goal.monthly : 0;
+      return {
+        id: typeof goal.id === "string" && goal.id.trim() ? goal.id : `goal-${index}`,
+        name: typeof goal.name === "string" && goal.name.trim() ? goal.name : `目标 ${index + 1}`,
+        target: typeof goal.target === "number" ? goal.target : 0,
+        current: typeof goal.current === "number" ? goal.current : 0,
+        monthly,
+        actualMonthly: typeof goal.actualMonthly === "number" ? goal.actualMonthly : monthly,
+      };
+    })
+    .filter((item): item is Goal => item !== null);
+
+  const goals = normalized.length ? normalized : initialGoals;
+  if (goals.some((item) => goalKind(item) === "partner")) return goals;
+  const partnerGoal = initialGoals.find((item) => item.id === "partner");
+  return partnerGoal ? [...goals, partnerGoal] : goals;
 }
 
 function normalizeLiabilities(value: unknown) {
@@ -539,7 +590,7 @@ export default function FinanceDashboard() {
             setLiabilities(legacyLiabilitiesFromSaved(saved));
           }
           if (Array.isArray(saved.reminders)) setReminders(saved.reminders);
-          if (Array.isArray(saved.goals)) setGoals(saved.goals);
+          if (Array.isArray(saved.goals)) setGoals(normalizeGoals(saved.goals));
           if (Array.isArray(saved.futureCapabilities)) setFutureCapabilities(saved.futureCapabilities);
           if (Array.isArray(saved.cashflowHiddenBuiltinIds)) {
             setCashflowHiddenBuiltinIds(saved.cashflowHiddenBuiltinIds.filter((id) => cashflowBuiltinIds.includes(id)));
@@ -625,8 +676,9 @@ export default function FinanceDashboard() {
     const travelSavings = accountTravelSavings > 0 ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
     const learningSavings =
       accountLearningSavings > 0 ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
+    const partnerSavings = goalSummary.partnerCurrent;
     const otherSavings = goalSummary.otherCurrent;
-    const totalSavings = travelSavings + learningSavings + otherSavings;
+    const totalSavings = travelSavings + learningSavings + partnerSavings + otherSavings;
     const savingsOutsideAccounts = Math.max(0, totalSavings - accountSpecialSavings);
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings;
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
@@ -646,17 +698,24 @@ export default function FinanceDashboard() {
       .reduce((sum, item) => sum + item.amount, 0);
     const enabledCashflowValue = (id: CashflowBuiltinId, value: number) => (cashflowHiddenBuiltinIds.includes(id) ? 0 : value);
     const cashflowSpendingPlan = enabledCashflowValue("spendingPlan", spendingPlan);
-    const travelAllocationSource = goalSummary.hasTravel ? goalSummary.travelMonthly : travelSaving;
-    const learningAllocationSource = goalSummary.hasLearning ? goalSummary.learningMonthly : learningSaving;
+    const travelAllocationSource = goalSummary.hasTravel ? goalSummary.travelActualMonthly : travelSaving;
+    const learningAllocationSource = goalSummary.hasLearning ? goalSummary.learningActualMonthly : learningSaving;
+    const partnerAllocationSource = goalSummary.hasPartner ? goalSummary.partnerActualMonthly : 0;
+    const emergencyAllocationSource = goalSummary.hasEmergency ? goalSummary.emergencyActualMonthly : 0;
+    const travelExpectedSource = goalSummary.hasTravel ? goalSummary.travelMonthly : travelSaving;
+    const learningExpectedSource = goalSummary.hasLearning ? goalSummary.learningMonthly : learningSaving;
+    const partnerExpectedSource = goalSummary.hasPartner ? goalSummary.partnerMonthly : 0;
+    const emergencyExpectedSource = goalSummary.hasEmergency ? goalSummary.emergencyMonthly : 0;
     const travelAllocation = enabledCashflowValue("travelSaving", travelAllocationSource);
     const learningAllocation = enabledCashflowValue("learningSaving", learningAllocationSource);
-    const emergencyAllocation = enabledCashflowValue("emergencyFund", emergencyFund);
+    const partnerAllocation = enabledCashflowValue("partnerSaving", partnerAllocationSource);
+    const emergencyAllocation = enabledCashflowValue("emergencyFund", emergencyAllocationSource);
     const investmentSavingAllocation =
       enabledCashflowValue("aSharePlan", aSharePlan) +
       enabledCashflowValue("usSharePlan", usSharePlan) +
       enabledCashflowValue("hkSharePlan", hkSharePlan);
     const assetOutflow =
-      travelAllocation + learningAllocation + emergencyAllocation + investmentSavingAllocation + customOutflow;
+      travelAllocation + learningAllocation + partnerAllocation + emergencyAllocation + investmentSavingAllocation + customOutflow;
     const monthlySurplus = actualIncome - spendingActual - assetOutflow;
     const fixedRatio = actualIncome ? fixedSpending / actualIncome : 0;
     const savingsRate = actualIncome ? assetOutflow / actualIncome : 0;
@@ -692,13 +751,21 @@ export default function FinanceDashboard() {
       cashflowSpendingPlan,
       travelAllocation,
       learningAllocation,
+      partnerAllocation,
       emergencyAllocation,
       investmentSavingAllocation,
       customOutflow,
       travelAllocationSource,
       learningAllocationSource,
+      partnerAllocationSource,
+      emergencyAllocationSource,
+      travelExpectedSource,
+      learningExpectedSource,
+      partnerExpectedSource,
+      emergencyExpectedSource,
       travelSavings,
       learningSavings,
+      partnerSavings,
       otherSavings,
       totalSavings,
       savingsOutsideAccounts,
@@ -1034,12 +1101,20 @@ export default function FinanceDashboard() {
 
   function setTravelSavingFromInput(value: number) {
     setTravelSaving(value);
-    updateFirstGoalByKind("travel", { monthly: value });
+    updateFirstGoalByKind("travel", { actualMonthly: value });
   }
 
   function setLearningSavingFromInput(value: number) {
     setLearningSaving(value);
-    updateFirstGoalByKind("learning", { monthly: value });
+    updateFirstGoalByKind("learning", { actualMonthly: value });
+  }
+
+  function setPartnerSavingFromInput(value: number) {
+    updateFirstGoalByKind("partner", { actualMonthly: value });
+  }
+
+  function setEmergencyAllocationFromInput(value: number) {
+    updateFirstGoalByKind("emergency", { actualMonthly: value });
   }
 
   function addGoal() {
@@ -1051,6 +1126,7 @@ export default function FinanceDashboard() {
         target: 0,
         current: 0,
         monthly: 0,
+        actualMonthly: 0,
       },
     ]);
   }
@@ -1081,12 +1157,14 @@ export default function FinanceDashboard() {
   const monthlyAssetAllocationSummary = [
     `旅游 ${money(totals.travelAllocation)}`,
     `学习 ${money(totals.learningAllocation)}`,
+    `伴侣基金 ${money(totals.partnerAllocation)}`,
     `应急 ${money(totals.emergencyAllocation)}`,
     `投资储蓄 ${money(totals.investmentSavingAllocation)}`,
   ].join(" / ");
   const specialSavingsDetail = [
     `旅游 ${money(totals.travelSavings)}`,
     `学习 ${money(totals.learningSavings)}`,
+    `伴侣 ${money(totals.partnerSavings)}`,
     totals.otherSavings > 0 ? `其他 ${money(totals.otherSavings)}` : "",
   ]
     .filter(Boolean)
@@ -1262,7 +1340,7 @@ export default function FinanceDashboard() {
       name: "旅游储蓄",
       amount: totals.travelAllocationSource,
       direction: "outflow",
-      source: "现金流出",
+      source: "来自目标实际投入",
       onAmountChange: setTravelSavingFromInput,
       onDelete: () => deleteCashflowBuiltinItem("travelSaving"),
     },
@@ -1272,18 +1350,28 @@ export default function FinanceDashboard() {
       name: "学习储蓄",
       amount: totals.learningAllocationSource,
       direction: "outflow",
-      source: "现金流出",
+      source: "来自目标实际投入",
       onAmountChange: setLearningSavingFromInput,
       onDelete: () => deleteCashflowBuiltinItem("learningSaving"),
+    },
+    {
+      id: "builtin-partner-saving",
+      builtinId: "partnerSaving",
+      name: "伴侣基金",
+      amount: totals.partnerAllocationSource,
+      direction: "outflow",
+      source: "来自目标实际投入",
+      onAmountChange: setPartnerSavingFromInput,
+      onDelete: () => deleteCashflowBuiltinItem("partnerSaving"),
     },
     {
       id: "builtin-emergency-fund",
       builtinId: "emergencyFund",
       name: "应急金投入",
-      amount: emergencyFund,
+      amount: totals.emergencyAllocationSource,
       direction: "outflow",
-      source: "现金流出",
-      onAmountChange: setEmergencyFund,
+      source: "来自目标实际投入",
+      onAmountChange: setEmergencyAllocationFromInput,
       onDelete: () => deleteCashflowBuiltinItem("emergencyFund"),
     },
     {
@@ -1392,27 +1480,33 @@ export default function FinanceDashboard() {
     value: item.current,
     max: item.target,
     color: palette[index % palette.length],
-    detail: `每月准备 ${money(item.monthly)}`,
+    detail: `预期 ${money(item.monthly)} / 实际 ${money(item.actualMonthly)}`,
   }));
   const totalGoalCurrent = goals.reduce((sum, item) => sum + item.current, 0);
   const totalGoalTarget = goals.reduce((sum, item) => sum + item.target, 0);
-  const totalGoalMonthlyInput = goals.reduce((sum, item) => sum + item.monthly, 0);
+  const totalGoalExpectedInput = goals.reduce((sum, item) => sum + item.monthly, 0);
+  const totalGoalActualInput = goals.reduce((sum, item) => sum + item.actualMonthly, 0);
   const selectedMonthIndex = Math.max(0, reportMonthRecords.findIndex((item) => item.id === selectedMonth));
   const monthlyGoalInputTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: totalGoalMonthlyInput,
+    value: record.id === selectedMonth ? totalGoalActualInput : totalGoalExpectedInput,
     color: record.id === selectedMonth ? palette[1] : palette[index % palette.length],
-    detail: record.id === selectedMonth ? "当前月投入" : "预计投入",
+    detail: record.id === selectedMonth ? "实际投入" : "预期准备",
   }));
   const monthlyGoalPressureTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: recordSpendingActual(record) + totalGoalMonthlyInput,
+    value: recordSpendingActual(record) + (record.id === selectedMonth ? totalGoalActualInput : totalGoalExpectedInput),
     color: record.id === selectedMonth ? palette[2] : palette[index % palette.length],
     detail: `支出 ${money(recordSpendingActual(record))}`,
   }));
   const monthlyGoalBalanceTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: Math.min(totalGoalTarget, totalGoalCurrent + totalGoalMonthlyInput * Math.max(0, index - selectedMonthIndex)),
+    value: Math.min(
+      totalGoalTarget,
+      totalGoalCurrent +
+        totalGoalActualInput +
+        totalGoalExpectedInput * Math.max(0, index - selectedMonthIndex - 1),
+    ),
   }));
   const reminderAmountData = reminders.map((item, index) => ({
     label: item.name,
@@ -1976,7 +2070,7 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "goals" && (
-                  <Module title="目标管理" desc="旅游、学习、大额支出目标都可以维护目标金额，并查看每个月投入、支出和累计变化。">
+                  <Module title="目标管理" desc="旅游、学习、伴侣基金和大额支出目标都可以维护目标金额；预期准备用于规划，实际投入用于本月计算。">
                     <DataChartLayout
                       data={
                         <>
@@ -1994,7 +2088,7 @@ export default function FinanceDashboard() {
                           <ChartPanel title="目标进度" summary="当前 / 目标">
                             <ProgressList data={goalProgress} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="每月准备结构" summary="目标现金流压力">
+                          <ChartPanel title="每月预期准备结构" summary={`预期 ${money(totalGoalExpectedInput)}`}>
                             <DonutChart
                               data={goals.map((item, index) => ({
                                 label: item.name,
@@ -2002,13 +2096,13 @@ export default function FinanceDashboard() {
                                 color: palette[index % palette.length],
                               }))}
                               centerLabel="每月"
-                              centerValue={money(goals.reduce((sum, item) => sum + item.monthly, 0))}
+                              centerValue={money(totalGoalExpectedInput)}
                             />
                           </ChartPanel>
-                          <ChartPanel title="月度目标投入" summary={`每月投入 ${money(totalGoalMonthlyInput)}`}>
+                          <ChartPanel title="月度实际目标投入" summary={`实际投入 ${money(totalGoalActualInput)}`}>
                             <VerticalBarChart data={monthlyGoalInputTrend} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="支出与投入压力" summary="实际支出 + 目标投入">
+                          <ChartPanel title="支出与投入压力" summary="实际支出 + 实际投入">
                             <VerticalBarChart data={monthlyGoalPressureTrend} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="累计准备变化" summary={`当前 ${money(totalGoalCurrent)}`}>
@@ -2914,11 +3008,12 @@ function EditableGoalsTable({
 }) {
   const totalTarget = goals.reduce((sum, item) => sum + item.target, 0);
   const totalCurrent = goals.reduce((sum, item) => sum + item.current, 0);
+  const totalActualMonthly = goals.reduce((sum, item) => sum + item.actualMonthly, 0);
   return (
     <>
       <TableToolbar
         title="目标底表"
-        meta={`当前 ${money(totalCurrent)} / 目标 ${money(totalTarget)}`}
+        meta={`当前 ${money(totalCurrent)} / 目标 ${money(totalTarget)} / 本月实际投入 ${money(totalActualMonthly)}`}
         action={<button className="secondary-button" type="button" onClick={addGoal}>新增目标</button>}
       />
       <div className="table-wrap spreadsheet-wrap">
@@ -2928,7 +3023,8 @@ function EditableGoalsTable({
               <th>目标</th>
               <th>目标金额</th>
               <th>当前金额</th>
-              <th>每月准备</th>
+              <th>每月预期准备</th>
+              <th>本月实际投入</th>
               <th>进度</th>
               <th>操作</th>
             </tr>
@@ -2939,7 +3035,8 @@ function EditableGoalsTable({
                 <td><TableTextInput ariaLabel={`${item.name} 名称`} value={item.name} onChange={(value) => updateGoal(item.id, { name: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 目标金额`} value={item.target} onChange={(value) => updateGoal(item.id, { target: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 当前金额`} value={item.current} onChange={(value) => updateGoal(item.id, { current: value })} /></td>
-                <td><TableNumberInput ariaLabel={`${item.name} 每月准备`} value={item.monthly} onChange={(value) => updateGoal(item.id, { monthly: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 每月预期准备`} value={item.monthly} onChange={(value) => updateGoal(item.id, { monthly: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 本月实际投入`} value={item.actualMonthly} onChange={(value) => updateGoal(item.id, { actualMonthly: value })} /></td>
                 <td className="calculated-cell">{percent(item.target ? item.current / item.target : 0)}</td>
                 <td>
                   <button className="danger-button compact" disabled={goals.length <= 1} type="button" onClick={() => deleteGoal(item.id)}>
