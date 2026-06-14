@@ -12824,6 +12824,7 @@ var initialReminders = [
 var initialGoals = [
   { id: "travel", name: "\u65C5\u6E38\u57FA\u91D1", target: 18e3, current: 3e3, monthly: 3e3, actualMonthly: 3e3 },
   { id: "learning", name: "\u5B66\u4E60\u6210\u957F", target: 12e3, current: 0, monthly: 0, actualMonthly: 0 },
+  { id: "parent-saving", name: "\u7236\u6BCD\u50A8\u84C4", target: 0, current: 0, monthly: 0, actualMonthly: 0 },
   { id: "partner", name: "\u4F34\u4FA3\u57FA\u91D1", target: 0, current: 0, monthly: 0, actualMonthly: 0 },
   { id: "emergency-goal", name: "\u5E94\u6025\u50A8\u5907", target: 13500, current: 2e3, monthly: 2e3, actualMonthly: 0 }
 ];
@@ -12838,6 +12839,7 @@ var cashflowBuiltinIds = [
   "spendingPlan",
   "travelSaving",
   "learningSaving",
+  "parentSaving",
   "partnerSaving",
   "emergencyFund",
   "aSharePlan",
@@ -12856,7 +12858,7 @@ var moduleList = [
   { id: "balance", title: "\u8D44\u4EA7\u8D1F\u503A\u8868", desc: "\u603B\u8D44\u4EA7\u3001\u8D1F\u503A\u9879\u53EF\u589E\u5220\u7F16\u8F91" },
   { id: "emergency", title: "\u5E94\u6025\u91D1", desc: "\u76EE\u6807\u6708\u6570\u3001\u5F53\u524D\u91D1\u989D\u3001\u8986\u76D6\u6708\u6570" },
   { id: "reminders", title: "\u8D26\u5355\u4E0E\u63D0\u9192", desc: "\u63D0\u524D 7 \u5929\u63D0\u9192\u8D26\u5355\u548C\u5230\u671F\u4E8B\u9879" },
-  { id: "goals", title: "\u76EE\u6807\u7BA1\u7406", desc: "\u65C5\u6E38\u3001\u5B66\u4E60\u3001\u4F34\u4FA3\u57FA\u91D1\u548C\u5927\u989D\u652F\u51FA\u76EE\u6807" },
+  { id: "goals", title: "\u76EE\u6807\u7BA1\u7406", desc: "\u65C5\u6E38\u3001\u5B66\u4E60\u3001\u7236\u6BCD\u50A8\u84C4\u3001\u4F34\u4FA3\u57FA\u91D1\u548C\u5927\u989D\u652F\u51FA\u76EE\u6807" },
   { id: "reports", title: "\u8D22\u52A1\u62A5\u8868", desc: "\u6536\u5165\u3001\u652F\u51FA\u3001\u7ED3\u4F59\u3001\u6295\u8D44\u8868\u73B0" },
   { id: "health", title: "\u5065\u5EB7\u8BC4\u5206", desc: "100 \u5206\u5236\u8D22\u52A1\u5065\u5EB7\u72B6\u6001" },
   { id: "future", title: "\u6570\u636E\u80FD\u529B", desc: "\u4FDD\u9669\u3001\u503A\u52A1\u7B56\u7565\u3001\u89C4\u5219\u5F15\u64CE\u3001\u6570\u636E\u8D28\u91CF" }
@@ -12927,6 +12929,7 @@ function goalKind(goal) {
   const text = goal.name.toLowerCase();
   if (text.includes("\u65C5\u6E38") || text.includes("\u65C5\u884C")) return "travel";
   if (text.includes("\u5B66\u4E60") || text.includes("\u6559\u80B2") || text.includes("\u6210\u957F")) return "learning";
+  if (text.includes("\u7236\u6BCD") || text.includes("\u7238\u5988") || text.includes("\u5B5D\u656C")) return "parent";
   if (text.includes("\u4F34\u4FA3") || text.includes("\u60C5\u4FA3") || text.includes("\u5171\u540C")) return "partner";
   if (text.includes("\u5E94\u6025") || text.includes("\u7D27\u6025")) return "emergency";
   return "other";
@@ -12939,6 +12942,9 @@ function summarizeGoals(goals) {
     learningCurrent: 0,
     learningMonthly: 0,
     learningActualMonthly: 0,
+    parentCurrent: 0,
+    parentMonthly: 0,
+    parentActualMonthly: 0,
     partnerCurrent: 0,
     partnerMonthly: 0,
     partnerActualMonthly: 0,
@@ -12950,6 +12956,7 @@ function summarizeGoals(goals) {
     otherActualMonthly: 0,
     hasTravel: false,
     hasLearning: false,
+    hasParent: false,
     hasPartner: false,
     hasEmergency: false
   };
@@ -12965,6 +12972,11 @@ function summarizeGoals(goals) {
       summary.learningMonthly += goal.monthly;
       summary.learningActualMonthly += goal.actualMonthly;
       summary.hasLearning = true;
+    } else if (kind === "parent") {
+      summary.parentCurrent += goal.current;
+      summary.parentMonthly += goal.monthly;
+      summary.parentActualMonthly += goal.actualMonthly;
+      summary.hasParent = true;
     } else if (kind === "partner") {
       summary.partnerCurrent += goal.current;
       summary.partnerMonthly += goal.monthly;
@@ -12999,9 +13011,13 @@ function normalizeGoals(value) {
     };
   }).filter((item) => item !== null);
   const goals = normalized.length ? normalized : initialGoals;
-  if (goals.some((item) => goalKind(item) === "partner")) return goals;
+  const goalsWithParent = goals.some((item) => goalKind(item) === "parent") ? goals : (() => {
+    const parentGoal = initialGoals.find((item) => item.id === "parent-saving");
+    return parentGoal ? [...goals, parentGoal] : goals;
+  })();
+  if (goalsWithParent.some((item) => goalKind(item) === "partner")) return goalsWithParent;
   const partnerGoal = initialGoals.find((item) => item.id === "partner");
-  return partnerGoal ? [...goals, partnerGoal] : goals;
+  return partnerGoal ? [...goalsWithParent, partnerGoal] : goalsWithParent;
 }
 function normalizeLiabilities(value) {
   if (!Array.isArray(value)) return [];
@@ -13195,10 +13211,11 @@ function FinanceDashboard() {
     const travelSavings = accountTravelSavings > 0 ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
     const learningSavings = accountLearningSavings > 0 ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
     const currentEmergencyFund = goalSummary.hasEmergency ? goalSummary.emergencyCurrent : emergencyFund;
+    const parentSavings = goalSummary.parentCurrent;
     const partnerSavings = goalSummary.partnerCurrent;
     const otherSavings = goalSummary.otherCurrent;
     const familyFund = partnerSavings;
-    const totalSavings = travelSavings + learningSavings + otherSavings;
+    const totalSavings = travelSavings + learningSavings + parentSavings + otherSavings;
     const savingsOutsideAccounts = Math.max(0, totalSavings - accountSpecialSavings);
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings;
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
@@ -13220,18 +13237,21 @@ function FinanceDashboard() {
     const cashflowSpendingPlan = enabledCashflowValue("spendingPlan", spendingPlan);
     const travelAllocationSource = goalSummary.hasTravel ? goalSummary.travelActualMonthly : travelSaving;
     const learningAllocationSource = goalSummary.hasLearning ? goalSummary.learningActualMonthly : learningSaving;
+    const parentAllocationSource = goalSummary.hasParent ? goalSummary.parentActualMonthly : 0;
     const partnerAllocationSource = goalSummary.hasPartner ? goalSummary.partnerActualMonthly : 0;
     const emergencyAllocationSource = goalSummary.hasEmergency ? goalSummary.emergencyActualMonthly : 0;
     const travelExpectedSource = goalSummary.hasTravel ? goalSummary.travelMonthly : travelSaving;
     const learningExpectedSource = goalSummary.hasLearning ? goalSummary.learningMonthly : learningSaving;
+    const parentExpectedSource = goalSummary.hasParent ? goalSummary.parentMonthly : 0;
     const partnerExpectedSource = goalSummary.hasPartner ? goalSummary.partnerMonthly : 0;
     const emergencyExpectedSource = goalSummary.hasEmergency ? goalSummary.emergencyMonthly : 0;
     const travelAllocation = enabledCashflowValue("travelSaving", travelAllocationSource);
     const learningAllocation = enabledCashflowValue("learningSaving", learningAllocationSource);
+    const parentAllocation = enabledCashflowValue("parentSaving", parentAllocationSource);
     const partnerAllocation = enabledCashflowValue("partnerSaving", partnerAllocationSource);
     const emergencyAllocation = enabledCashflowValue("emergencyFund", emergencyAllocationSource);
     const investmentSavingAllocation = enabledCashflowValue("aSharePlan", aSharePlan) + enabledCashflowValue("usSharePlan", usSharePlan) + enabledCashflowValue("hkSharePlan", hkSharePlan);
-    const assetOutflow = travelAllocation + learningAllocation + partnerAllocation + emergencyAllocation + investmentSavingAllocation + customOutflow;
+    const assetOutflow = travelAllocation + learningAllocation + parentAllocation + partnerAllocation + emergencyAllocation + investmentSavingAllocation + customOutflow;
     const monthlySurplus = actualIncome - spendingActual - assetOutflow;
     const fixedRatio = actualIncome ? fixedSpending / actualIncome : 0;
     const savingsRate = actualIncome ? assetOutflow / actualIncome : 0;
@@ -13265,20 +13285,24 @@ function FinanceDashboard() {
       cashflowSpendingPlan,
       travelAllocation,
       learningAllocation,
+      parentAllocation,
       partnerAllocation,
       emergencyAllocation,
       investmentSavingAllocation,
       customOutflow,
       travelAllocationSource,
       learningAllocationSource,
+      parentAllocationSource,
       partnerAllocationSource,
       emergencyAllocationSource,
       travelExpectedSource,
       learningExpectedSource,
+      parentExpectedSource,
       partnerExpectedSource,
       emergencyExpectedSource,
       travelSavings,
       learningSavings,
+      parentSavings,
       partnerSavings,
       familyFund,
       otherSavings,
@@ -13591,6 +13615,9 @@ function FinanceDashboard() {
     setLearningSaving(value);
     updateFirstGoalByKind("learning", { actualMonthly: value });
   }
+  function setParentSavingFromInput(value) {
+    updateFirstGoalByKind("parent", { actualMonthly: value });
+  }
   function setPartnerSavingFromInput(value) {
     updateFirstGoalByKind("partner", { actualMonthly: value });
   }
@@ -13630,6 +13657,7 @@ function FinanceDashboard() {
   const monthlyAssetAllocationSummary = [
     `\u65C5\u6E38 ${money(totals.travelAllocation)}`,
     `\u5B66\u4E60 ${money(totals.learningAllocation)}`,
+    `\u7236\u6BCD\u50A8\u84C4 ${money(totals.parentAllocation)}`,
     `\u4F34\u4FA3\u57FA\u91D1 ${money(totals.partnerAllocation)}`,
     `\u5E94\u6025 ${money(totals.emergencyAllocation)}`,
     `\u6295\u8D44\u50A8\u84C4 ${money(totals.investmentSavingAllocation)}`
@@ -13637,6 +13665,7 @@ function FinanceDashboard() {
   const specialSavingsDetail = [
     `\u65C5\u6E38 ${money(totals.travelSavings)}`,
     `\u5B66\u4E60 ${money(totals.learningSavings)}`,
+    `\u7236\u6BCD\u50A8\u84C4 ${money(totals.parentSavings)}`,
     totals.otherSavings > 0 ? `\u5176\u4ED6 ${money(totals.otherSavings)}` : ""
   ].filter(Boolean).join(" / ");
   const familyFundBreakdown = {
@@ -13867,6 +13896,16 @@ function FinanceDashboard() {
       onDelete: () => deleteCashflowBuiltinItem("learningSaving")
     },
     {
+      id: "builtin-parent-saving",
+      builtinId: "parentSaving",
+      name: "\u7236\u6BCD\u50A8\u84C4",
+      amount: totals.parentAllocationSource,
+      direction: "outflow",
+      source: "\u6765\u81EA\u76EE\u6807\u5B9E\u9645\u6295\u5165",
+      onAmountChange: setParentSavingFromInput,
+      onDelete: () => deleteCashflowBuiltinItem("parentSaving")
+    },
+    {
       id: "builtin-partner-saving",
       builtinId: "partnerSaving",
       name: "\u4F34\u4FA3\u57FA\u91D1",
@@ -14043,6 +14082,7 @@ function FinanceDashboard() {
     { id: "budget-remaining", name: "\u672C\u6708\u9884\u7B97\u5269\u4F59", amount: totals.budgetRemaining, flow: "\u53EF\u8F6C\u50A8\u84C4", source: "\u751F\u6D3B\u652F\u51FA\u9884\u7B97 - \u5B9E\u9645\u652F\u51FA" },
     { id: "travel-saving", name: "\u65C5\u6E38\u50A8\u84C4", amount: totals.travelAllocationSource, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u76EE\u6807\u7BA1\u7406\u672C\u6708\u5B9E\u9645\u6295\u5165" },
     { id: "learning-saving", name: "\u5B66\u4E60\u50A8\u84C4", amount: totals.learningAllocationSource, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u76EE\u6807\u7BA1\u7406\u672C\u6708\u5B9E\u9645\u6295\u5165" },
+    { id: "parent-saving", name: "\u7236\u6BCD\u50A8\u84C4", amount: totals.parentAllocationSource, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u76EE\u6807\u7BA1\u7406\u672C\u6708\u5B9E\u9645\u6295\u5165" },
     { id: "partner-saving", name: "\u4F34\u4FA3\u57FA\u91D1", amount: totals.partnerAllocationSource, flow: "\u5BB6\u5EAD\u5206\u914D", source: "\u76EE\u6807\u7BA1\u7406\u672C\u6708\u5B9E\u9645\u6295\u5165\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7" },
     { id: "emergency-saving", name: "\u5E94\u6025\u91D1\u6295\u5165", amount: totals.emergencyAllocationSource, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u76EE\u6807\u7BA1\u7406\u672C\u6708\u5B9E\u9645\u6295\u5165" },
     { id: "ashare-plan", name: "A\u80A1\u8BA1\u5212", amount: aSharePlan, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u6295\u8D44\u8BA1\u5212 / \u73B0\u91D1\u6D41\u9884\u6D4B" },
@@ -14507,7 +14547,7 @@ function FinanceDashboard() {
               ] })
             }
           ) }),
-          moduleId === "goals" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Module, { title: "\u76EE\u6807\u7BA1\u7406", desc: "\u65C5\u6E38\u3001\u5B66\u4E60\u3001\u4F34\u4FA3\u57FA\u91D1\u548C\u5927\u989D\u652F\u51FA\u76EE\u6807\u90FD\u53EF\u4EE5\u7EF4\u62A4\u76EE\u6807\u91D1\u989D\uFF1B\u9884\u671F\u51C6\u5907\u7528\u4E8E\u89C4\u5212\uFF0C\u5B9E\u9645\u6295\u5165\u7528\u4E8E\u672C\u6708\u8BA1\u7B97\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          moduleId === "goals" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Module, { title: "\u76EE\u6807\u7BA1\u7406", desc: "\u65C5\u6E38\u3001\u5B66\u4E60\u3001\u7236\u6BCD\u50A8\u84C4\u3001\u4F34\u4FA3\u57FA\u91D1\u548C\u5927\u989D\u652F\u51FA\u76EE\u6807\u90FD\u53EF\u4EE5\u7EF4\u62A4\u76EE\u6807\u91D1\u989D\uFF1B\u9884\u671F\u51C6\u5907\u7528\u4E8E\u89C4\u5212\uFF0C\u5B9E\u9645\u6295\u5165\u7528\u4E8E\u672C\u6708\u8BA1\u7B97\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             DataChartLayout,
             {
               data: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
