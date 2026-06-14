@@ -1302,7 +1302,19 @@ export default function FinanceDashboard() {
     },
   ];
 
-  const overviewCards = [
+  const currentCashflowItems = accounts.map((item) => ({
+    label: item.name.trim() || "未命名账户",
+    value: money(item.balance),
+    note: item.purpose.trim() || item.type.trim() || "账户",
+  }));
+
+  const overviewCards: Array<{
+    title: string;
+    value: string;
+    detail: string;
+    tone: Tone;
+    items?: Array<{ label: string; value: string; note: string }>;
+  }> = [
     {
       title: "本月实际收入",
       value: money(actualIncome),
@@ -1330,8 +1342,9 @@ export default function FinanceDashboard() {
     {
       title: "当前现金流",
       value: money(totals.accountTotal),
-      detail: `可动用 ${money(totals.liquidAccountTotal)} / A股待投 ${money(totals.aShareInvestmentReserve)} / 美股待投 ${money(totals.usShareInvestmentReserve)}`,
+      detail: `${accounts.length} 个账户余额合计 / 可动用 ${money(totals.liquidAccountTotal)}`,
       tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? ("red" as Tone) : ("green" as Tone),
+      items: currentCashflowItems,
     },
     {
       title: "目前总储蓄",
@@ -1811,10 +1824,25 @@ export default function FinanceDashboard() {
           </article>
           <div className="overview-grid">
             {overviewCards.map((item) => (
-              <article className={`overview-card ${item.tone}`} key={item.title}>
+              <article className={`overview-card ${item.tone} ${item.items ? "with-line-items" : ""}`.trim()} key={item.title}>
                 <span>{item.title}</span>
                 <strong>{item.value}</strong>
-                <small>{item.detail}</small>
+                {item.items ? (
+                  <div className="overview-detail-list">
+                    <small>{item.detail}</small>
+                    <div className="overview-line-items" aria-label={`${item.title}明细`}>
+                      {item.items.map((line) => (
+                        <div className="overview-line-item" key={line.label}>
+                          <span>{line.label}</span>
+                          <em>{line.value}</em>
+                          <small>{line.note}</small>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <small>{item.detail}</small>
+                )}
               </article>
             ))}
           </div>

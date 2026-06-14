@@ -13689,6 +13689,11 @@ function FinanceDashboard() {
       color: palette[2]
     }
   ];
+  const currentCashflowItems = accounts.map((item) => ({
+    label: item.name.trim() || "\u672A\u547D\u540D\u8D26\u6237",
+    value: money(item.balance),
+    note: item.purpose.trim() || item.type.trim() || "\u8D26\u6237"
+  }));
   const overviewCards = [
     {
       title: "\u672C\u6708\u5B9E\u9645\u6536\u5165",
@@ -13717,8 +13722,9 @@ function FinanceDashboard() {
     {
       title: "\u5F53\u524D\u73B0\u91D1\u6D41",
       value: money(totals.accountTotal),
-      detail: `\u53EF\u52A8\u7528 ${money(totals.liquidAccountTotal)} / A\u80A1\u5F85\u6295 ${money(totals.aShareInvestmentReserve)} / \u7F8E\u80A1\u5F85\u6295 ${money(totals.usShareInvestmentReserve)}`,
-      tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? "red" : "green"
+      detail: `${accounts.length} \u4E2A\u8D26\u6237\u4F59\u989D\u5408\u8BA1 / \u53EF\u52A8\u7528 ${money(totals.liquidAccountTotal)}`,
+      tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? "red" : "green",
+      items: currentCashflowItems
     },
     {
       title: "\u76EE\u524D\u603B\u50A8\u84C4",
@@ -14168,10 +14174,17 @@ function FinanceDashboard() {
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "overview-grid", children: overviewCards.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: `overview-card ${item.tone}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "overview-grid", children: overviewCards.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: `overview-card ${item.tone} ${item.items ? "with-line-items" : ""}`.trim(), children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: item.title }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: item.value }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: item.detail })
+          item.items ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "overview-detail-list", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: item.detail }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "overview-line-items", "aria-label": `${item.title}\u660E\u7EC6`, children: item.items.map((line) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "overview-line-item", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: line.label }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: line.value }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: line.note })
+            ] }, line.label)) })
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: item.detail })
         ] }, item.title)) }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", { className: "analytics-section", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "section-title compact", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [

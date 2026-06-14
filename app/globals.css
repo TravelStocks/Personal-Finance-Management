@@ -360,6 +360,65 @@ select {
   min-height: 38px;
 }
 
+.overview-card.with-line-items {
+  grid-column: span 2;
+  align-content: start;
+  min-height: 220px;
+}
+
+.overview-detail-list {
+  display: grid;
+  gap: 8px;
+}
+
+.overview-detail-list > small {
+  min-height: 0;
+}
+
+.overview-line-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.overview-line-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+  border: 1px solid rgba(31, 95, 191, 0.12);
+  border-radius: 6px;
+  background: #f7fbff;
+  padding: 7px 8px;
+}
+
+.overview-line-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #23384f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.overview-line-item em {
+  color: var(--ink);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.overview-line-item small {
+  grid-column: 1 / -1;
+  min-height: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .overview-card.blue {
   border-left-color: var(--blue);
 }
@@ -1411,6 +1470,14 @@ th {
   .chart-grid.four,
   .cashflow-calendar,
   .heatmap-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-card.with-line-items {
+    grid-column: auto;
+  }
+
+  .overview-line-items {
     grid-template-columns: 1fr;
   }
 
