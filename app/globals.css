@@ -1080,6 +1080,41 @@ th {
   background: #eef6ff;
 }
 
+.spreadsheet-table tr.dragging td {
+  background: #f4f8ff;
+  opacity: 0.72;
+}
+
+.drag-column {
+  width: 54px;
+  text-align: center;
+}
+
+.drag-handle {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #c6d8ef;
+  border-radius: 6px;
+  background: #f7fbff;
+  color: #57708f;
+  cursor: grab;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle:focus-visible {
+  outline: 2px solid rgba(31, 95, 191, 0.35);
+  outline-offset: 2px;
+}
+
 .table-input {
   min-width: 110px;
   min-height: 34px;

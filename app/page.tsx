@@ -676,6 +676,19 @@ export default function FinanceDashboard() {
     setAccounts((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
   }
 
+  function reorderAccount(draggedId: string, targetId: string) {
+    setAccounts((items) => {
+      const fromIndex = items.findIndex((item) => item.id === draggedId);
+      const toIndex = items.findIndex((item) => item.id === targetId);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return items;
+
+      const nextItems = [...items];
+      const [movedItem] = nextItems.splice(fromIndex, 1);
+      nextItems.splice(toIndex, 0, movedItem);
+      return nextItems;
+    });
+  }
+
   function updateMonthRecord(monthId: string, patch: Partial<Omit<MonthRecord, "id" | "label" | "budgets">>) {
     setMonthlyRecords((records) =>
       records.map((record) => (record.id === monthId ? { ...record, ...patch } : record)),
@@ -936,8 +949,8 @@ export default function FinanceDashboard() {
     },
     {
       title: "目前总储蓄",
-      value: money(totals.totalSavings),
-      detail: `旅游 ${money(travelSaving)} / 学习 ${money(learningSaving)}`,
+      value: money(totals.accountTotal),
+      detail: `${accounts.length} 个账户 / 可动用 ${money(totals.liquidAccountTotal)}`,
       tone: "green" as Tone,
     },
     {
@@ -1499,7 +1512,7 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "accounts" && (
-                  <Module title="账户管理" desc="账户可以新增、删除和编辑，修改后会联动总资产、现金流和图表。">
+                  <Module title="账户管理" desc="账户可以新增、删除、编辑和拖动排序，修改后会联动总资产、现金流和图表。">
                     <DataChartLayout
                       data={
                         <>
@@ -1508,6 +1521,7 @@ export default function FinanceDashboard() {
                             addAccount={addAccount}
                             deleteAccount={deleteAccount}
                             liquidAccountTotal={totals.liquidAccountTotal}
+                            reorderAccount={reorderAccount}
                             total={totals.accountTotal}
                             updateAccount={updateAccount}
                           />
@@ -2304,6 +2318,7 @@ function EditableAccountsTable({
   updateAccount,
   addAccount,
   deleteAccount,
+  reorderAccount,
 }: {
   accounts: Account[];
   total: number;
@@ -2311,7 +2326,10 @@ function EditableAccountsTable({
   updateAccount: (id: string, patch: Partial<Account>) => void;
   addAccount: () => void;
   deleteAccount: (id: string) => void;
+  reorderAccount: (draggedId: string, targetId: string) => void;
 }) {
+  const [draggedAccountId, setDraggedAccountId] = useState<string | null>(null);
+
   return (
     <>
       <TableToolbar
@@ -2323,6 +2341,7 @@ function EditableAccountsTable({
         <table className="spreadsheet-table">
           <thead>
             <tr>
+              <th className="drag-column">排序</th>
               <th>账户名称</th>
               <th>类型</th>
               <th>余额</th>
@@ -2332,8 +2351,50 @@ function EditableAccountsTable({
             </tr>
           </thead>
           <tbody>
-            {accounts.map((item) => (
-              <tr key={item.id}>
+            {accounts.map((item, index) => (
+              <tr
+                className={draggedAccountId === item.id ? "dragging" : ""}
+                key={item.id}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (draggedAccountId) reorderAccount(draggedAccountId, item.id);
+                  setDraggedAccountId(null);
+                }}
+                onMouseEnter={() => {
+                  if (draggedAccountId && draggedAccountId !== item.id) reorderAccount(draggedAccountId, item.id);
+                }}
+                onMouseUp={() => setDraggedAccountId(null)}
+              >
+                <td className="drag-column">
+                  <span
+                    aria-label={`${item.name} 拖动排序`}
+                    className="drag-handle"
+                    draggable
+                    role="button"
+                    tabIndex={0}
+                    title="拖动排序"
+                    onDragEnd={() => setDraggedAccountId(null)}
+                    onDragStart={(event) => {
+                      setDraggedAccountId(item.id);
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", item.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "ArrowUp" && index > 0) {
+                        event.preventDefault();
+                        reorderAccount(item.id, accounts[index - 1].id);
+                      }
+                      if (event.key === "ArrowDown" && index < accounts.length - 1) {
+                        event.preventDefault();
+                        reorderAccount(item.id, accounts[index + 1].id);
+                      }
+                    }}
+                    onMouseDown={() => setDraggedAccountId(item.id)}
+                  >
+                    ⋮⋮
+                  </span>
+                </td>
                 <td><TableTextInput ariaLabel={`${item.name} 账户名称`} value={item.name} onChange={(value) => updateAccount(item.id, { name: value })} /></td>
                 <td><TableTextInput ariaLabel={`${item.name} 类型`} value={item.type} onChange={(value) => updateAccount(item.id, { type: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 余额`} value={item.balance} onChange={(value) => updateAccount(item.id, { balance: value })} /></td>
