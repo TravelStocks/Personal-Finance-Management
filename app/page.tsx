@@ -678,7 +678,8 @@ export default function FinanceDashboard() {
       accountLearningSavings > 0 ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
     const partnerSavings = goalSummary.partnerCurrent;
     const otherSavings = goalSummary.otherCurrent;
-    const totalSavings = travelSavings + learningSavings + partnerSavings + otherSavings;
+    const familyFund = partnerSavings;
+    const totalSavings = travelSavings + learningSavings + otherSavings;
     const savingsOutsideAccounts = Math.max(0, totalSavings - accountSpecialSavings);
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings;
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
@@ -766,6 +767,7 @@ export default function FinanceDashboard() {
       travelSavings,
       learningSavings,
       partnerSavings,
+      familyFund,
       otherSavings,
       totalSavings,
       savingsOutsideAccounts,
@@ -1164,11 +1166,19 @@ export default function FinanceDashboard() {
   const specialSavingsDetail = [
     `旅游 ${money(totals.travelSavings)}`,
     `学习 ${money(totals.learningSavings)}`,
-    `伴侣 ${money(totals.partnerSavings)}`,
     totals.otherSavings > 0 ? `其他 ${money(totals.otherSavings)}` : "",
   ]
     .filter(Boolean)
     .join(" / ");
+  const familyFundBreakdown =
+    totals.familyFund > 0 || totals.partnerAllocation > 0
+      ? {
+          label: "家庭基金",
+          value: totals.familyFund,
+          detail: `伴侣基金，不计入个人总资产 / 本月分配 ${money(totals.partnerAllocation)}`,
+          color: palette[3],
+        }
+      : null;
   const accountCashDetail = [
     totals.aShareInvestmentReserve > 0 ? `A股待投 ${money(totals.aShareInvestmentReserve)}` : "",
     totals.usShareInvestmentReserve > 0 ? `美股待投 ${money(totals.usShareInvestmentReserve)}` : "",
@@ -1649,7 +1659,7 @@ export default function FinanceDashboard() {
             <div className="total-assets-main">
               <span>当前总资产</span>
               <strong>{money(totals.totalAssets)}</strong>
-              <small>账户现金、A股待投、美股待投、已投资市值、专项储蓄和应急金合计；负债另列。</small>
+              <small>账户现金、A股待投、美股待投、已投资市值、个人专项储蓄和应急金合计；家庭基金单列，不计入个人总资产。</small>
             </div>
             <div className="total-assets-breakdown" aria-label="总资产资金分布">
               {totalAssetBreakdown.map((item) => (
@@ -1659,6 +1669,13 @@ export default function FinanceDashboard() {
                   <em>{item.detail}</em>
                 </div>
               ))}
+              {familyFundBreakdown && (
+                <div className="asset-breakdown-item family-fund-item" style={{ "--asset-color": familyFundBreakdown.color } as CSSProperties}>
+                  <span>{familyFundBreakdown.label}</span>
+                  <strong>{money(familyFundBreakdown.value)}</strong>
+                  <em>{familyFundBreakdown.detail}</em>
+                </div>
+              )}
             </div>
           </article>
           <div className="overview-grid">

@@ -13170,7 +13170,8 @@ function FinanceDashboard() {
     const learningSavings = accountLearningSavings > 0 ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
     const partnerSavings = goalSummary.partnerCurrent;
     const otherSavings = goalSummary.otherCurrent;
-    const totalSavings = travelSavings + learningSavings + partnerSavings + otherSavings;
+    const familyFund = partnerSavings;
+    const totalSavings = travelSavings + learningSavings + otherSavings;
     const savingsOutsideAccounts = Math.max(0, totalSavings - accountSpecialSavings);
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings;
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
@@ -13248,6 +13249,7 @@ function FinanceDashboard() {
       travelSavings,
       learningSavings,
       partnerSavings,
+      familyFund,
       otherSavings,
       totalSavings,
       savingsOutsideAccounts,
@@ -13587,9 +13589,14 @@ function FinanceDashboard() {
   const specialSavingsDetail = [
     `\u65C5\u6E38 ${money(totals.travelSavings)}`,
     `\u5B66\u4E60 ${money(totals.learningSavings)}`,
-    `\u4F34\u4FA3 ${money(totals.partnerSavings)}`,
     totals.otherSavings > 0 ? `\u5176\u4ED6 ${money(totals.otherSavings)}` : ""
   ].filter(Boolean).join(" / ");
+  const familyFundBreakdown = totals.familyFund > 0 || totals.partnerAllocation > 0 ? {
+    label: "\u5BB6\u5EAD\u57FA\u91D1",
+    value: totals.familyFund,
+    detail: `\u4F34\u4FA3\u57FA\u91D1\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7 / \u672C\u6708\u5206\u914D ${money(totals.partnerAllocation)}`,
+    color: palette[3]
+  } : null;
   const accountCashDetail = [
     totals.aShareInvestmentReserve > 0 ? `A\u80A1\u5F85\u6295 ${money(totals.aShareInvestmentReserve)}` : "",
     totals.usShareInvestmentReserve > 0 ? `\u7F8E\u80A1\u5F85\u6295 ${money(totals.usShareInvestmentReserve)}` : "",
@@ -14048,13 +14055,20 @@ function FinanceDashboard() {
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "total-assets-main", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5F53\u524D\u603B\u8D44\u4EA7" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(totals.totalAssets) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E13\u9879\u50A8\u84C4\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u8D1F\u503A\u53E6\u5217\u3002" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u5BB6\u5EAD\u57FA\u91D1\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "total-assets-breakdown", "aria-label": "\u603B\u8D44\u4EA7\u8D44\u91D1\u5206\u5E03", children: totalAssetBreakdown.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "asset-breakdown-item", style: { "--asset-color": item.color }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: item.label }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(item.value) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: item.detail })
-          ] }, item.label)) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "total-assets-breakdown", "aria-label": "\u603B\u8D44\u4EA7\u8D44\u91D1\u5206\u5E03", children: [
+            totalAssetBreakdown.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "asset-breakdown-item", style: { "--asset-color": item.color }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: item.label }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(item.value) }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: item.detail })
+            ] }, item.label)),
+            familyFundBreakdown && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "asset-breakdown-item family-fund-item", style: { "--asset-color": familyFundBreakdown.color }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: familyFundBreakdown.label }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(familyFundBreakdown.value) }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: familyFundBreakdown.detail })
+            ] })
+          ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "overview-grid", children: overviewCards.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: `overview-card ${item.tone}`, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: item.title }),

@@ -299,6 +299,25 @@ select {
   line-height: 1.45;
 }
 
+.family-fund-item {
+  margin: -6px 0;
+  padding: 10px 12px 10px 16px;
+  border: 1px dashed rgba(112, 85, 190, 0.38);
+  border-radius: 8px;
+  background: rgba(112, 85, 190, 0.06);
+}
+
+.family-fund-item::before {
+  top: 10px;
+  bottom: 10px;
+}
+
+.family-fund-item span::after {
+  content: " / 家庭";
+  color: #7055be;
+  font-weight: 900;
+}
+
 .overview-card,
 .module-card,
 .detail-panel,
