@@ -587,6 +587,10 @@ select {
   min-height: 360px;
 }
 
+.chart-panel.spending-top-panel {
+  min-height: 300px;
+}
+
 .chart-head {
   display: flex;
   align-items: flex-start;

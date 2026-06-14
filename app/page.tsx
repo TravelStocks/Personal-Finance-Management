@@ -1313,7 +1313,30 @@ export default function FinanceDashboard() {
     value: item.actual,
     max: Math.max(item.plan, item.actual, 1),
     color: item.actual > item.plan ? palette[4] : palette[index % palette.length],
-    detail: `${item.required ? "必须" : "可取消"} / ${item.fixed ? "固定" : "弹性"}`,
+    detail: `${money(item.actual)} / ${money(item.plan)}`,
+  }));
+  const actualSpendingItems = budgets
+    .map((item, index) => ({
+      label: item.name.trim() || "未命名支出",
+      value: item.actual,
+      plan: item.plan,
+      color: palette[index % palette.length],
+      detail: `${item.required ? "必须" : "可取消"} / ${item.fixed ? "固定" : "弹性"}`,
+    }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const topSpendingData = actualSpendingItems.length
+    ? actualSpendingItems.slice(0, 8).map((item) => ({
+        label: item.label,
+        value: item.value,
+        color: item.color,
+      }))
+    : [{ label: "暂无实际支出", value: 0, max: 1, color: "#b8c4d4", detail: "本月未记录" }];
+  const spendingShareData = actualSpendingItems.map((item) => ({
+    label: item.label,
+    value: item.value,
+    color: item.color,
+    detail: `${percent(item.value / Math.max(totals.spendingActual, 1))} / ${money(item.value)}`,
   }));
   const fixedFlexData = [
     { label: "固定支出", value: totals.fixedSpending, color: palette[2] },
@@ -1702,8 +1725,8 @@ export default function FinanceDashboard() {
               <ChartPanel title="未来现金流趋势" summary="6 个月余额曲线">
                 <LineChart data={cashflowLine} valueFormatter={money} />
               </ChartPanel>
-              <ChartPanel title="支出执行" summary={`已花 ${money(totals.spendingActual)}`}>
-                <HorizontalBarChart data={spendingChartData.slice(0, 6)} valueFormatter={money} />
+              <ChartPanel title="支出最高项" summary={`已花 ${money(totals.spendingActual)}`} className="spending-top-panel">
+                <HorizontalBarChart data={topSpendingData} valueFormatter={money} />
               </ChartPanel>
               <ChartPanel title="健康维度" summary={`综合 ${totals.score} 分`}>
                 <HorizontalBarChart data={healthDimensions} valueFormatter={(value) => `${value.toFixed(0)}分`} percentMode />
@@ -1800,10 +1823,16 @@ export default function FinanceDashboard() {
                       }
                       charts={
                         <div className="chart-grid two">
+                          <ChartPanel title="实际支出最高8项" summary={`已花 ${money(totals.spendingActual)}`} className="spending-top-panel">
+                            <HorizontalBarChart data={topSpendingData} valueFormatter={money} />
+                          </ChartPanel>
+                          <ChartPanel title="全部实际支出占比" summary="按实际金额">
+                            <DonutChart data={spendingShareData} centerLabel="实际" centerValue={money(totals.spendingActual)} />
+                          </ChartPanel>
                           <ChartPanel title="分类预算执行" summary="实际 / 预算">
                             <HorizontalBarChart data={spendingChartData} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="必须 vs 可取消" summary="支出口径">
+                          <ChartPanel title="预算必要性结构" summary="必须 vs 可取消">
                             <DonutChart data={requiredData} centerLabel="预算" centerValue={money(totals.spendingPlan)} />
                           </ChartPanel>
                           <ChartPanel title="月度支出趋势" summary="每月实际支出">
