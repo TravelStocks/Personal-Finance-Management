@@ -113,10 +113,19 @@ type CashflowTableRow = {
   source: string;
   builtinId?: CashflowBuiltinId;
   readonlyAmount?: boolean;
+  summaryOnly?: boolean;
   onNameChange?: (value: string) => void;
   onAmountChange?: (value: number) => void;
   onDirectionChange?: (value: CashflowDirection) => void;
   onDelete?: () => void;
+};
+
+type ReportRow = {
+  id: string;
+  name: string;
+  amount: number;
+  flow: string;
+  source: string;
 };
 
 type PersistedFinanceData = {
@@ -685,6 +694,7 @@ export default function FinanceDashboard() {
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
     const spendingActual = budgets.reduce((sum, item) => sum + item.actual, 0);
     const spendingPlan = budgets.reduce((sum, item) => sum + item.plan, 0);
+    const budgetRemaining = spendingPlan - spendingActual;
     const fixedSpending = budgets.filter((item) => item.fixed).reduce((sum, item) => sum + item.plan, 0);
     const requiredSpending = budgets.filter((item) => item.required).reduce((sum, item) => sum + item.plan, 0);
     const investmentValue = holdings.reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
@@ -741,6 +751,7 @@ export default function FinanceDashboard() {
       liquidAccountTotal,
       spendingActual,
       spendingPlan,
+      budgetRemaining,
       fixedSpending,
       requiredSpending,
       investmentValue,
@@ -950,14 +961,6 @@ export default function FinanceDashboard() {
 
   function setSalary(value: number) {
     updateMonthRecord(selectedMonth, { salary: value });
-  }
-
-  function setStockIncome(value: number) {
-    updateMonthRecord(selectedMonth, { stockIncome: value });
-  }
-
-  function setOtherIncome(value: number) {
-    updateMonthRecord(selectedMonth, { otherIncome: value });
   }
 
   function addCashflowCustomItem() {
@@ -1368,6 +1371,15 @@ export default function FinanceDashboard() {
       onDelete: () => deleteCashflowBuiltinItem("spendingPlan"),
     },
     {
+      id: "calculated-budget-remaining",
+      name: "本月预算剩余",
+      amount: totals.budgetRemaining,
+      direction: totals.budgetRemaining >= 0 ? "inflow" : "outflow",
+      source: "预算 - 实际，可转储蓄，不计入预测",
+      readonlyAmount: true,
+      summaryOnly: true,
+    },
+    {
       id: "builtin-travel-saving",
       builtinId: "travelSaving",
       name: "旅游储蓄",
@@ -1453,7 +1465,7 @@ export default function FinanceDashboard() {
     })),
   ];
   const outflowData = cashflowRows
-    .filter((item) => item.direction === "outflow")
+    .filter((item) => item.direction === "outflow" && !item.summaryOnly)
     .map((item, index) => ({
       label: item.name,
       value: item.amount,
@@ -1553,6 +1565,22 @@ export default function FinanceDashboard() {
     color: palette[index % palette.length],
     detail: item.date,
   }));
+  const reportRows: ReportRow[] = [
+    { id: "salary", name: "工资", amount: salary, flow: "收入", source: `${activeMonth.label}收入底表` },
+    { id: "stock-income", name: "炒股月结", amount: Math.max(stockIncome, 0), flow: "收入", source: `${activeMonth.label}收入底表` },
+    { id: "other-income", name: "其他收入", amount: otherIncome, flow: "收入", source: `${activeMonth.label}收入底表` },
+    { id: "spending-actual", name: "生活实际支出", amount: totals.spendingActual, flow: "支出", source: "支出预算底表实际汇总" },
+    { id: "spending-plan", name: "生活支出预算", amount: totals.spendingPlan, flow: "预算", source: "支出预算底表预算汇总" },
+    { id: "budget-remaining", name: "本月预算剩余", amount: totals.budgetRemaining, flow: "可转储蓄", source: "生活支出预算 - 实际支出" },
+    { id: "travel-saving", name: "旅游储蓄", amount: totals.travelAllocationSource, flow: "资产分配", source: "目标管理本月实际投入" },
+    { id: "learning-saving", name: "学习储蓄", amount: totals.learningAllocationSource, flow: "资产分配", source: "目标管理本月实际投入" },
+    { id: "partner-saving", name: "伴侣基金", amount: totals.partnerAllocationSource, flow: "家庭分配", source: "目标管理本月实际投入，不计入个人总资产" },
+    { id: "emergency-saving", name: "应急金投入", amount: totals.emergencyAllocationSource, flow: "资产分配", source: "目标管理本月实际投入" },
+    { id: "ashare-plan", name: "A股计划", amount: aSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
+    { id: "usshare-plan", name: "美股计划", amount: usSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
+    { id: "hkshare-plan", name: "港股计划", amount: hkSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
+    { id: "monthly-surplus", name: "当月余额", amount: totals.monthlySurplus, flow: "结余", source: "收入 - 实际支出 - 实际资产分配" },
+  ];
   const reportData = [
     { label: "收入", value: actualIncome, color: palette[0] },
     { label: "支出", value: totals.spendingActual, color: palette[4] },
@@ -2171,23 +2199,12 @@ export default function FinanceDashboard() {
                             <Stat label="结余" value={money(totals.monthlySurplus)} />
                             <Stat label="储蓄率" value={percent(totals.savingsRate)} />
                           </div>
-                          <EditableReportInputsTable
-                            aSharePlan={aSharePlan}
-                            hkSharePlan={hkSharePlan}
-                            learningSaving={totals.learningAllocationSource}
-                            otherIncome={otherIncome}
-                            salary={salary}
-                            setASharePlan={setASharePlan}
-                            setHkSharePlan={setHkSharePlan}
-                            setLearningSaving={setLearningSavingFromInput}
-                            setOtherIncome={setOtherIncome}
-                            setSalary={setSalary}
-                            setStockIncome={setStockIncome}
-                            setTravelSaving={setTravelSavingFromInput}
-                            setUSSharePlan={setUsSharePlan}
-                            stockIncome={stockIncome}
-                            travelSaving={totals.travelAllocationSource}
-                            usSharePlan={usSharePlan}
+                          <ReportAutoSyncTable
+                            allocation={totals.assetOutflow}
+                            income={actualIncome}
+                            rows={reportRows}
+                            spending={totals.spendingActual}
+                            surplus={totals.monthlySurplus}
                           />
                           <p className="review-copy">
                             {activeMonth.label} 实际收入 {money(actualIncome)}，已记录支出 {money(totals.spendingActual)}，
@@ -2681,9 +2698,13 @@ function EditableCashflowInputsTable({
                   )}
                 </td>
                 <td>
-                  <button className="danger-button compact" type="button" onClick={row.onDelete}>
-                    删除
-                  </button>
+                  {row.onDelete ? (
+                    <button className="danger-button compact" type="button" onClick={row.onDelete}>
+                      删除
+                    </button>
+                  ) : (
+                    <span className="calculated-cell">自动同步</span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -3098,44 +3119,25 @@ function EditableGoalsTable({
   );
 }
 
-function EditableReportInputsTable({
-  salary,
-  setSalary,
-  stockIncome,
-  setStockIncome,
-  otherIncome,
-  setOtherIncome,
-  travelSaving,
-  setTravelSaving,
-  learningSaving,
-  setLearningSaving,
-  aSharePlan,
-  setASharePlan,
-  usSharePlan,
-  setUSSharePlan,
-  hkSharePlan,
-  setHkSharePlan,
+function ReportAutoSyncTable({
+  rows,
+  income,
+  spending,
+  allocation,
+  surplus,
 }: {
-  salary: number;
-  setSalary: (value: number) => void;
-  stockIncome: number;
-  setStockIncome: (value: number) => void;
-  otherIncome: number;
-  setOtherIncome: (value: number) => void;
-  travelSaving: number;
-  setTravelSaving: (value: number) => void;
-  learningSaving: number;
-  setLearningSaving: (value: number) => void;
-  aSharePlan: number;
-  setASharePlan: (value: number) => void;
-  usSharePlan: number;
-  setUSSharePlan: (value: number) => void;
-  hkSharePlan: number;
-  setHkSharePlan: (value: number) => void;
+  rows: ReportRow[];
+  income: number;
+  spending: number;
+  allocation: number;
+  surplus: number;
 }) {
   return (
     <>
-      <TableToolbar title="报表输入底表" meta={`收入 ${money(salary + Math.max(stockIncome, 0) + otherIncome)}`} />
+      <TableToolbar
+        title="报表自动同步表"
+        meta={`收入 ${money(income)} / 支出 ${money(spending)} / 分配 ${money(allocation)} / 余额 ${money(surplus)}`}
+      />
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table">
           <thead>
@@ -3143,49 +3145,20 @@ function EditableReportInputsTable({
               <th>项目</th>
               <th>数值</th>
               <th>流向</th>
+              <th>来源</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>工资</td>
-              <td><TableNumberInput ariaLabel="报表工资" value={salary} onChange={setSalary} /></td>
-              <td>收入</td>
-            </tr>
-            <tr>
-              <td>炒股月结</td>
-              <td><TableNumberInput ariaLabel="报表炒股月结" value={stockIncome} onChange={setStockIncome} /></td>
-              <td>收入</td>
-            </tr>
-            <tr>
-              <td>其他收入</td>
-              <td><TableNumberInput ariaLabel="报表其他收入" value={otherIncome} onChange={setOtherIncome} /></td>
-              <td>收入</td>
-            </tr>
-            <tr>
-              <td>旅游储蓄</td>
-              <td><TableNumberInput ariaLabel="报表旅游储蓄" value={travelSaving} onChange={setTravelSaving} /></td>
-              <td>资产分配</td>
-            </tr>
-            <tr>
-              <td>学习储蓄</td>
-              <td><TableNumberInput ariaLabel="报表学习储蓄" value={learningSaving} onChange={setLearningSaving} /></td>
-              <td>资产分配</td>
-            </tr>
-            <tr>
-              <td>A股计划</td>
-              <td><TableNumberInput ariaLabel="报表A股计划" value={aSharePlan} onChange={setASharePlan} /></td>
-              <td>资产分配</td>
-            </tr>
-            <tr>
-              <td>美股计划</td>
-              <td><TableNumberInput ariaLabel="报表美股计划" value={usSharePlan} onChange={setUSSharePlan} /></td>
-              <td>资产分配</td>
-            </tr>
-            <tr>
-              <td>港股计划</td>
-              <td><TableNumberInput ariaLabel="报表港股计划" value={hkSharePlan} onChange={setHkSharePlan} /></td>
-              <td>资产分配</td>
-            </tr>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td>{row.name}</td>
+                <td>
+                  <span className={`calculated-cell ${row.amount < 0 ? "negative" : ""}`.trim()}>{money(row.amount)}</span>
+                </td>
+                <td>{row.flow}</td>
+                <td>{row.source}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

@@ -13178,6 +13178,7 @@ function FinanceDashboard() {
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
     const spendingActual = budgets.reduce((sum, item) => sum + item.actual, 0);
     const spendingPlan = budgets.reduce((sum, item) => sum + item.plan, 0);
+    const budgetRemaining = spendingPlan - spendingActual;
     const fixedSpending = budgets.filter((item) => item.fixed).reduce((sum, item) => sum + item.plan, 0);
     const requiredSpending = budgets.filter((item) => item.required).reduce((sum, item) => sum + item.plan, 0);
     const investmentValue = holdings.reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
@@ -13224,6 +13225,7 @@ function FinanceDashboard() {
       liquidAccountTotal,
       spendingActual,
       spendingPlan,
+      budgetRemaining,
       fixedSpending,
       requiredSpending,
       investmentValue,
@@ -13416,12 +13418,6 @@ function FinanceDashboard() {
   }
   function setSalary(value) {
     updateMonthRecord(selectedMonth, { salary: value });
-  }
-  function setStockIncome(value) {
-    updateMonthRecord(selectedMonth, { stockIncome: value });
-  }
-  function setOtherIncome(value) {
-    updateMonthRecord(selectedMonth, { otherIncome: value });
   }
   function addCashflowCustomItem() {
     setCashflowCustomItems((items) => [
@@ -13776,6 +13772,15 @@ function FinanceDashboard() {
       onDelete: () => deleteCashflowBuiltinItem("spendingPlan")
     },
     {
+      id: "calculated-budget-remaining",
+      name: "\u672C\u6708\u9884\u7B97\u5269\u4F59",
+      amount: totals.budgetRemaining,
+      direction: totals.budgetRemaining >= 0 ? "inflow" : "outflow",
+      source: "\u9884\u7B97 - \u5B9E\u9645\uFF0C\u53EF\u8F6C\u50A8\u84C4\uFF0C\u4E0D\u8BA1\u5165\u9884\u6D4B",
+      readonlyAmount: true,
+      summaryOnly: true
+    },
+    {
       id: "builtin-travel-saving",
       builtinId: "travelSaving",
       name: "\u65C5\u6E38\u50A8\u84C4",
@@ -13860,7 +13865,7 @@ function FinanceDashboard() {
       onDelete: () => deleteCashflowCustomItem(item.id)
     }))
   ];
-  const outflowData = cashflowRows.filter((item) => item.direction === "outflow").map((item, index) => ({
+  const outflowData = cashflowRows.filter((item) => item.direction === "outflow" && !item.summaryOnly).map((item, index) => ({
     label: item.name,
     value: item.amount,
     color: palette[(index + 4) % palette.length],
@@ -13957,6 +13962,22 @@ function FinanceDashboard() {
     color: palette[index % palette.length],
     detail: item.date
   }));
+  const reportRows = [
+    { id: "salary", name: "\u5DE5\u8D44", amount: salary, flow: "\u6536\u5165", source: `${activeMonth.label}\u6536\u5165\u5E95\u8868` },
+    { id: "stock-income", name: "\u7092\u80A1\u6708\u7ED3", amount: Math.max(stockIncome, 0), flow: "\u6536\u5165", source: `${activeMonth.label}\u6536\u5165\u5E95\u8868` },
+    { id: "other-income", name: "\u5176\u4ED6\u6536\u5165", amount: otherIncome, flow: "\u6536\u5165", source: `${activeMonth.label}\u6536\u5165\u5E95\u8868` },
+    { id: "spending-actual", name: "\u751F\u6D3B\u5B9E\u9645\u652F\u51FA", amount: totals.spendingActual, flow: "\u652F\u51FA", source: "\u652F\u51FA\u9884\u7B97\u5E95\u8868\u5B9E\u9645\u6C47\u603B" },
+    { id: "spending-plan", name: "\u751F\u6D3B\u652F\u51FA\u9884\u7B97", amount: totals.spendingPlan, flow: "\u9884\u7B97", source: "\u652F\u51FA\u9884\u7B97\u5E95\u8868\u9884\u7B97\u6C47\u603B" },
+    { id: "budget-remaining", name: "\u672C\u6708\u9884\u7B97\u5269\u4F59", amount: totals.budgetRemaining, flow: "\u53EF\u8F6C\u50A8\u84C4", source: "\u751F\u6D3B\u652F\u51FA\u9884\u7B97 - \u5B9E\u9645\u652F\u51FA" },
+    { id: "travel-saving", name: "\u65C5\u6E38\u50A8\u84C4", amount: totals.travelAllocationSource, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u76EE\u6807\u7BA1\u7406\u672C\u6708\u5B9E\u9645\u6295\u5165" },
+    { id: "learning-saving", name: "\u5B66\u4E60\u50A8\u84C4", amount: totals.learningAllocationSource, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u76EE\u6807\u7BA1\u7406\u672C\u6708\u5B9E\u9645\u6295\u5165" },
+    { id: "partner-saving", name: "\u4F34\u4FA3\u57FA\u91D1", amount: totals.partnerAllocationSource, flow: "\u5BB6\u5EAD\u5206\u914D", source: "\u76EE\u6807\u7BA1\u7406\u672C\u6708\u5B9E\u9645\u6295\u5165\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7" },
+    { id: "emergency-saving", name: "\u5E94\u6025\u91D1\u6295\u5165", amount: totals.emergencyAllocationSource, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u76EE\u6807\u7BA1\u7406\u672C\u6708\u5B9E\u9645\u6295\u5165" },
+    { id: "ashare-plan", name: "A\u80A1\u8BA1\u5212", amount: aSharePlan, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u6295\u8D44\u8BA1\u5212 / \u73B0\u91D1\u6D41\u9884\u6D4B" },
+    { id: "usshare-plan", name: "\u7F8E\u80A1\u8BA1\u5212", amount: usSharePlan, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u6295\u8D44\u8BA1\u5212 / \u73B0\u91D1\u6D41\u9884\u6D4B" },
+    { id: "hkshare-plan", name: "\u6E2F\u80A1\u8BA1\u5212", amount: hkSharePlan, flow: "\u8D44\u4EA7\u5206\u914D", source: "\u6295\u8D44\u8BA1\u5212 / \u73B0\u91D1\u6D41\u9884\u6D4B" },
+    { id: "monthly-surplus", name: "\u5F53\u6708\u4F59\u989D", amount: totals.monthlySurplus, flow: "\u7ED3\u4F59", source: "\u6536\u5165 - \u5B9E\u9645\u652F\u51FA - \u5B9E\u9645\u8D44\u4EA7\u5206\u914D" }
+  ];
   const reportData = [
     { label: "\u6536\u5165", value: actualIncome, color: palette[0] },
     { label: "\u652F\u51FA", value: totals.spendingActual, color: palette[4] },
@@ -14441,24 +14462,13 @@ function FinanceDashboard() {
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Stat, { label: "\u50A8\u84C4\u7387", value: percent(totals.savingsRate) })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                  EditableReportInputsTable,
+                  ReportAutoSyncTable,
                   {
-                    aSharePlan,
-                    hkSharePlan,
-                    learningSaving: totals.learningAllocationSource,
-                    otherIncome,
-                    salary,
-                    setASharePlan,
-                    setHkSharePlan,
-                    setLearningSaving: setLearningSavingFromInput,
-                    setOtherIncome,
-                    setSalary,
-                    setStockIncome,
-                    setTravelSaving: setTravelSavingFromInput,
-                    setUSSharePlan: setUsSharePlan,
-                    stockIncome,
-                    travelSaving: totals.travelAllocationSource,
-                    usSharePlan
+                    allocation: totals.assetOutflow,
+                    income: actualIncome,
+                    rows: reportRows,
+                    spending: totals.spendingActual,
+                    surplus: totals.monthlySurplus
                   }
                 ),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", { className: "review-copy", children: [
@@ -14813,7 +14823,7 @@ function EditableCashflowInputsTable({
               onChange: (value) => row.onDirectionChange?.(value === "\u8BA1\u5165\u9884\u6D4B" ? "inflow" : "outflow")
             }
           ) : row.source }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "danger-button compact", type: "button", onClick: row.onDelete, children: "\u5220\u9664" }) })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: row.onDelete ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "danger-button compact", type: "button", onClick: row.onDelete, children: "\u5220\u9664" }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "calculated-cell", children: "\u81EA\u52A8\u540C\u6B65" }) })
         ] }, row.id))
       ] })
     ] }) })
@@ -15139,74 +15149,34 @@ function EditableGoalsTable({
     ] }) })
   ] });
 }
-function EditableReportInputsTable({
-  salary,
-  setSalary,
-  stockIncome,
-  setStockIncome,
-  otherIncome,
-  setOtherIncome,
-  travelSaving,
-  setTravelSaving,
-  learningSaving,
-  setLearningSaving,
-  aSharePlan,
-  setASharePlan,
-  usSharePlan,
-  setUSSharePlan,
-  hkSharePlan,
-  setHkSharePlan
+function ReportAutoSyncTable({
+  rows,
+  income,
+  spending,
+  allocation,
+  surplus
 }) {
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableToolbar, { title: "\u62A5\u8868\u8F93\u5165\u5E95\u8868", meta: `\u6536\u5165 ${money(salary + Math.max(stockIncome, 0) + otherIncome)}` }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      TableToolbar,
+      {
+        title: "\u62A5\u8868\u81EA\u52A8\u540C\u6B65\u8868",
+        meta: `\u6536\u5165 ${money(income)} / \u652F\u51FA ${money(spending)} / \u5206\u914D ${money(allocation)} / \u4F59\u989D ${money(surplus)}`
+      }
+    ),
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "table-wrap spreadsheet-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { className: "spreadsheet-table", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u9879\u76EE" }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u6570\u503C" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u6D41\u5411" })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u6D41\u5411" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u6765\u6E90" })
       ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tbody", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u5DE5\u8D44" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: "\u62A5\u8868\u5DE5\u8D44", value: salary, onChange: setSalary }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u6536\u5165" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u7092\u80A1\u6708\u7ED3" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: "\u62A5\u8868\u7092\u80A1\u6708\u7ED3", value: stockIncome, onChange: setStockIncome }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u6536\u5165" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u5176\u4ED6\u6536\u5165" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: "\u62A5\u8868\u5176\u4ED6\u6536\u5165", value: otherIncome, onChange: setOtherIncome }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u6536\u5165" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u65C5\u6E38\u50A8\u84C4" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: "\u62A5\u8868\u65C5\u6E38\u50A8\u84C4", value: travelSaving, onChange: setTravelSaving }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u8D44\u4EA7\u5206\u914D" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u5B66\u4E60\u50A8\u84C4" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: "\u62A5\u8868\u5B66\u4E60\u50A8\u84C4", value: learningSaving, onChange: setLearningSaving }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u8D44\u4EA7\u5206\u914D" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "A\u80A1\u8BA1\u5212" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: "\u62A5\u8868A\u80A1\u8BA1\u5212", value: aSharePlan, onChange: setASharePlan }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u8D44\u4EA7\u5206\u914D" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u7F8E\u80A1\u8BA1\u5212" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: "\u62A5\u8868\u7F8E\u80A1\u8BA1\u5212", value: usSharePlan, onChange: setUSSharePlan }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u8D44\u4EA7\u5206\u914D" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u6E2F\u80A1\u8BA1\u5212" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(TableNumberInput, { ariaLabel: "\u62A5\u8868\u6E2F\u80A1\u8BA1\u5212", value: hkSharePlan, onChange: setHkSharePlan }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: "\u8D44\u4EA7\u5206\u914D" })
-        ] })
-      ] })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tbody", { children: rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: row.name }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: `calculated-cell ${row.amount < 0 ? "negative" : ""}`.trim(), children: money(row.amount) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: row.flow }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: row.source })
+      ] }, row.id)) })
     ] }) })
   ] });
 }
