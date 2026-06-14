@@ -13680,6 +13680,13 @@ function FinanceDashboard() {
     color: palette[3],
     className: "family-fund-item"
   };
+  const debtBreakdown = {
+    label: "\u603B\u8D1F\u503A",
+    value: totals.totalDebt,
+    detail: liabilitySummary,
+    color: palette[4],
+    className: "debt-breakdown-item"
+  };
   const accountCashDetail = [
     totals.aShareInvestmentReserve > 0 ? `A\u80A1\u5F85\u6295 ${money(totals.aShareInvestmentReserve)}` : "",
     totals.usShareInvestmentReserve > 0 ? `\u7F8E\u80A1\u5F85\u6295 ${money(totals.usShareInvestmentReserve)}` : "",
@@ -13724,13 +13731,18 @@ function FinanceDashboard() {
       detail: manualAssetDetail,
       color: palette[5]
     },
-    familyFundBreakdown,
     {
       label: "\u5E94\u6025\u91D1",
       value: totals.currentEmergencyFund,
       detail: `\u8986\u76D6 ${totals.emergencyCoverage.toFixed(1)} \u6708 / \u76EE\u6807 ${emergencyMonths} \u6708`,
       color: palette[2]
     }
+  ];
+  const assetLiabilityBreakdown = [
+    ...totalAssetBreakdown.slice(0, 7),
+    debtBreakdown,
+    ...totalAssetBreakdown.slice(7),
+    familyFundBreakdown
   ];
   const currentCashflowItems = accounts.filter((item) => item.balance !== 0).map((item) => ({
     label: item.name.trim() || "\u672A\u547D\u540D\u8D26\u6237",
@@ -13780,12 +13792,6 @@ function FinanceDashboard() {
       value: money(totals.currentEmergencyFund),
       detail: `\u8986\u76D6 ${totals.emergencyCoverage.toFixed(1)} \u4E2A\u6708 / \u76EE\u6807 ${emergencyMonths} \u4E2A\u6708`,
       tone: "amber"
-    },
-    {
-      title: "\u76EE\u524D\u603B\u8D1F\u503A",
-      value: money(totals.totalDebt),
-      detail: liabilitySummary,
-      tone: totals.totalDebt > 0 ? "red" : "green"
     }
   ];
   const incomeChartData = [
@@ -14217,7 +14223,7 @@ function FinanceDashboard() {
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "section-title", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { children: "\u603B\u89C8 Dashboard" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "\u516B\u4E2A\u6307\u6807\u7ED9\u7ED3\u8BBA\uFF1B\u4E0B\u9762\u7684\u56FE\u8868\u533A\u7528\u540C\u4E00\u4EFD\u6570\u636E\u505A\u7ED3\u6784\u3001\u8D8B\u52BF\u548C\u98CE\u9669\u5224\u65AD\u3002" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { children: "\u5173\u952E\u6307\u6807\u7ED9\u7ED3\u8BBA\uFF1B\u4E0B\u9762\u7684\u56FE\u8868\u533A\u7528\u540C\u4E00\u4EFD\u6570\u636E\u505A\u7ED3\u6784\u3001\u8D8B\u52BF\u548C\u98CE\u9669\u5224\u65AD\u3002" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "pill good", children: "\u516C\u5F00\u9875\u5DF2\u8131\u654F" })
         ] }),
@@ -14225,9 +14231,9 @@ function FinanceDashboard() {
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "total-assets-main", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5F53\u524D\u603B\u8D44\u4EA7" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(totals.totalAssets) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u3001\u7236\u6BCD\u50A8\u84C4\u3001\u5B9E\u7269\u8D44\u4EA7\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u3001\u7236\u6BCD\u50A8\u84C4\u3001\u5B9E\u7269\u8D44\u4EA7\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u603B\u8D1F\u503A\u540C\u533A\u5217\u793A\uFF0C\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "total-assets-breakdown", "aria-label": "\u603B\u8D44\u4EA7\u8D44\u91D1\u5206\u5E03", children: totalAssetBreakdown.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "total-assets-breakdown", "aria-label": "\u603B\u8D44\u4EA7\u548C\u8D1F\u503A\u8D44\u91D1\u5206\u5E03", children: assetLiabilityBreakdown.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
             "div",
             {
               className: `asset-breakdown-item ${item.className ?? ""}`.trim(),

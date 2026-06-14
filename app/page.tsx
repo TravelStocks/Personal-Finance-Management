@@ -1297,6 +1297,13 @@ export default function FinanceDashboard() {
     color: palette[3],
     className: "family-fund-item",
   };
+  const debtBreakdown = {
+    label: "总负债",
+    value: totals.totalDebt,
+    detail: liabilitySummary,
+    color: palette[4],
+    className: "debt-breakdown-item",
+  };
   const accountCashDetail = [
     totals.aShareInvestmentReserve > 0 ? `A股待投 ${money(totals.aShareInvestmentReserve)}` : "",
     totals.usShareInvestmentReserve > 0 ? `美股待投 ${money(totals.usShareInvestmentReserve)}` : "",
@@ -1348,13 +1355,18 @@ export default function FinanceDashboard() {
       detail: manualAssetDetail,
       color: palette[5],
     },
-    familyFundBreakdown,
     {
       label: "应急金",
       value: totals.currentEmergencyFund,
       detail: `覆盖 ${totals.emergencyCoverage.toFixed(1)} 月 / 目标 ${emergencyMonths} 月`,
       color: palette[2],
     },
+  ];
+  const assetLiabilityBreakdown = [
+    ...totalAssetBreakdown.slice(0, 7),
+    debtBreakdown,
+    ...totalAssetBreakdown.slice(7),
+    familyFundBreakdown,
   ];
 
   const currentCashflowItems = accounts
@@ -1414,12 +1426,6 @@ export default function FinanceDashboard() {
       value: money(totals.currentEmergencyFund),
       detail: `覆盖 ${totals.emergencyCoverage.toFixed(1)} 个月 / 目标 ${emergencyMonths} 个月`,
       tone: "amber" as Tone,
-    },
-    {
-      title: "目前总负债",
-      value: money(totals.totalDebt),
-      detail: liabilitySummary,
-      tone: totals.totalDebt > 0 ? ("red" as Tone) : ("green" as Tone),
     },
   ];
 
@@ -1893,7 +1899,7 @@ export default function FinanceDashboard() {
           <div className="section-title">
             <div>
               <h2>总览 Dashboard</h2>
-              <p>八个指标给结论；下面的图表区用同一份数据做结构、趋势和风险判断。</p>
+              <p>关键指标给结论；下面的图表区用同一份数据做结构、趋势和风险判断。</p>
             </div>
             <span className="pill good">公开页已脱敏</span>
           </div>
@@ -1901,10 +1907,10 @@ export default function FinanceDashboard() {
             <div className="total-assets-main">
               <span>当前总资产</span>
               <strong>{money(totals.totalAssets)}</strong>
-              <small>账户现金、A股待投、美股待投、已投资市值、个人专项储蓄、父母储蓄、实物资产和应急金合计；家庭及伴侣储蓄单列，不计入个人总资产。</small>
+              <small>账户现金、A股待投、美股待投、已投资市值、个人专项储蓄、父母储蓄、实物资产和应急金合计；总负债同区列示，家庭及伴侣储蓄单列，不计入个人总资产。</small>
             </div>
-            <div className="total-assets-breakdown" aria-label="总资产资金分布">
-              {totalAssetBreakdown.map((item) => (
+            <div className="total-assets-breakdown" aria-label="总资产和负债资金分布">
+              {assetLiabilityBreakdown.map((item) => (
                 <div
                   className={`asset-breakdown-item ${item.className ?? ""}`.trim()}
                   key={item.label}

@@ -312,6 +312,19 @@ select {
   bottom: 10px;
 }
 
+.debt-breakdown-item {
+  margin: -6px 0;
+  padding: 10px 12px 10px 16px;
+  border: 1px dashed rgba(197, 48, 48, 0.36);
+  border-radius: 8px;
+  background: rgba(197, 48, 48, 0.055);
+}
+
+.debt-breakdown-item::before {
+  top: 10px;
+  bottom: 10px;
+}
+
 .overview-card,
 .module-card,
 .detail-panel,
