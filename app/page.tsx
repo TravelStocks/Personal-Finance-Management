@@ -3622,9 +3622,11 @@ function Legend({ data, valueFormatter }: { data: ChartDatum[]; valueFormatter: 
     <div className="legend">
       {data.map((item, index) => (
         <div className="legend-item" key={item.label}>
-          <span style={{ backgroundColor: item.color ?? palette[index % palette.length] }} />
-          <strong>{item.label}</strong>
-          <em>{item.detail ?? valueFormatter(item.value)}</em>
+          <span className="legend-dot" style={{ backgroundColor: item.color ?? palette[index % palette.length] }} />
+          <div className="legend-copy">
+            <strong>{item.label}</strong>
+            <em>{item.detail ?? valueFormatter(item.value)}</em>
+          </div>
         </div>
       ))}
     </div>
@@ -3689,10 +3691,10 @@ function VerticalBarChart({ data, valueFormatter }: { data: ChartDatum[]; valueF
 }
 
 function LineChart({ data, valueFormatter }: { data: LinePoint[]; valueFormatter: (value: number) => string }) {
-  const width = 320;
-  const height = 176;
-  const padX = 26;
-  const padY = 22;
+  const width = 380;
+  const height = 212;
+  const padX = 34;
+  const padY = 30;
   const values = data.map((item) => item.value);
   const min = Math.min(...values, 0);
   const max = Math.max(...values, 1);
@@ -3800,9 +3802,9 @@ function CashflowCalendar({ events }: { events: CashflowEvent[] }) {
 }
 
 function WaterfallChart({ data }: { data: WaterfallDatum[] }) {
-  const width = 360;
-  const height = 190;
-  const pad = 24;
+  const width = 420;
+  const height = 230;
+  const pad = 32;
   const bars = data.reduce<Array<WaterfallDatum & { before: number; after: number }>>((items, item) => {
     const running = items.at(-1)?.after ?? 0;
     const before = item.kind === "start" || item.kind === "end" ? 0 : running;
@@ -3850,8 +3852,8 @@ function WaterfallChart({ data }: { data: WaterfallDatum[] }) {
 }
 
 function RiskMatrix({ data }: { data: MatrixPoint[] }) {
-  const size = 320;
-  const pad = 44;
+  const size = 360;
+  const pad = 56;
   return (
     <div className="matrix-layout">
       <svg className="risk-matrix" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="风险矩阵">

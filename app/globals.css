@@ -530,8 +530,8 @@ select {
 
 .data-chart-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 1.12fr) minmax(360px, 0.88fr);
-  gap: 16px;
+  grid-template-columns: minmax(520px, 1.16fr) minmax(420px, 0.84fr);
+  gap: 20px;
   align-items: start;
 }
 
@@ -612,24 +612,26 @@ select {
 
 .chart-grid {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .chart-grid.two {
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
 }
 
 .chart-grid.four {
-  grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 318px), 1fr));
 }
 
 .chart-panel {
+  container-type: inline-size;
   min-width: 0;
-  min-height: 224px;
-  padding: 14px;
+  min-height: 280px;
+  padding: 18px;
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 16px;
+  overflow: hidden;
 }
 
 .chart-panel.wide {
@@ -637,22 +639,27 @@ select {
 }
 
 .chart-panel.risk-panel {
-  min-height: 360px;
+  min-height: 440px;
 }
 
 .chart-panel.spending-top-panel {
-  min-height: 300px;
+  min-height: 360px;
 }
 
 .chart-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 16px;
+  min-width: 0;
 }
 
 .chart-head strong {
-  font-size: 15px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.35;
+  word-break: keep-all;
 }
 
 .chart-head span,
@@ -665,16 +672,27 @@ select {
   font-style: normal;
 }
 
+.chart-head span {
+  flex: 0 0 auto;
+  max-width: 46%;
+  line-height: 1.4;
+  text-align: right;
+  white-space: normal;
+}
+
 .donut-layout {
   display: grid;
-  grid-template-columns: 164px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(176px, 0.9fr) minmax(190px, 1.1fr);
+  gap: 18px;
   align-items: center;
+  min-width: 0;
 }
 
 .donut-chart {
-  width: 164px;
-  height: 164px;
+  width: min(210px, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  justify-self: center;
 }
 
 .donut-value,
@@ -699,36 +717,56 @@ select {
 
 .legend {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
+  align-content: center;
 }
 
 .legend-item {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
-  align-items: center;
+  grid-template-columns: 11px minmax(0, 1fr);
+  align-items: start;
   gap: 8px;
   min-width: 0;
+  border-radius: 7px;
+  padding: 5px 6px;
+  background: rgba(247, 251, 255, 0.72);
 }
 
-.legend-item span {
-  width: 10px;
-  height: 10px;
+.legend-dot {
+  width: 11px;
+  height: 11px;
   border-radius: 3px;
+  margin-top: 4px;
+}
+
+.legend-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
 }
 
 .legend-item strong,
 .bar-meta span,
 .vbar strong {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: keep-all;
   font-size: 13px;
+  line-height: 1.35;
+}
+
+.legend-item em {
+  display: block;
+  line-height: 1.3;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .horizontal-bars,
 .progress-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .bar-row,
@@ -741,7 +779,12 @@ select {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: 14px;
+  min-width: 0;
+}
+
+.bar-meta span {
+  flex: 1 1 auto;
 }
 
 .bar-meta strong {
@@ -753,7 +796,7 @@ select {
 
 .bar-track,
 .progress-track {
-  height: 10px;
+  height: 11px;
   overflow: hidden;
   border-radius: 999px;
   background: #e9f0f7;
@@ -769,10 +812,10 @@ select {
 
 .vertical-bars {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(66px, 1fr));
+  gap: 14px;
   align-items: end;
-  min-height: 190px;
+  min-height: 226px;
 }
 
 .vbar {
@@ -783,7 +826,7 @@ select {
 }
 
 .vbar-frame {
-  height: 126px;
+  height: 152px;
   display: flex;
   align-items: flex-end;
   overflow: hidden;
@@ -803,31 +846,33 @@ select {
 
 .line-chart {
   width: 100%;
-  height: 184px;
+  height: 220px;
   display: block;
 }
 
 .line-label {
   fill: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .chart-caption {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: -2px;
+  gap: 12px;
+  margin-top: 2px;
+  line-height: 1.4;
 }
 
 .stacked-wrap {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .stacked-bar {
   display: flex;
   width: 100%;
-  height: 30px;
+  height: 34px;
   overflow: hidden;
   border-radius: 999px;
   background: #e9f0f7;
@@ -840,7 +885,7 @@ select {
 .cashflow-calendar {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .calendar-event {
@@ -881,19 +926,19 @@ select {
 .waterfall-wrap,
 .matrix-layout {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
 }
 
 .waterfall-chart,
 .risk-matrix {
   width: 100%;
-  height: 214px;
+  height: 246px;
   display: block;
 }
 
 .risk-panel .risk-matrix {
-  min-height: 292px;
+  min-height: 330px;
 }
 
 .axis-line {
@@ -905,9 +950,13 @@ select {
 .matrix-axis,
 .matrix-point-label {
   fill: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   text-anchor: middle;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .matrix-axis.vertical {
@@ -917,7 +966,7 @@ select {
 
 .matrix-point-label {
   fill: var(--ink);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .risk-panel .matrix-axis {
@@ -942,8 +991,8 @@ select {
 
 .flow-map {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 16px;
   align-items: stretch;
 }
 
@@ -961,12 +1010,12 @@ select {
 
 .flow-lines {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .flow-row {
   display: grid;
-  grid-template-columns: minmax(44px, 1fr) auto;
+  grid-template-columns: minmax(72px, 1fr) auto;
   align-items: center;
   gap: 8px;
 }
@@ -994,11 +1043,11 @@ select {
 .heatmap-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .heat-cell {
-  min-height: 76px;
+  min-height: 88px;
   display: grid;
   align-content: space-between;
   border: 1px solid rgba(15, 31, 51, 0.08);
@@ -1377,6 +1426,42 @@ th {
   padding: 14px;
 }
 
+@container (max-width: 460px) {
+  .donut-layout {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .legend {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+  }
+
+  .chart-head {
+    gap: 10px;
+  }
+
+  .chart-head span {
+    max-width: 50%;
+  }
+}
+
+@container (max-width: 340px) {
+  .legend {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-head {
+    display: grid;
+  }
+
+  .chart-head span {
+    max-width: 100%;
+    text-align: left;
+  }
+}
+
 @media (max-width: 1180px) {
   .overview-grid,
   .module-grid,
@@ -1401,6 +1486,11 @@ th {
 
   .data-chart-layout {
     grid-template-columns: 1fr;
+  }
+
+  .chart-grid.two,
+  .chart-grid.four {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   }
 }
 

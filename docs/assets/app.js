@@ -15511,9 +15511,11 @@ function DonutChart({
 }
 function Legend({ data, valueFormatter }) {
   return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "legend", children: data.map((item, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "legend-item", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { backgroundColor: item.color ?? palette[index % palette.length] } }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: item.label }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: item.detail ?? valueFormatter(item.value) })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "legend-dot", style: { backgroundColor: item.color ?? palette[index % palette.length] } }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "legend-copy", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: item.label }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: item.detail ?? valueFormatter(item.value) })
+    ] })
   ] }, item.label)) });
 }
 function HorizontalBarChart({
@@ -15558,10 +15560,10 @@ function VerticalBarChart({ data, valueFormatter }) {
   }) });
 }
 function LineChart({ data, valueFormatter }) {
-  const width = 320;
-  const height = 176;
-  const padX = 26;
-  const padY = 22;
+  const width = 380;
+  const height = 212;
+  const padX = 34;
+  const padY = 30;
   const values = data.map((item) => item.value);
   const min = Math.min(...values, 0);
   const max = Math.max(...values, 1);
@@ -15655,9 +15657,9 @@ function CashflowCalendar({ events }) {
   ] }, `${event.date}-${event.item}`)) });
 }
 function WaterfallChart({ data }) {
-  const width = 360;
-  const height = 190;
-  const pad = 24;
+  const width = 420;
+  const height = 230;
+  const pad = 32;
   const bars = data.reduce((items, item) => {
     const running = items.at(-1)?.after ?? 0;
     const before = item.kind === "start" || item.kind === "end" ? 0 : running;
@@ -15706,8 +15708,8 @@ function WaterfallChart({ data }) {
   ] });
 }
 function RiskMatrix({ data }) {
-  const size = 320;
-  const pad = 44;
+  const size = 360;
+  const pad = 56;
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "matrix-layout", children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { className: "risk-matrix", viewBox: `0 0 ${size} ${size}`, role: "img", "aria-label": "\u98CE\u9669\u77E9\u9635", children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("rect", { className: "matrix-zone low", height: (size - pad * 2) / 2, width: (size - pad * 2) / 2, x: pad, y: pad + (size - pad * 2) / 2 }),
