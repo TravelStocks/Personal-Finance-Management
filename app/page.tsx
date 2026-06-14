@@ -85,6 +85,13 @@ type Liability = {
   amount: number;
 };
 
+type BalanceAsset = {
+  id: string;
+  name: string;
+  amount: number;
+  note: string;
+};
+
 type CashflowDirection = "inflow" | "outflow";
 
 type CashflowBuiltinId =
@@ -142,6 +149,7 @@ type PersistedFinanceData = {
   emergencyFund: number;
   emergencyMonths: number;
   emergencyMonthlyNeed: number;
+  balanceAssets: BalanceAsset[];
   liabilities: Liability[];
   houseDebt?: number;
   carDebt?: number;
@@ -263,6 +271,12 @@ const initialLiabilities: Liability[] = [
   { id: "house-debt", name: "房子负债", amount: 0 },
   { id: "car-debt", name: "车子负债", amount: 0 },
   { id: "other-debt", name: "其他负债", amount: 0 },
+];
+
+const initialBalanceAssets: BalanceAsset[] = [
+  { id: "house-asset", name: "房产资产", amount: 0, note: "房产估值" },
+  { id: "car-asset", name: "车子资产", amount: 0, note: "车辆残值" },
+  { id: "other-asset", name: "其他资产", amount: 0, note: "未归类资产" },
 ];
 
 const initialReminders: Reminder[] = [
@@ -498,6 +512,22 @@ function normalizeLiabilities(value: unknown) {
     .filter((item): item is Liability => item !== null);
 }
 
+function normalizeBalanceAssets(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
+      const raw = item as Partial<BalanceAsset>;
+      return {
+        id: typeof raw.id === "string" && raw.id ? raw.id : `balance-asset-${index + 1}`,
+        name: typeof raw.name === "string" && raw.name.trim() ? raw.name : `资产项 ${index + 1}`,
+        amount: typeof raw.amount === "number" ? raw.amount : 0,
+        note: typeof raw.note === "string" ? raw.note : "",
+      };
+    })
+    .filter((item): item is BalanceAsset => item !== null);
+}
+
 function legacyLiabilitiesFromSaved(saved: Partial<PersistedFinanceData>) {
   return initialLiabilities.map((item) => ({
     ...item,
@@ -561,6 +591,7 @@ export default function FinanceDashboard() {
   const [emergencyFund, setEmergencyFund] = useState(2000);
   const [emergencyMonths, setEmergencyMonths] = useState(3);
   const [emergencyMonthlyNeed, setEmergencyMonthlyNeed] = useState(4500);
+  const [balanceAssets, setBalanceAssets] = useState<BalanceAsset[]>(initialBalanceAssets);
   const [liabilities, setLiabilities] = useState<Liability[]>(initialLiabilities);
   const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
@@ -588,6 +619,8 @@ export default function FinanceDashboard() {
           if (typeof saved.emergencyFund === "number") setEmergencyFund(saved.emergencyFund);
           if (typeof saved.emergencyMonths === "number") setEmergencyMonths(saved.emergencyMonths);
           if (typeof saved.emergencyMonthlyNeed === "number") setEmergencyMonthlyNeed(saved.emergencyMonthlyNeed);
+          const savedBalanceAssets = normalizeBalanceAssets(saved.balanceAssets);
+          if (savedBalanceAssets.length > 0) setBalanceAssets(savedBalanceAssets);
           const savedLiabilities = normalizeLiabilities(saved.liabilities);
           if (savedLiabilities.length > 0) {
             setLiabilities(savedLiabilities);
@@ -631,6 +664,7 @@ export default function FinanceDashboard() {
       emergencyFund,
       emergencyMonths,
       emergencyMonthlyNeed,
+      balanceAssets,
       liabilities,
       reminders,
       goals,
@@ -654,6 +688,7 @@ export default function FinanceDashboard() {
     emergencyFund,
     emergencyMonths,
     emergencyMonthlyNeed,
+    balanceAssets,
     liabilities,
     reminders,
     goals,
@@ -702,8 +737,9 @@ export default function FinanceDashboard() {
     const aShareValue = holdings.filter((item) => item.market === "A股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const usShareValue = holdings.filter((item) => item.market === "美股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const hkShareValue = holdings.filter((item) => item.market === "港股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
+    const manualAssetTotal = balanceAssets.reduce((sum, item) => sum + item.amount, 0);
     const totalDebt = liabilities.reduce((sum, item) => sum + item.amount, 0);
-    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + emergencyFund;
+    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + emergencyFund + manualAssetTotal;
     const customOutflow = cashflowCustomItems
       .filter((item) => item.direction === "outflow")
       .reduce((sum, item) => sum + item.amount, 0);
@@ -760,6 +796,7 @@ export default function FinanceDashboard() {
       aShareValue,
       usShareValue,
       hkShareValue,
+      manualAssetTotal,
       cashflowSpendingPlan,
       travelAllocation,
       learningAllocation,
@@ -808,6 +845,7 @@ export default function FinanceDashboard() {
     emergencyFund,
     emergencyMonths,
     emergencyMonthlyNeed,
+    balanceAssets,
     liabilities,
     aSharePlan,
     usSharePlan,
@@ -1052,6 +1090,26 @@ export default function FinanceDashboard() {
     setHoldings((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
   }
 
+  function updateBalanceAsset(id: string, patch: Partial<BalanceAsset>) {
+    setBalanceAssets((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  function addBalanceAsset() {
+    setBalanceAssets((items) => [
+      ...items,
+      {
+        id: `balance-asset-${Date.now()}`,
+        name: `新资产 ${items.length + 1}`,
+        amount: 0,
+        note: "资产负债表补录",
+      },
+    ]);
+  }
+
+  function deleteBalanceAsset(id: string) {
+    setBalanceAssets((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+  }
+
   function updateLiability(id: string, patch: Partial<Liability>) {
     setLiabilities((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
@@ -1189,6 +1247,12 @@ export default function FinanceDashboard() {
   ]
     .filter(Boolean)
     .join(" / ");
+  const manualAssetDetail =
+    balanceAssets
+      .filter((item) => item.amount > 0)
+      .slice(0, 3)
+      .map((item) => `${item.name.trim() || "未命名资产"} ${money(item.amount)}`)
+      .join(" / ") || "资产负债表补录资产";
   const totalAssetBreakdown = [
     {
       label: "账户现金",
@@ -1220,6 +1284,16 @@ export default function FinanceDashboard() {
       detail: specialSavingsDetail,
       color: palette[3],
     },
+    ...(totals.manualAssetTotal > 0
+      ? [
+          {
+            label: "补录资产",
+            value: totals.manualAssetTotal,
+            detail: manualAssetDetail,
+            color: palette[5],
+          },
+        ]
+      : []),
     {
       label: "应急金",
       value: emergencyFund,
@@ -1508,13 +1582,19 @@ export default function FinanceDashboard() {
   ];
   const netWorthTrend = forecast.map((item) => ({
     label: item.month,
-    value: item.balance + totals.investmentValue + totals.totalSavings + emergencyFund - totals.totalDebt,
+    value: item.balance + totals.investmentValue + totals.totalSavings + emergencyFund + totals.manualAssetTotal - totals.totalDebt,
   }));
   const balanceData = [
     { label: "总资产", value: totals.totalAssets, color: palette[0] },
     { label: "总负债", value: totals.totalDebt, color: palette[4] },
     { label: "净资产", value: Math.max(totals.netWorth, 0), color: palette[1] },
   ];
+  const balanceAssetData = balanceAssets.map((item, index) => ({
+    label: item.name.trim() || "未命名资产",
+    value: item.amount,
+    color: palette[index % palette.length],
+    detail: item.note.trim() || money(item.amount),
+  }));
   const debtData = liabilities.map((item, index) => ({
     label: item.name.trim() || "未命名负债",
     value: item.amount,
@@ -2027,10 +2107,17 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "balance" && (
-                  <Module title="资产负债表" desc="负债项支持新增、删除和直接编辑。">
+                  <Module title="资产负债表" desc="资产项和负债项都支持新增、删除和直接编辑。">
                     <DataChartLayout
                       data={
                         <>
+                          <EditableBalanceAssetTable
+                            addBalanceAsset={addBalanceAsset}
+                            balanceAssets={balanceAssets}
+                            deleteBalanceAsset={deleteBalanceAsset}
+                            totalAssets={totals.totalAssets}
+                            updateBalanceAsset={updateBalanceAsset}
+                          />
                           <EditableDebtTable
                             addLiability={addLiability}
                             deleteLiability={deleteLiability}
@@ -2052,6 +2139,9 @@ export default function FinanceDashboard() {
                           </ChartPanel>
                           <ChartPanel title="负债结构" summary={totals.totalDebt ? `负债 ${money(totals.totalDebt)}` : "当前无负债"}>
                             <DonutChart data={debtData} centerLabel="负债" centerValue={money(totals.totalDebt)} />
+                          </ChartPanel>
+                          <ChartPanel title="资产项结构" summary={`补录资产 ${money(totals.manualAssetTotal)}`}>
+                            <DonutChart data={balanceAssetData} centerLabel="资产项" centerValue={money(totals.manualAssetTotal)} />
                           </ChartPanel>
                           <ChartPanel title="净资产趋势" summary="按 6 个月现金预测推演">
                             <LineChart data={netWorthTrend} valueFormatter={money} />
@@ -2890,6 +2980,77 @@ function EditableHoldingTable({
                 </tr>
               );
             })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function EditableBalanceAssetTable({
+  balanceAssets,
+  totalAssets,
+  updateBalanceAsset,
+  addBalanceAsset,
+  deleteBalanceAsset,
+}: {
+  balanceAssets: BalanceAsset[];
+  totalAssets: number;
+  updateBalanceAsset: (id: string, patch: Partial<BalanceAsset>) => void;
+  addBalanceAsset: () => void;
+  deleteBalanceAsset: (id: string) => void;
+}) {
+  const manualTotal = balanceAssets.reduce((sum, item) => sum + item.amount, 0);
+  return (
+    <>
+      <TableToolbar
+        title="资产底表"
+        meta={`${balanceAssets.length} 项 / 补录资产 ${money(manualTotal)} / 总资产 ${money(totalAssets)}`}
+        action={<button className="secondary-button" type="button" onClick={addBalanceAsset}>新增资产</button>}
+      />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table">
+          <thead>
+            <tr>
+              <th>资产项</th>
+              <th>金额</th>
+              <th>说明</th>
+              <th>占总资产</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {balanceAssets.map((item) => (
+              <tr key={item.id}>
+                <td>
+                  <TableTextInput
+                    ariaLabel={`${item.name} 资产项`}
+                    value={item.name}
+                    onChange={(value) => updateBalanceAsset(item.id, { name: value })}
+                  />
+                </td>
+                <td>
+                  <TableNumberInput
+                    ariaLabel={`${item.name} 资产金额`}
+                    value={item.amount}
+                    onChange={(value) => updateBalanceAsset(item.id, { amount: value })}
+                  />
+                </td>
+                <td>
+                  <TableTextInput
+                    ariaLabel={`${item.name} 资产说明`}
+                    value={item.note}
+                    onChange={(value) => updateBalanceAsset(item.id, { note: value })}
+                  />
+                </td>
+                <td className="calculated-cell">{percent(totalAssets ? item.amount / totalAssets : 0)}</td>
+                <td>
+                  <button className="danger-button compact" disabled={balanceAssets.length <= 1} type="button" onClick={() => deleteBalanceAsset(item.id)}>
+                    删除
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

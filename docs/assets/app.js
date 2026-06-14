@@ -12811,6 +12811,11 @@ var initialLiabilities = [
   { id: "car-debt", name: "\u8F66\u5B50\u8D1F\u503A", amount: 0 },
   { id: "other-debt", name: "\u5176\u4ED6\u8D1F\u503A", amount: 0 }
 ];
+var initialBalanceAssets = [
+  { id: "house-asset", name: "\u623F\u4EA7\u8D44\u4EA7", amount: 0, note: "\u623F\u4EA7\u4F30\u503C" },
+  { id: "car-asset", name: "\u8F66\u5B50\u8D44\u4EA7", amount: 0, note: "\u8F66\u8F86\u6B8B\u503C" },
+  { id: "other-asset", name: "\u5176\u4ED6\u8D44\u4EA7", amount: 0, note: "\u672A\u5F52\u7C7B\u8D44\u4EA7" }
+];
 var initialReminders = [
   { id: "rent-reminder", name: "\u623F\u79DF\u63D0\u9192", date: "2026-06-30", amount: 1800, kind: "\u623F\u79DF" },
   { id: "sub-reminder", name: "\u8BA2\u9605\u670D\u52A1\u68C0\u67E5", date: "2026-06-18", amount: 98, kind: "\u8BA2\u9605" },
@@ -13008,6 +13013,19 @@ function normalizeLiabilities(value) {
     };
   }).filter((item) => item !== null);
 }
+function normalizeBalanceAssets(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item, index) => {
+    if (!item || typeof item !== "object") return null;
+    const raw = item;
+    return {
+      id: typeof raw.id === "string" && raw.id ? raw.id : `balance-asset-${index + 1}`,
+      name: typeof raw.name === "string" && raw.name.trim() ? raw.name : `\u8D44\u4EA7\u9879 ${index + 1}`,
+      amount: typeof raw.amount === "number" ? raw.amount : 0,
+      note: typeof raw.note === "string" ? raw.note : ""
+    };
+  }).filter((item) => item !== null);
+}
 function legacyLiabilitiesFromSaved(saved) {
   return initialLiabilities.map((item) => ({
     ...item,
@@ -13058,6 +13076,7 @@ function FinanceDashboard() {
   const [emergencyFund, setEmergencyFund] = (0, import_react.useState)(2e3);
   const [emergencyMonths, setEmergencyMonths] = (0, import_react.useState)(3);
   const [emergencyMonthlyNeed, setEmergencyMonthlyNeed] = (0, import_react.useState)(4500);
+  const [balanceAssets, setBalanceAssets] = (0, import_react.useState)(initialBalanceAssets);
   const [liabilities, setLiabilities] = (0, import_react.useState)(initialLiabilities);
   const [reminders, setReminders] = (0, import_react.useState)(initialReminders);
   const [goals, setGoals] = (0, import_react.useState)(initialGoals);
@@ -13084,6 +13103,8 @@ function FinanceDashboard() {
           if (typeof saved.emergencyFund === "number") setEmergencyFund(saved.emergencyFund);
           if (typeof saved.emergencyMonths === "number") setEmergencyMonths(saved.emergencyMonths);
           if (typeof saved.emergencyMonthlyNeed === "number") setEmergencyMonthlyNeed(saved.emergencyMonthlyNeed);
+          const savedBalanceAssets = normalizeBalanceAssets(saved.balanceAssets);
+          if (savedBalanceAssets.length > 0) setBalanceAssets(savedBalanceAssets);
           const savedLiabilities = normalizeLiabilities(saved.liabilities);
           if (savedLiabilities.length > 0) {
             setLiabilities(savedLiabilities);
@@ -13122,6 +13143,7 @@ function FinanceDashboard() {
       emergencyFund,
       emergencyMonths,
       emergencyMonthlyNeed,
+      balanceAssets,
       liabilities,
       reminders,
       goals,
@@ -13145,6 +13167,7 @@ function FinanceDashboard() {
     emergencyFund,
     emergencyMonths,
     emergencyMonthlyNeed,
+    balanceAssets,
     liabilities,
     reminders,
     goals,
@@ -13186,8 +13209,9 @@ function FinanceDashboard() {
     const aShareValue = holdings.filter((item) => item.market === "A\u80A1").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const usShareValue = holdings.filter((item) => item.market === "\u7F8E\u80A1").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const hkShareValue = holdings.filter((item) => item.market === "\u6E2F\u80A1").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
+    const manualAssetTotal = balanceAssets.reduce((sum, item) => sum + item.amount, 0);
     const totalDebt = liabilities.reduce((sum, item) => sum + item.amount, 0);
-    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + emergencyFund;
+    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + emergencyFund + manualAssetTotal;
     const customOutflow = cashflowCustomItems.filter((item) => item.direction === "outflow").reduce((sum, item) => sum + item.amount, 0);
     const enabledCashflowValue = (id, value) => cashflowHiddenBuiltinIds.includes(id) ? 0 : value;
     const cashflowSpendingPlan = enabledCashflowValue("spendingPlan", spendingPlan);
@@ -13234,6 +13258,7 @@ function FinanceDashboard() {
       aShareValue,
       usShareValue,
       hkShareValue,
+      manualAssetTotal,
       cashflowSpendingPlan,
       travelAllocation,
       learningAllocation,
@@ -13282,6 +13307,7 @@ function FinanceDashboard() {
     emergencyFund,
     emergencyMonths,
     emergencyMonthlyNeed,
+    balanceAssets,
     liabilities,
     aSharePlan,
     usSharePlan,
@@ -13492,6 +13518,23 @@ function FinanceDashboard() {
   function deleteHolding(id) {
     setHoldings((items) => items.length > 1 ? items.filter((item) => item.id !== id) : items);
   }
+  function updateBalanceAsset(id, patch) {
+    setBalanceAssets((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
+  }
+  function addBalanceAsset() {
+    setBalanceAssets((items) => [
+      ...items,
+      {
+        id: `balance-asset-${Date.now()}`,
+        name: `\u65B0\u8D44\u4EA7 ${items.length + 1}`,
+        amount: 0,
+        note: "\u8D44\u4EA7\u8D1F\u503A\u8868\u8865\u5F55"
+      }
+    ]);
+  }
+  function deleteBalanceAsset(id) {
+    setBalanceAssets((items) => items.length > 1 ? items.filter((item) => item.id !== id) : items);
+  }
   function updateLiability(id, patch) {
     setLiabilities((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
   }
@@ -13599,6 +13642,7 @@ function FinanceDashboard() {
     totals.usShareInvestmentReserve > 0 ? `\u7F8E\u80A1\u5F85\u6295 ${money(totals.usShareInvestmentReserve)}` : "",
     totals.accountSpecialSavings > 0 ? `\u4E13\u9879 ${money(totals.accountSpecialSavings)}` : ""
   ].filter(Boolean).join(" / ");
+  const manualAssetDetail = balanceAssets.filter((item) => item.amount > 0).slice(0, 3).map((item) => `${item.name.trim() || "\u672A\u547D\u540D\u8D44\u4EA7"} ${money(item.amount)}`).join(" / ") || "\u8D44\u4EA7\u8D1F\u503A\u8868\u8865\u5F55\u8D44\u4EA7";
   const totalAssetBreakdown = [
     {
       label: "\u8D26\u6237\u73B0\u91D1",
@@ -13630,6 +13674,14 @@ function FinanceDashboard() {
       detail: specialSavingsDetail,
       color: palette[3]
     },
+    ...totals.manualAssetTotal > 0 ? [
+      {
+        label: "\u8865\u5F55\u8D44\u4EA7",
+        value: totals.manualAssetTotal,
+        detail: manualAssetDetail,
+        color: palette[5]
+      }
+    ] : [],
     {
       label: "\u5E94\u6025\u91D1",
       value: emergencyFund,
@@ -13907,13 +13959,19 @@ function FinanceDashboard() {
   ];
   const netWorthTrend = forecast.map((item) => ({
     label: item.month,
-    value: item.balance + totals.investmentValue + totals.totalSavings + emergencyFund - totals.totalDebt
+    value: item.balance + totals.investmentValue + totals.totalSavings + emergencyFund + totals.manualAssetTotal - totals.totalDebt
   }));
   const balanceData = [
     { label: "\u603B\u8D44\u4EA7", value: totals.totalAssets, color: palette[0] },
     { label: "\u603B\u8D1F\u503A", value: totals.totalDebt, color: palette[4] },
     { label: "\u51C0\u8D44\u4EA7", value: Math.max(totals.netWorth, 0), color: palette[1] }
   ];
+  const balanceAssetData = balanceAssets.map((item, index) => ({
+    label: item.name.trim() || "\u672A\u547D\u540D\u8D44\u4EA7",
+    value: item.amount,
+    color: palette[index % palette.length],
+    detail: item.note.trim() || money(item.amount)
+  }));
   const debtData = liabilities.map((item, index) => ({
     label: item.name.trim() || "\u672A\u547D\u540D\u8D1F\u503A",
     value: item.amount,
@@ -14318,10 +14376,20 @@ function FinanceDashboard() {
               ] })
             }
           ) }),
-          moduleId === "balance" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Module, { title: "\u8D44\u4EA7\u8D1F\u503A\u8868", desc: "\u8D1F\u503A\u9879\u652F\u6301\u65B0\u589E\u3001\u5220\u9664\u548C\u76F4\u63A5\u7F16\u8F91\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          moduleId === "balance" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Module, { title: "\u8D44\u4EA7\u8D1F\u503A\u8868", desc: "\u8D44\u4EA7\u9879\u548C\u8D1F\u503A\u9879\u90FD\u652F\u6301\u65B0\u589E\u3001\u5220\u9664\u548C\u76F4\u63A5\u7F16\u8F91\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             DataChartLayout,
             {
               data: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+                  EditableBalanceAssetTable,
+                  {
+                    addBalanceAsset,
+                    balanceAssets,
+                    deleteBalanceAsset,
+                    totalAssets: totals.totalAssets,
+                    updateBalanceAsset
+                  }
+                ),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                   EditableDebtTable,
                   {
@@ -14341,6 +14409,7 @@ function FinanceDashboard() {
               charts: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chart-grid two", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u8D44\u4EA7\u8D1F\u503A\u5BF9\u6BD4", summary: `\u51C0\u8D44\u4EA7 ${money(totals.netWorth)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HorizontalBarChart, { data: balanceData, valueFormatter: money }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u8D1F\u503A\u7ED3\u6784", summary: totals.totalDebt ? `\u8D1F\u503A ${money(totals.totalDebt)}` : "\u5F53\u524D\u65E0\u8D1F\u503A", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DonutChart, { data: debtData, centerLabel: "\u8D1F\u503A", centerValue: money(totals.totalDebt) }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u8D44\u4EA7\u9879\u7ED3\u6784", summary: `\u8865\u5F55\u8D44\u4EA7 ${money(totals.manualAssetTotal)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DonutChart, { data: balanceAssetData, centerLabel: "\u8D44\u4EA7\u9879", centerValue: money(totals.manualAssetTotal) }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u51C0\u8D44\u4EA7\u8D8B\u52BF", summary: "\u6309 6 \u4E2A\u6708\u73B0\u91D1\u9884\u6D4B\u63A8\u6F14", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(LineChart, { data: netWorthTrend, valueFormatter: money }) })
               ] })
             }
@@ -14974,6 +15043,62 @@ function EditableHoldingTable({
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "danger-button compact", disabled: holdings.length <= 1, type: "button", onClick: () => deleteHolding(item.id), children: "\u5220\u9664" }) })
         ] }, item.id);
       }) })
+    ] }) })
+  ] });
+}
+function EditableBalanceAssetTable({
+  balanceAssets,
+  totalAssets,
+  updateBalanceAsset,
+  addBalanceAsset,
+  deleteBalanceAsset
+}) {
+  const manualTotal = balanceAssets.reduce((sum, item) => sum + item.amount, 0);
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+      TableToolbar,
+      {
+        title: "\u8D44\u4EA7\u5E95\u8868",
+        meta: `${balanceAssets.length} \u9879 / \u8865\u5F55\u8D44\u4EA7 ${money(manualTotal)} / \u603B\u8D44\u4EA7 ${money(totalAssets)}`,
+        action: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "secondary-button", type: "button", onClick: addBalanceAsset, children: "\u65B0\u589E\u8D44\u4EA7" })
+      }
+    ),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "table-wrap spreadsheet-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("table", { className: "spreadsheet-table", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u8D44\u4EA7\u9879" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u91D1\u989D" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u8BF4\u660E" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u5360\u603B\u8D44\u4EA7" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("th", { children: "\u64CD\u4F5C" })
+      ] }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tbody", { children: balanceAssets.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("tr", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          TableTextInput,
+          {
+            ariaLabel: `${item.name} \u8D44\u4EA7\u9879`,
+            value: item.name,
+            onChange: (value) => updateBalanceAsset(item.id, { name: value })
+          }
+        ) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          TableNumberInput,
+          {
+            ariaLabel: `${item.name} \u8D44\u4EA7\u91D1\u989D`,
+            value: item.amount,
+            onChange: (value) => updateBalanceAsset(item.id, { amount: value })
+          }
+        ) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          TableTextInput,
+          {
+            ariaLabel: `${item.name} \u8D44\u4EA7\u8BF4\u660E`,
+            value: item.note,
+            onChange: (value) => updateBalanceAsset(item.id, { note: value })
+          }
+        ) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { className: "calculated-cell", children: percent(totalAssets ? item.amount / totalAssets : 0) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { className: "danger-button compact", disabled: balanceAssets.length <= 1, type: "button", onClick: () => deleteBalanceAsset(item.id), children: "\u5220\u9664" }) })
+      ] }, item.id)) })
     ] }) })
   ] });
 }
