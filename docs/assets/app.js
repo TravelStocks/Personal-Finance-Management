@@ -13771,7 +13771,7 @@ function FinanceDashboard() {
     color: record.id === selectedMonth ? palette[1] : palette[index % palette.length],
     detail: record.id === selectedMonth ? "\u5F53\u524D\u6708" : "\u6708\u5EA6"
   }));
-  const accountChartData = accounts.map((item, index) => ({
+  const accountChartData = accounts.map((item, index) => ({ item, index })).sort((left, right) => right.item.balance - left.item.balance || left.index - right.index).map(({ item }, index) => ({
     label: item.name.trim() || "\u672A\u547D\u540D\u8D26\u6237",
     value: item.balance,
     color: palette[index % palette.length],
@@ -14336,9 +14336,9 @@ function FinanceDashboard() {
                 }
               ) }),
               charts: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "chart-grid two", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u8D26\u6237\u4F59\u989D\u5206\u5E03", summary: `\u8D26\u6237\u5408\u8BA1 ${money(totals.accountTotal)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DonutChart, { data: accountChartData, centerLabel: "\u8D26\u6237", centerValue: money(totals.accountTotal) }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u53EF\u52A8\u7528\u73B0\u91D1", summary: `\u53EF\u7ACB\u5373\u52A8\u7528 ${money(totals.liquidAccountTotal)}`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HorizontalBarChart, { data: accountChartData, valueFormatter: money }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u8D26\u6237\u7528\u9014\u6620\u5C04", summary: "\u8D26\u6237\u4F59\u989D\u6D41\u5411", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FlowMap, { data: accountChartData, source: "\u8D26\u6237\u6C60", valueFormatter: money }) })
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u8D26\u6237\u4F59\u989D\u5206\u5E03", summary: `\u8D26\u6237\u5408\u8BA1 ${money(totals.accountTotal)} / \u6309\u4F59\u989D\u964D\u5E8F`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(DonutChart, { data: accountChartData, centerLabel: "\u8D26\u6237", centerValue: money(totals.accountTotal) }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u53EF\u52A8\u7528\u73B0\u91D1", summary: `\u53EF\u7ACB\u5373\u52A8\u7528 ${money(totals.liquidAccountTotal)} / \u6309\u4F59\u989D\u964D\u5E8F`, children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(HorizontalBarChart, { data: accountChartData, valueFormatter: money }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartPanel, { title: "\u8D26\u6237\u7528\u9014\u6620\u5C04", summary: "\u8D26\u6237\u4F59\u989D\u6D41\u5411 / \u6309\u4F59\u989D\u964D\u5E8F", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FlowMap, { data: accountChartData, source: "\u8D26\u6237\u6C60", valueFormatter: money }) })
               ] })
             }
           ) }),

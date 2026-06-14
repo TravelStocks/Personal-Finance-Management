@@ -1394,12 +1394,15 @@ export default function FinanceDashboard() {
     color: record.id === selectedMonth ? palette[1] : palette[index % palette.length],
     detail: record.id === selectedMonth ? "当前月" : "月度",
   }));
-  const accountChartData = accounts.map((item, index) => ({
-    label: item.name.trim() || "未命名账户",
-    value: item.balance,
-    color: palette[index % palette.length],
-    detail: item.type.trim() || "未分类",
-  }));
+  const accountChartData = accounts
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => right.item.balance - left.item.balance || left.index - right.index)
+    .map(({ item }, index) => ({
+      label: item.name.trim() || "未命名账户",
+      value: item.balance,
+      color: palette[index % palette.length],
+      detail: item.type.trim() || "未分类",
+    }));
   const spendingChartData = budgets.map((item, index) => ({
     label: item.name,
     value: item.actual,
@@ -2047,13 +2050,13 @@ export default function FinanceDashboard() {
                       }
                       charts={
                         <div className="chart-grid two">
-                          <ChartPanel title="账户余额分布" summary={`账户合计 ${money(totals.accountTotal)}`}>
+                          <ChartPanel title="账户余额分布" summary={`账户合计 ${money(totals.accountTotal)} / 按余额降序`}>
                             <DonutChart data={accountChartData} centerLabel="账户" centerValue={money(totals.accountTotal)} />
                           </ChartPanel>
-                          <ChartPanel title="可动用现金" summary={`可立即动用 ${money(totals.liquidAccountTotal)}`}>
+                          <ChartPanel title="可动用现金" summary={`可立即动用 ${money(totals.liquidAccountTotal)} / 按余额降序`}>
                             <HorizontalBarChart data={accountChartData} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="账户用途映射" summary="账户余额流向">
+                          <ChartPanel title="账户用途映射" summary="账户余额流向 / 按余额降序">
                             <FlowMap data={accountChartData} source="账户池" valueFormatter={money} />
                           </ChartPanel>
                         </div>
