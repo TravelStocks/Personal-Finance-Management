@@ -12746,9 +12746,9 @@ var require_jsx_runtime = __commonJS({
   }
 });
 
-// docs-entry.tsx
-var import_react2 = __toESM(require_react());
-var import_client = __toESM(require_client());
+// .static-entry.jsx
+var import_react2 = __toESM(require_react(), 1);
+var import_client = __toESM(require_client(), 1);
 
 // app/page.tsx
 var import_react = __toESM(require_react(), 1);
@@ -13631,12 +13631,13 @@ function FinanceDashboard() {
     `\u5B66\u4E60 ${money(totals.learningSavings)}`,
     totals.otherSavings > 0 ? `\u5176\u4ED6 ${money(totals.otherSavings)}` : ""
   ].filter(Boolean).join(" / ");
-  const familyFundBreakdown = totals.familyFund > 0 || totals.partnerAllocation > 0 ? {
-    label: "\u5BB6\u5EAD\u57FA\u91D1",
+  const familyFundBreakdown = {
+    label: "\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4",
     value: totals.familyFund,
-    detail: `\u4F34\u4FA3\u57FA\u91D1\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7 / \u672C\u6708\u5206\u914D ${money(totals.partnerAllocation)}`,
-    color: palette[3]
-  } : null;
+    detail: totals.familyFund > 0 || totals.partnerAllocation > 0 ? `\u4F34\u4FA3\u57FA\u91D1 ${money(totals.familyFund)} / \u672C\u6708\u5BB6\u5EAD\u6295\u5165 ${money(totals.partnerAllocation)}` : "\u5BB6\u5EAD\u5171\u540C\u8D44\u91D1\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7",
+    color: palette[3],
+    className: "family-fund-item"
+  };
   const accountCashDetail = [
     totals.aShareInvestmentReserve > 0 ? `A\u80A1\u5F85\u6295 ${money(totals.aShareInvestmentReserve)}` : "",
     totals.usShareInvestmentReserve > 0 ? `\u7F8E\u80A1\u5F85\u6295 ${money(totals.usShareInvestmentReserve)}` : "",
@@ -13669,11 +13670,12 @@ function FinanceDashboard() {
       color: palette[1]
     },
     {
-      label: "\u4E13\u9879\u50A8\u84C4",
+      label: "\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4",
       value: totals.totalSavings,
       detail: specialSavingsDetail,
       color: palette[3]
     },
+    familyFundBreakdown,
     ...totals.manualAssetTotal > 0 ? [
       {
         label: "\u8865\u5F55\u8D44\u4EA7",
@@ -14159,20 +14161,21 @@ function FinanceDashboard() {
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "total-assets-main", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5F53\u524D\u603B\u8D44\u4EA7" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(totals.totalAssets) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u5BB6\u5EAD\u57FA\u91D1\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "total-assets-breakdown", "aria-label": "\u603B\u8D44\u4EA7\u8D44\u91D1\u5206\u5E03", children: [
-            totalAssetBreakdown.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "asset-breakdown-item", style: { "--asset-color": item.color }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: item.label }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(item.value) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: item.detail })
-            ] }, item.label)),
-            familyFundBreakdown && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "asset-breakdown-item family-fund-item", style: { "--asset-color": familyFundBreakdown.color }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: familyFundBreakdown.label }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(familyFundBreakdown.value) }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: familyFundBreakdown.detail })
-            ] })
-          ] })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "total-assets-breakdown", "aria-label": "\u603B\u8D44\u4EA7\u8D44\u91D1\u5206\u5E03", children: totalAssetBreakdown.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+            "div",
+            {
+              className: `asset-breakdown-item ${item.className ?? ""}`.trim(),
+              style: { "--asset-color": item.color },
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: item.label }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(item.value) }),
+                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("em", { children: item.detail })
+              ]
+            },
+            item.label
+          )) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "overview-grid", children: overviewCards.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: `overview-card ${item.tone} ${item.items ? "with-line-items" : ""}`.trim(), children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: item.title }),
@@ -15761,7 +15764,7 @@ function EditableBudgetTable({
   ] });
 }
 
-// docs-entry.tsx
+// .static-entry.jsx
 (0, import_client.createRoot)(document.getElementById("root")).render(import_react2.default.createElement(FinanceDashboard));
 /*! Bundled license information:
 

@@ -1231,15 +1231,16 @@ export default function FinanceDashboard() {
   ]
     .filter(Boolean)
     .join(" / ");
-  const familyFundBreakdown =
-    totals.familyFund > 0 || totals.partnerAllocation > 0
-      ? {
-          label: "家庭基金",
-          value: totals.familyFund,
-          detail: `伴侣基金，不计入个人总资产 / 本月分配 ${money(totals.partnerAllocation)}`,
-          color: palette[3],
-        }
-      : null;
+  const familyFundBreakdown = {
+    label: "家庭及伴侣储蓄",
+    value: totals.familyFund,
+    detail:
+      totals.familyFund > 0 || totals.partnerAllocation > 0
+        ? `伴侣基金 ${money(totals.familyFund)} / 本月家庭投入 ${money(totals.partnerAllocation)}`
+        : "家庭共同资金单列，不计入个人总资产",
+    color: palette[3],
+    className: "family-fund-item",
+  };
   const accountCashDetail = [
     totals.aShareInvestmentReserve > 0 ? `A股待投 ${money(totals.aShareInvestmentReserve)}` : "",
     totals.usShareInvestmentReserve > 0 ? `美股待投 ${money(totals.usShareInvestmentReserve)}` : "",
@@ -1253,7 +1254,7 @@ export default function FinanceDashboard() {
       .slice(0, 3)
       .map((item) => `${item.name.trim() || "未命名资产"} ${money(item.amount)}`)
       .join(" / ") || "资产负债表补录资产";
-  const totalAssetBreakdown = [
+  const totalAssetBreakdown: Array<{ label: string; value: number; detail: string; color: string; className?: string }> = [
     {
       label: "账户现金",
       value: totals.operatingAccountTotal,
@@ -1279,11 +1280,12 @@ export default function FinanceDashboard() {
       color: palette[1],
     },
     {
-      label: "专项储蓄",
+      label: "个人专项储蓄",
       value: totals.totalSavings,
       detail: specialSavingsDetail,
       color: palette[3],
     },
+    familyFundBreakdown,
     ...(totals.manualAssetTotal > 0
       ? [
           {
@@ -1803,23 +1805,20 @@ export default function FinanceDashboard() {
             <div className="total-assets-main">
               <span>当前总资产</span>
               <strong>{money(totals.totalAssets)}</strong>
-              <small>账户现金、A股待投、美股待投、已投资市值、个人专项储蓄和应急金合计；家庭基金单列，不计入个人总资产。</small>
+              <small>账户现金、A股待投、美股待投、已投资市值、个人专项储蓄和应急金合计；家庭及伴侣储蓄单列，不计入个人总资产。</small>
             </div>
             <div className="total-assets-breakdown" aria-label="总资产资金分布">
               {totalAssetBreakdown.map((item) => (
-                <div className="asset-breakdown-item" key={item.label} style={{ "--asset-color": item.color } as CSSProperties}>
+                <div
+                  className={`asset-breakdown-item ${item.className ?? ""}`.trim()}
+                  key={item.label}
+                  style={{ "--asset-color": item.color } as CSSProperties}
+                >
                   <span>{item.label}</span>
                   <strong>{money(item.value)}</strong>
                   <em>{item.detail}</em>
                 </div>
               ))}
-              {familyFundBreakdown && (
-                <div className="asset-breakdown-item family-fund-item" style={{ "--asset-color": familyFundBreakdown.color } as CSSProperties}>
-                  <span>{familyFundBreakdown.label}</span>
-                  <strong>{money(familyFundBreakdown.value)}</strong>
-                  <em>{familyFundBreakdown.detail}</em>
-                </div>
-              )}
             </div>
           </article>
           <div className="overview-grid">

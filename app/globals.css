@@ -312,12 +312,6 @@ select {
   bottom: 10px;
 }
 
-.family-fund-item span::after {
-  content: " / 家庭";
-  color: #7055be;
-  font-weight: 900;
-}
-
 .overview-card,
 .module-card,
 .detail-panel,
