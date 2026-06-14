@@ -78,6 +78,39 @@ type FutureCapability = {
   score: number;
 };
 
+type CashflowDirection = "inflow" | "outflow";
+
+type CashflowBuiltinId =
+  | "salary"
+  | "spendingPlan"
+  | "travelSaving"
+  | "learningSaving"
+  | "emergencyFund"
+  | "aSharePlan"
+  | "usSharePlan"
+  | "hkSharePlan";
+
+type CashflowCustomItem = {
+  id: string;
+  name: string;
+  amount: number;
+  direction: CashflowDirection;
+};
+
+type CashflowTableRow = {
+  id: string;
+  name: string;
+  amount: number;
+  direction: CashflowDirection;
+  source: string;
+  builtinId?: CashflowBuiltinId;
+  readonlyAmount?: boolean;
+  onNameChange?: (value: string) => void;
+  onAmountChange?: (value: number) => void;
+  onDirectionChange?: (value: CashflowDirection) => void;
+  onDelete?: () => void;
+};
+
 type PersistedFinanceData = {
   monthlyRecords: MonthRecord[];
   accounts: Account[];
@@ -98,6 +131,8 @@ type PersistedFinanceData = {
   reminders: Reminder[];
   goals: Goal[];
   futureCapabilities: FutureCapability[];
+  cashflowHiddenBuiltinIds: CashflowBuiltinId[];
+  cashflowCustomItems: CashflowCustomItem[];
 };
 
 type ChartDatum = {
@@ -218,6 +253,17 @@ const initialFutureCapabilities: FutureCapability[] = [
   { id: "rules-engine", name: "规则引擎", score: 35 },
 ];
 
+const cashflowBuiltinIds: CashflowBuiltinId[] = [
+  "salary",
+  "spendingPlan",
+  "travelSaving",
+  "learningSaving",
+  "emergencyFund",
+  "aSharePlan",
+  "usSharePlan",
+  "hkSharePlan",
+];
+
 const financeStorageKey = "personal-finance-management-data-v2";
 
 const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
@@ -326,6 +372,8 @@ export default function FinanceDashboard() {
   const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [futureCapabilities, setFutureCapabilities] = useState<FutureCapability[]>(initialFutureCapabilities);
+  const [cashflowHiddenBuiltinIds, setCashflowHiddenBuiltinIds] = useState<CashflowBuiltinId[]>([]);
+  const [cashflowCustomItems, setCashflowCustomItems] = useState<CashflowCustomItem[]>([]);
   const [savedDataReady, setSavedDataReady] = useState(false);
 
   useEffect(() => {
@@ -353,6 +401,10 @@ export default function FinanceDashboard() {
           if (Array.isArray(saved.reminders)) setReminders(saved.reminders);
           if (Array.isArray(saved.goals)) setGoals(saved.goals);
           if (Array.isArray(saved.futureCapabilities)) setFutureCapabilities(saved.futureCapabilities);
+          if (Array.isArray(saved.cashflowHiddenBuiltinIds)) {
+            setCashflowHiddenBuiltinIds(saved.cashflowHiddenBuiltinIds.filter((id) => cashflowBuiltinIds.includes(id)));
+          }
+          if (Array.isArray(saved.cashflowCustomItems)) setCashflowCustomItems(saved.cashflowCustomItems);
         }
       } catch {
         window.localStorage.removeItem(financeStorageKey);
@@ -385,6 +437,8 @@ export default function FinanceDashboard() {
       reminders,
       goals,
       futureCapabilities,
+      cashflowHiddenBuiltinIds,
+      cashflowCustomItems,
     };
     window.localStorage.setItem(financeStorageKey, JSON.stringify(data));
   }, [
@@ -408,6 +462,8 @@ export default function FinanceDashboard() {
     reminders,
     goals,
     futureCapabilities,
+    cashflowHiddenBuiltinIds,
+    cashflowCustomItems,
   ]);
 
   const activeMonth = monthlyRecords.find((item) => item.id === selectedMonth) ?? monthlyRecords[0];
@@ -432,7 +488,19 @@ export default function FinanceDashboard() {
     const totalSavings = travelSaving + learningSaving;
     const totalDebt = houseDebt + carDebt + otherDebt;
     const totalAssets = accountTotal + investmentValue + totalSavings + emergencyFund;
-    const assetOutflow = travelSaving + learningSaving + emergencyFund + aSharePlan + usSharePlan + hkSharePlan;
+    const customOutflow = cashflowCustomItems
+      .filter((item) => item.direction === "outflow")
+      .reduce((sum, item) => sum + item.amount, 0);
+    const enabledCashflowValue = (id: CashflowBuiltinId, value: number) => (cashflowHiddenBuiltinIds.includes(id) ? 0 : value);
+    const cashflowSpendingPlan = enabledCashflowValue("spendingPlan", spendingPlan);
+    const assetOutflow =
+      enabledCashflowValue("travelSaving", travelSaving) +
+      enabledCashflowValue("learningSaving", learningSaving) +
+      enabledCashflowValue("emergencyFund", emergencyFund) +
+      enabledCashflowValue("aSharePlan", aSharePlan) +
+      enabledCashflowValue("usSharePlan", usSharePlan) +
+      enabledCashflowValue("hkSharePlan", hkSharePlan) +
+      customOutflow;
     const monthlySurplus = actualIncome - spendingActual - assetOutflow;
     const fixedRatio = actualIncome ? fixedSpending / actualIncome : 0;
     const savingsRate = actualIncome ? assetOutflow / actualIncome : 0;
@@ -460,6 +528,7 @@ export default function FinanceDashboard() {
       aShareValue,
       usShareValue,
       hkShareValue,
+      cashflowSpendingPlan,
       totalSavings,
       totalDebt,
       totalAssets,
@@ -492,25 +561,35 @@ export default function FinanceDashboard() {
     aSharePlan,
     usSharePlan,
     hkSharePlan,
+    cashflowHiddenBuiltinIds,
+    cashflowCustomItems,
   ]);
 
   const forecast = useMemo(() => {
     const rows: Array<{ month: string; inflow: number; outflow: number; balance: number }> = [];
     let balance = totals.accountTotal;
-    const outflow = totals.spendingPlan + totals.assetOutflow;
+    const customInflow = cashflowCustomItems
+      .filter((item) => item.direction === "inflow")
+      .reduce((sum, item) => sum + item.amount, 0);
+    const inflow = (cashflowHiddenBuiltinIds.includes("salary") ? 0 : salary) + customInflow;
+    const outflow = totals.cashflowSpendingPlan + totals.assetOutflow;
     for (let index = 0; index < 6; index += 1) {
-      balance += salary - outflow;
+      balance += inflow - outflow;
       rows.push({
         month: `${6 + index}月`,
-        inflow: salary,
+        inflow,
         outflow,
         balance,
       });
     }
     return rows;
-  }, [salary, totals.accountTotal, totals.assetOutflow, totals.spendingPlan]);
+  }, [cashflowCustomItems, cashflowHiddenBuiltinIds, salary, totals.accountTotal, totals.assetOutflow, totals.cashflowSpendingPlan]);
 
   const cashflowEvents = useMemo(() => {
+    const customInflow = cashflowCustomItems
+      .filter((item) => item.direction === "inflow")
+      .reduce((sum, item) => sum + item.amount, 0);
+    const inflow = (cashflowHiddenBuiltinIds.includes("salary") ? 0 : salary) + customInflow;
     const rawEvents = [
       ...reminders.map((item) => ({
         date: item.date,
@@ -519,7 +598,7 @@ export default function FinanceDashboard() {
         outflow: item.kind === "定存" ? 0 : item.amount,
         kind: item.kind,
       })),
-      { date: "2026-07-10", item: "工资到账", inflow: salary, outflow: 0, kind: "收入" },
+      { date: "2026-07-10", item: "现金流入", inflow, outflow: 0, kind: "收入" },
       { date: "2026-07-15", item: "月度资产分配", inflow: 0, outflow: totals.assetOutflow, kind: "分配" },
     ].sort((a, b) => a.date.localeCompare(b.date));
     return rawEvents.reduce<{ balance: number; rows: CashflowEvent[] }>(
@@ -532,7 +611,7 @@ export default function FinanceDashboard() {
       },
       { balance: totals.accountTotal, rows: [] },
     ).rows;
-  }, [reminders, salary, totals.accountTotal, totals.assetOutflow]);
+  }, [cashflowCustomItems, cashflowHiddenBuiltinIds, reminders, salary, totals.accountTotal, totals.assetOutflow]);
 
   function updateAccount(id: string, patch: Partial<Account>) {
     setAccounts((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -613,6 +692,30 @@ export default function FinanceDashboard() {
 
   function setOtherIncome(value: number) {
     updateMonthRecord(selectedMonth, { otherIncome: value });
+  }
+
+  function addCashflowCustomItem() {
+    setCashflowCustomItems((items) => [
+      ...items,
+      {
+        id: `cashflow-${Date.now()}`,
+        name: `新增现金流 ${items.length + 1}`,
+        amount: 0,
+        direction: "outflow",
+      },
+    ]);
+  }
+
+  function updateCashflowCustomItem(id: string, patch: Partial<CashflowCustomItem>) {
+    setCashflowCustomItems((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  function deleteCashflowCustomItem(id: string) {
+    setCashflowCustomItems((items) => items.filter((item) => item.id !== id));
+  }
+
+  function deleteCashflowBuiltinItem(id: CashflowBuiltinId) {
+    setCashflowHiddenBuiltinIds((items) => (items.includes(id) ? items : [...items, id]));
   }
 
   function updateBudget(id: string, patch: Partial<Budget>) {
@@ -829,15 +932,110 @@ export default function FinanceDashboard() {
     { label: "必须支出", value: totals.requiredSpending, color: palette[1] },
     { label: "可取消支出", value: Math.max(totals.spendingPlan - totals.requiredSpending, 0), color: palette[2] },
   ];
-  const outflowData = [
-    { label: "生活支出", value: totals.spendingPlan, color: palette[4] },
-    { label: "旅游储蓄", value: travelSaving, color: palette[1] },
-    { label: "学习储蓄", value: learningSaving, color: palette[3] },
-    { label: "应急金", value: emergencyFund, color: palette[2] },
-    { label: "A股计划", value: aSharePlan, color: palette[0] },
-    { label: "美股计划", value: usSharePlan, color: palette[6] },
-    { label: "港股计划", value: hkSharePlan, color: palette[7] },
+  const cashflowBuiltinRows: CashflowTableRow[] = [
+    {
+      id: "builtin-salary",
+      builtinId: "salary",
+      name: "工资流入",
+      amount: salary,
+      direction: "inflow",
+      source: "计入预测",
+      onAmountChange: setSalary,
+      onDelete: () => deleteCashflowBuiltinItem("salary"),
+    },
+    {
+      id: "builtin-spending-plan",
+      builtinId: "spendingPlan",
+      name: "生活支出预算",
+      amount: totals.spendingPlan,
+      direction: "outflow",
+      source: "来自预算表",
+      readonlyAmount: true,
+      onDelete: () => deleteCashflowBuiltinItem("spendingPlan"),
+    },
+    {
+      id: "builtin-travel-saving",
+      builtinId: "travelSaving",
+      name: "旅游储蓄",
+      amount: travelSaving,
+      direction: "outflow",
+      source: "现金流出",
+      onAmountChange: setTravelSaving,
+      onDelete: () => deleteCashflowBuiltinItem("travelSaving"),
+    },
+    {
+      id: "builtin-learning-saving",
+      builtinId: "learningSaving",
+      name: "学习储蓄",
+      amount: learningSaving,
+      direction: "outflow",
+      source: "现金流出",
+      onAmountChange: setLearningSaving,
+      onDelete: () => deleteCashflowBuiltinItem("learningSaving"),
+    },
+    {
+      id: "builtin-emergency-fund",
+      builtinId: "emergencyFund",
+      name: "应急金投入",
+      amount: emergencyFund,
+      direction: "outflow",
+      source: "现金流出",
+      onAmountChange: setEmergencyFund,
+      onDelete: () => deleteCashflowBuiltinItem("emergencyFund"),
+    },
+    {
+      id: "builtin-ashare-plan",
+      builtinId: "aSharePlan",
+      name: "A股计划",
+      amount: aSharePlan,
+      direction: "outflow",
+      source: "现金流出",
+      onAmountChange: setASharePlan,
+      onDelete: () => deleteCashflowBuiltinItem("aSharePlan"),
+    },
+    {
+      id: "builtin-usshare-plan",
+      builtinId: "usSharePlan",
+      name: "美股计划",
+      amount: usSharePlan,
+      direction: "outflow",
+      source: "现金流出",
+      onAmountChange: setUsSharePlan,
+      onDelete: () => deleteCashflowBuiltinItem("usSharePlan"),
+    },
+    {
+      id: "builtin-hkshare-plan",
+      builtinId: "hkSharePlan",
+      name: "港股计划",
+      amount: hkSharePlan,
+      direction: "outflow",
+      source: "现金流出",
+      onAmountChange: setHkSharePlan,
+      onDelete: () => deleteCashflowBuiltinItem("hkSharePlan"),
+    },
   ];
+  const cashflowRows: CashflowTableRow[] = [
+    ...cashflowBuiltinRows.filter((item) => !item.builtinId || !cashflowHiddenBuiltinIds.includes(item.builtinId)),
+    ...cashflowCustomItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      amount: item.amount,
+      direction: item.direction,
+      source: "自定义",
+      onNameChange: (value: string) => updateCashflowCustomItem(item.id, { name: value }),
+      onAmountChange: (value: number) => updateCashflowCustomItem(item.id, { amount: value }),
+      onDirectionChange: (value: CashflowDirection) => updateCashflowCustomItem(item.id, { direction: value }),
+      onDelete: () => deleteCashflowCustomItem(item.id),
+    })),
+  ];
+  const outflowData = cashflowRows
+    .filter((item) => item.direction === "outflow")
+    .map((item, index) => ({
+      label: item.name,
+      value: item.amount,
+      color: palette[(index + 4) % palette.length],
+      detail: item.source,
+    }));
   const assetStructureData = [
     { label: "账户余额", value: totals.accountTotal, color: palette[0] },
     { label: "投资市值", value: totals.investmentValue, color: palette[1] },
@@ -1198,21 +1396,10 @@ export default function FinanceDashboard() {
                         <>
                           <EditableCashflowInputsTable
                             accountTotal={totals.accountTotal}
-                            aSharePlan={aSharePlan}
-                            emergencyFund={emergencyFund}
-                            hkSharePlan={hkSharePlan}
-                            learningSaving={learningSaving}
-                            salary={salary}
-                            setASharePlan={setASharePlan}
-                            setEmergencyFund={setEmergencyFund}
-                            setHkSharePlan={setHkSharePlan}
-                            setLearningSaving={setLearningSaving}
-                            setSalary={setSalary}
-                            setTravelSaving={setTravelSaving}
-                            setUSSharePlan={setUsSharePlan}
-                            spendingPlan={totals.spendingPlan}
-                            travelSaving={travelSaving}
-                            usSharePlan={usSharePlan}
+                            addCashflowCustomItem={addCashflowCustomItem}
+                            monthlyInflow={forecast[0]?.inflow ?? 0}
+                            monthlyOutflow={totals.cashflowSpendingPlan + totals.assetOutflow}
+                            rows={cashflowRows}
                           />
                           <EditableReminderTable
                             reminders={reminders}
@@ -1227,7 +1414,7 @@ export default function FinanceDashboard() {
                           <ChartPanel title="余额趋势" summary="未来 6 个月">
                             <LineChart data={cashflowLine} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="月度流出压力" summary={`每月流出 ${money(totals.spendingPlan + totals.assetOutflow)}`}>
+                          <ChartPanel title="月度流出压力" summary={`每月流出 ${money(totals.cashflowSpendingPlan + totals.assetOutflow)}`}>
                             <VerticalBarChart data={cashflowOutflowBars} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="现金瀑布" summary="本月资金变化">
@@ -1969,43 +2156,24 @@ function EditableMonthlyIncomeTable({
 
 function EditableCashflowInputsTable({
   accountTotal,
-  salary,
-  setSalary,
-  spendingPlan,
-  travelSaving,
-  setTravelSaving,
-  learningSaving,
-  setLearningSaving,
-  emergencyFund,
-  setEmergencyFund,
-  aSharePlan,
-  setASharePlan,
-  usSharePlan,
-  setUSSharePlan,
-  hkSharePlan,
-  setHkSharePlan,
+  addCashflowCustomItem,
+  monthlyInflow,
+  monthlyOutflow,
+  rows,
 }: {
   accountTotal: number;
-  salary: number;
-  setSalary: (value: number) => void;
-  spendingPlan: number;
-  travelSaving: number;
-  setTravelSaving: (value: number) => void;
-  learningSaving: number;
-  setLearningSaving: (value: number) => void;
-  emergencyFund: number;
-  setEmergencyFund: (value: number) => void;
-  aSharePlan: number;
-  setASharePlan: (value: number) => void;
-  usSharePlan: number;
-  setUSSharePlan: (value: number) => void;
-  hkSharePlan: number;
-  setHkSharePlan: (value: number) => void;
+  addCashflowCustomItem: () => void;
+  monthlyInflow: number;
+  monthlyOutflow: number;
+  rows: CashflowTableRow[];
 }) {
-  const totalOutflow = spendingPlan + travelSaving + learningSaving + emergencyFund + aSharePlan + usSharePlan + hkSharePlan;
   return (
     <>
-      <TableToolbar title="现金流参数底表" meta={`月流出 ${money(totalOutflow)} / 期初现金 ${money(accountTotal)}`} />
+      <TableToolbar
+        title="现金流参数底表"
+        meta={`月流入 ${money(monthlyInflow)} / 月流出 ${money(monthlyOutflow)} / 期初现金 ${money(accountTotal)}`}
+        action={<button className="secondary-button" type="button" onClick={addCashflowCustomItem}>新增现金流</button>}
+      />
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table">
           <thead>
@@ -2013,49 +2181,50 @@ function EditableCashflowInputsTable({
               <th>项目</th>
               <th>数值</th>
               <th>口径</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>工资流入</td>
-              <td><TableNumberInput ariaLabel="工资流入" value={salary} onChange={setSalary} /></td>
-              <td>计入预测</td>
-            </tr>
-            <tr>
-              <td>生活支出预算</td>
-              <td className="calculated-cell">{money(spendingPlan)}</td>
-              <td>来自预算表</td>
-            </tr>
-            <tr>
-              <td>旅游储蓄</td>
-              <td><TableNumberInput ariaLabel="旅游储蓄" value={travelSaving} onChange={setTravelSaving} /></td>
-              <td>现金流出</td>
-            </tr>
-            <tr>
-              <td>学习储蓄</td>
-              <td><TableNumberInput ariaLabel="学习储蓄" value={learningSaving} onChange={setLearningSaving} /></td>
-              <td>现金流出</td>
-            </tr>
-            <tr>
-              <td>应急金投入</td>
-              <td><TableNumberInput ariaLabel="应急金投入" value={emergencyFund} onChange={setEmergencyFund} /></td>
-              <td>现金流出</td>
-            </tr>
-            <tr>
-              <td>A股计划</td>
-              <td><TableNumberInput ariaLabel="A股计划" value={aSharePlan} onChange={setASharePlan} /></td>
-              <td>现金流出</td>
-            </tr>
-            <tr>
-              <td>美股计划</td>
-              <td><TableNumberInput ariaLabel="美股计划" value={usSharePlan} onChange={setUSSharePlan} /></td>
-              <td>现金流出</td>
-            </tr>
-            <tr>
-              <td>港股计划</td>
-              <td><TableNumberInput ariaLabel="港股计划" value={hkSharePlan} onChange={setHkSharePlan} /></td>
-              <td>现金流出</td>
-            </tr>
+            {rows.length === 0 && (
+              <tr>
+                <td className="calculated-cell" colSpan={4}>暂无现金流行，点击新增现金流开始录入。</td>
+              </tr>
+            )}
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td>
+                  {row.onNameChange ? (
+                    <TableTextInput ariaLabel={`${row.name} 项目`} value={row.name} onChange={row.onNameChange} />
+                  ) : (
+                    row.name
+                  )}
+                </td>
+                <td>
+                  {row.readonlyAmount || !row.onAmountChange ? (
+                    <span className="calculated-cell">{money(row.amount)}</span>
+                  ) : (
+                    <TableNumberInput ariaLabel={`${row.name} 数值`} value={row.amount} onChange={row.onAmountChange} />
+                  )}
+                </td>
+                <td>
+                  {row.onDirectionChange ? (
+                    <TableSelect
+                      ariaLabel={`${row.name} 口径`}
+                      options={["现金流出", "计入预测"]}
+                      value={row.direction === "inflow" ? "计入预测" : "现金流出"}
+                      onChange={(value) => row.onDirectionChange?.(value === "计入预测" ? "inflow" : "outflow")}
+                    />
+                  ) : (
+                    row.source
+                  )}
+                </td>
+                <td>
+                  <button className="danger-button compact" type="button" onClick={row.onDelete}>
+                    删除
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
