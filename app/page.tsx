@@ -563,6 +563,46 @@ export default function FinanceDashboard() {
     );
   }
 
+  function addMonthRecord() {
+    setMonthlyRecords((records) => {
+      const sortedRecords = [...records].sort((a, b) => a.id.localeCompare(b.id));
+      const lastRecord = sortedRecords[sortedRecords.length - 1] ?? initialMonthRecords[0];
+      const [yearText, monthText] = lastRecord.id.split("-");
+      const baseDate = new Date(Number(yearText), Number(monthText) - 1, 1);
+      const nextDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 1);
+      const id = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
+      const label = `${nextDate.getFullYear()}年${nextDate.getMonth() + 1}月`;
+      const templateBudgets = lastRecord.budgets.length > 0 ? lastRecord.budgets : initialBudgets;
+      const nextRecord: MonthRecord = {
+        id,
+        label,
+        salary: lastRecord.salary,
+        payday: lastRecord.payday,
+        stockIncome: 0,
+        otherIncome: 0,
+        budgets: templateBudgets.map((item) => ({ ...item, actual: 0 })),
+      };
+
+      setSelectedMonth(id);
+      return [...records, nextRecord].sort((a, b) => a.id.localeCompare(b.id));
+    });
+  }
+
+  function deleteMonthRecord(monthId: string) {
+    setMonthlyRecords((records) => {
+      if (records.length <= 1) return records;
+
+      const sortedRecords = [...records].sort((a, b) => a.id.localeCompare(b.id));
+      const deletedIndex = sortedRecords.findIndex((record) => record.id === monthId);
+      const nextRecords = sortedRecords.filter((record) => record.id !== monthId);
+      if (monthId === selectedMonth) {
+        const nextSelected = nextRecords[Math.max(0, deletedIndex - 1)] ?? nextRecords[0];
+        setSelectedMonth(nextSelected.id);
+      }
+      return nextRecords;
+    });
+  }
+
   function setSalary(value: number) {
     updateMonthRecord(selectedMonth, { salary: value });
   }
@@ -1094,6 +1134,8 @@ export default function FinanceDashboard() {
                           records={monthlyRecords}
                           selectedMonth={selectedMonth}
                           onSelect={setSelectedMonth}
+                          addMonthRecord={addMonthRecord}
+                          deleteMonthRecord={deleteMonthRecord}
                           updateMonthRecord={updateMonthRecord}
                         />
                       }
@@ -1805,17 +1847,25 @@ function EditableMonthlyIncomeTable({
   records,
   selectedMonth,
   onSelect,
+  addMonthRecord,
+  deleteMonthRecord,
   updateMonthRecord,
 }: {
   records: MonthRecord[];
   selectedMonth: string;
   onSelect: (month: string) => void;
+  addMonthRecord: () => void;
+  deleteMonthRecord: (monthId: string) => void;
   updateMonthRecord: (monthId: string, patch: Partial<Omit<MonthRecord, "id" | "label" | "budgets">>) => void;
 }) {
   const active = records.find((record) => record.id === selectedMonth) ?? records[0];
   return (
     <>
-      <TableToolbar title="月度收入底表" meta={`当前 ${active.label} / 实际收入 ${money(recordIncome(active))}`} />
+      <TableToolbar
+        title="月度收入底表"
+        meta={`${records.length} 个月 / 当前 ${active.label} / 实际收入 ${money(recordIncome(active))}`}
+        action={<button className="secondary-button" type="button" onClick={addMonthRecord}>新增月份</button>}
+      />
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table">
           <thead>
@@ -1827,6 +1877,7 @@ function EditableMonthlyIncomeTable({
               <th>其他收入</th>
               <th>实际收入</th>
               <th>状态</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -1866,6 +1917,16 @@ function EditableMonthlyIncomeTable({
                 </td>
                 <td className="calculated-cell">{money(recordIncome(record))}</td>
                 <td><span className={record.id === selectedMonth ? "pill good" : "pill"}>{record.id === selectedMonth ? "当前" : "可选"}</span></td>
+                <td>
+                  <button
+                    className="danger-button compact"
+                    disabled={records.length <= 1}
+                    type="button"
+                    onClick={() => deleteMonthRecord(record.id)}
+                  >
+                    删除
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
