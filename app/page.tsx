@@ -323,12 +323,33 @@ function shortMonth(label: string) {
   return label.replace("2026年", "").replace("月", "月");
 }
 
+function addMonthsToId(monthId: string, offset: number) {
+  const [yearText, monthText] = monthId.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return monthId;
+  const next = new Date(Date.UTC(year, month - 1 + offset, 1));
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabelFromId(monthId: string) {
+  const [yearText, monthText] = monthId.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return monthId;
+  return `${year}年${month}月`;
+}
+
 function recordIncome(record: MonthRecord) {
   return record.salary + Math.max(record.stockIncome, 0) + record.otherIncome;
 }
 
 function recordSpendingActual(record: MonthRecord) {
   return record.budgets.reduce((sum, item) => sum + item.actual, 0);
+}
+
+function recordSpendingPlan(record: MonthRecord) {
+  return record.budgets.reduce((sum, item) => sum + item.plan, 0);
 }
 
 function isInvestmentReserveAccount(account: Account) {
@@ -696,19 +717,32 @@ export default function FinanceDashboard() {
     const customInflow = cashflowCustomItems
       .filter((item) => item.direction === "inflow")
       .reduce((sum, item) => sum + item.amount, 0);
-    const inflow = (cashflowHiddenBuiltinIds.includes("salary") ? 0 : salary) + customInflow;
-    const outflow = totals.cashflowSpendingPlan + totals.assetOutflow;
     for (let index = 0; index < 6; index += 1) {
+      const forecastMonthId = addMonthsToId(selectedMonth, index);
+      const forecastRecord = monthlyRecords.find((item) => item.id === forecastMonthId);
+      const forecastSalary = forecastRecord?.salary ?? salary;
+      const forecastSpendingPlan = forecastRecord ? recordSpendingPlan(forecastRecord) : totals.spendingPlan;
+      const inflow = (cashflowHiddenBuiltinIds.includes("salary") ? 0 : forecastSalary) + customInflow;
+      const outflow = (cashflowHiddenBuiltinIds.includes("spendingPlan") ? 0 : forecastSpendingPlan) + totals.assetOutflow;
       balance += inflow - outflow;
       rows.push({
-        month: `${6 + index}月`,
+        month: shortMonth(forecastRecord?.label ?? monthLabelFromId(forecastMonthId)),
         inflow,
         outflow,
         balance,
       });
     }
     return rows;
-  }, [cashflowCustomItems, cashflowHiddenBuiltinIds, salary, totals.accountTotal, totals.assetOutflow, totals.cashflowSpendingPlan]);
+  }, [
+    cashflowCustomItems,
+    cashflowHiddenBuiltinIds,
+    monthlyRecords,
+    salary,
+    selectedMonth,
+    totals.accountTotal,
+    totals.assetOutflow,
+    totals.spendingPlan,
+  ]);
 
   const cashflowEvents = useMemo(() => {
     const customInflow = cashflowCustomItems
@@ -1186,7 +1220,7 @@ export default function FinanceDashboard() {
       name: "生活支出预算",
       amount: totals.spendingPlan,
       direction: "outflow",
-      source: "来自预算表",
+      source: `${activeMonth.label}预算表动态汇总`,
       readonlyAmount: true,
       onDelete: () => deleteCashflowBuiltinItem("spendingPlan"),
     },
@@ -1646,6 +1680,13 @@ export default function FinanceDashboard() {
                     <DataChartLayout
                       data={
                         <>
+                          <MonthSelector
+                            records={monthlyRecords}
+                            selectedMonth={selectedMonth}
+                            onAddMonth={addMonthRecord}
+                            onChange={setSelectedMonth}
+                            onDeleteSelectedMonth={() => deleteMonthRecord(selectedMonth)}
+                          />
                           <EditableCashflowInputsTable
                             accountTotal={totals.accountTotal}
                             addCashflowCustomItem={addCashflowCustomItem}
