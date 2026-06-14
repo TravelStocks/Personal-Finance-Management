@@ -13643,7 +13643,7 @@ function FinanceDashboard() {
     totals.usShareInvestmentReserve > 0 ? `\u7F8E\u80A1\u5F85\u6295 ${money(totals.usShareInvestmentReserve)}` : "",
     totals.accountSpecialSavings > 0 ? `\u4E13\u9879 ${money(totals.accountSpecialSavings)}` : ""
   ].filter(Boolean).join(" / ");
-  const manualAssetDetail = balanceAssets.filter((item) => item.amount > 0).slice(0, 3).map((item) => `${item.name.trim() || "\u672A\u547D\u540D\u8D44\u4EA7"} ${money(item.amount)}`).join(" / ") || "\u8D44\u4EA7\u8D1F\u503A\u8868\u8865\u5F55\u8D44\u4EA7";
+  const manualAssetDetail = balanceAssets.filter((item) => item.amount > 0).slice(0, 3).map((item) => `${item.name.trim() || "\u672A\u547D\u540D\u8D44\u4EA7"} ${money(item.amount)}`).join(" / ") || "\u6765\u81EA\u8D44\u4EA7\u8D1F\u503A\u8868\u8D44\u4EA7\u9879";
   const totalAssetBreakdown = [
     {
       label: "\u8D26\u6237\u73B0\u91D1",
@@ -13675,15 +13675,13 @@ function FinanceDashboard() {
       detail: specialSavingsDetail,
       color: palette[3]
     },
+    {
+      label: "\u5B9E\u7269\u8D44\u4EA7",
+      value: totals.manualAssetTotal,
+      detail: manualAssetDetail,
+      color: palette[5]
+    },
     familyFundBreakdown,
-    ...totals.manualAssetTotal > 0 ? [
-      {
-        label: "\u8865\u5F55\u8D44\u4EA7",
-        value: totals.manualAssetTotal,
-        detail: manualAssetDetail,
-        color: palette[5]
-      }
-    ] : [],
     {
       label: "\u5E94\u6025\u91D1",
       value: emergencyFund,
@@ -14161,7 +14159,7 @@ function FinanceDashboard() {
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "total-assets-main", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5F53\u524D\u603B\u8D44\u4EA7" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(totals.totalAssets) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u3001\u5B9E\u7269\u8D44\u4EA7\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "total-assets-breakdown", "aria-label": "\u603B\u8D44\u4EA7\u8D44\u91D1\u5206\u5E03", children: totalAssetBreakdown.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
             "div",

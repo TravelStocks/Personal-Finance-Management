@@ -1253,7 +1253,7 @@ export default function FinanceDashboard() {
       .filter((item) => item.amount > 0)
       .slice(0, 3)
       .map((item) => `${item.name.trim() || "未命名资产"} ${money(item.amount)}`)
-      .join(" / ") || "资产负债表补录资产";
+      .join(" / ") || "来自资产负债表资产项";
   const totalAssetBreakdown: Array<{ label: string; value: number; detail: string; color: string; className?: string }> = [
     {
       label: "账户现金",
@@ -1285,17 +1285,13 @@ export default function FinanceDashboard() {
       detail: specialSavingsDetail,
       color: palette[3],
     },
+    {
+      label: "实物资产",
+      value: totals.manualAssetTotal,
+      detail: manualAssetDetail,
+      color: palette[5],
+    },
     familyFundBreakdown,
-    ...(totals.manualAssetTotal > 0
-      ? [
-          {
-            label: "补录资产",
-            value: totals.manualAssetTotal,
-            detail: manualAssetDetail,
-            color: palette[5],
-          },
-        ]
-      : []),
     {
       label: "应急金",
       value: emergencyFund,
@@ -1811,7 +1807,7 @@ export default function FinanceDashboard() {
             <div className="total-assets-main">
               <span>当前总资产</span>
               <strong>{money(totals.totalAssets)}</strong>
-              <small>账户现金、A股待投、美股待投、已投资市值、个人专项储蓄和应急金合计；家庭及伴侣储蓄单列，不计入个人总资产。</small>
+              <small>账户现金、A股待投、美股待投、已投资市值、个人专项储蓄、实物资产和应急金合计；家庭及伴侣储蓄单列，不计入个人总资产。</small>
             </div>
             <div className="total-assets-breakdown" aria-label="总资产资金分布">
               {totalAssetBreakdown.map((item) => (
