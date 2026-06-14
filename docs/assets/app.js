@@ -13970,13 +13970,13 @@ function FinanceDashboard() {
       onDelete: () => deleteCashflowCustomItem(item.id)
     }))
   ];
-  const outflowData = cashflowRows.filter((item) => item.direction === "outflow" && !item.summaryOnly).map((item, index) => ({
+  const outflowData = cashflowRows.filter((item) => item.direction === "outflow" && !item.summaryOnly).map((item, index) => ({ item, index })).sort((left, right) => right.item.amount - left.item.amount || left.index - right.index).map(({ item }, index) => ({
     label: item.name,
     value: item.amount,
     color: palette[(index + 4) % palette.length],
     detail: item.source
   }));
-  const assetStructureData = totalAssetBreakdown.map((item) => ({
+  const assetStructureData = totalAssetBreakdown.map((item, index) => ({ item, index })).sort((left, right) => right.item.value - left.item.value || left.index - right.index).map(({ item }) => ({
     label: item.label,
     value: item.value,
     color: item.color
