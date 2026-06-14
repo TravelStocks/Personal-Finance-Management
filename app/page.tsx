@@ -264,6 +264,7 @@ const cashflowBuiltinIds: CashflowBuiltinId[] = [
   "hkSharePlan",
 ];
 
+const reportStartMonthId = "2026-06";
 const financeStorageKey = "personal-finance-management-data-v2";
 
 const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
@@ -893,19 +894,22 @@ export default function FinanceDashboard() {
     { label: "炒股月结", value: Math.max(stockIncome, 0), color: palette[1] },
     { label: "其他收入", value: otherIncome, color: palette[3] },
   ];
-  const monthlyIncomeTrend = monthlyRecords.map((record, index) => ({
+  const reportMonthRecords = monthlyRecords
+    .filter((record) => record.id >= reportStartMonthId)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const monthlyIncomeTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
     value: recordIncome(record),
     color: record.id === selectedMonth ? palette[0] : palette[index % palette.length],
     detail: record.id === selectedMonth ? "当前月" : "月度",
   }));
-  const monthlySpendingTrend = monthlyRecords.map((record, index) => ({
+  const monthlySpendingTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
     value: recordSpendingActual(record),
     color: record.id === selectedMonth ? palette[4] : palette[index % palette.length],
     detail: record.id === selectedMonth ? "当前月" : "月度",
   }));
-  const monthlySurplusTrend = monthlyRecords.map((record, index) => ({
+  const monthlySurplusTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
     value: Math.max(recordIncome(record) - recordSpendingActual(record), 0),
     color: record.id === selectedMonth ? palette[1] : palette[index % palette.length],
@@ -1095,20 +1099,20 @@ export default function FinanceDashboard() {
   const totalGoalCurrent = goals.reduce((sum, item) => sum + item.current, 0);
   const totalGoalTarget = goals.reduce((sum, item) => sum + item.target, 0);
   const totalGoalMonthlyInput = goals.reduce((sum, item) => sum + item.monthly, 0);
-  const selectedMonthIndex = Math.max(0, monthlyRecords.findIndex((item) => item.id === selectedMonth));
-  const monthlyGoalInputTrend = monthlyRecords.map((record, index) => ({
+  const selectedMonthIndex = Math.max(0, reportMonthRecords.findIndex((item) => item.id === selectedMonth));
+  const monthlyGoalInputTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
     value: totalGoalMonthlyInput,
     color: record.id === selectedMonth ? palette[1] : palette[index % palette.length],
     detail: record.id === selectedMonth ? "当前月投入" : "预计投入",
   }));
-  const monthlyGoalPressureTrend = monthlyRecords.map((record, index) => ({
+  const monthlyGoalPressureTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
     value: recordSpendingActual(record) + totalGoalMonthlyInput,
     color: record.id === selectedMonth ? palette[2] : palette[index % palette.length],
     detail: `支出 ${money(recordSpendingActual(record))}`,
   }));
-  const monthlyGoalBalanceTrend = monthlyRecords.map((record, index) => ({
+  const monthlyGoalBalanceTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
     value: Math.min(totalGoalTarget, totalGoalCurrent + totalGoalMonthlyInput * Math.max(0, index - selectedMonthIndex)),
   }));
@@ -1285,7 +1289,7 @@ export default function FinanceDashboard() {
               <ChartPanel title="未来现金流日历" summary="关键流入流出">
                 <CashflowCalendar events={cashflowEvents} />
               </ChartPanel>
-              <ChartPanel title="风险矩阵" summary="影响 × 紧迫">
+              <ChartPanel title="风险矩阵" summary="影响 × 紧迫" className="wide risk-panel">
                 <RiskMatrix data={riskMatrixData} />
               </ChartPanel>
               <ChartPanel title="资金分配流向" summary={`分配 ${money(totals.assetOutflow)}`}>
@@ -1930,9 +1934,9 @@ function MonthSelector({
   );
 }
 
-function ChartPanel({ title, summary, children }: { title: string; summary: string; children: ReactNode }) {
+function ChartPanel({ title, summary, children, className = "" }: { title: string; summary: string; children: ReactNode; className?: string }) {
   return (
-    <article className="chart-panel">
+    <article className={`chart-panel ${className}`.trim()}>
       <div className="chart-head">
         <strong>{title}</strong>
         <span>{summary}</span>
@@ -3055,8 +3059,8 @@ function WaterfallChart({ data }: { data: WaterfallDatum[] }) {
 }
 
 function RiskMatrix({ data }: { data: MatrixPoint[] }) {
-  const size = 220;
-  const pad = 28;
+  const size = 320;
+  const pad = 44;
   return (
     <div className="matrix-layout">
       <svg className="risk-matrix" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="风险矩阵">
@@ -3073,8 +3077,8 @@ function RiskMatrix({ data }: { data: MatrixPoint[] }) {
           const y = size - pad - (clamp(item.y) / 100) * (size - pad * 2);
           return (
             <g key={item.label}>
-              <circle cx={x} cy={y} fill={item.color ?? palette[0]} r="6" />
-              <text className="matrix-point-label" x={x} y={y - 9}>{item.label}</text>
+              <circle cx={x} cy={y} fill={item.color ?? palette[0]} r="8" />
+              <text className="matrix-point-label" x={x} y={y - 13}>{item.label}</text>
             </g>
           );
         })}

@@ -477,6 +477,14 @@ select {
   gap: 12px;
 }
 
+.chart-panel.wide {
+  grid-column: span 2;
+}
+
+.chart-panel.risk-panel {
+  min-height: 360px;
+}
+
 .chart-head {
   display: flex;
   align-items: flex-start;
@@ -725,6 +733,10 @@ select {
   display: block;
 }
 
+.risk-panel .risk-matrix {
+  min-height: 292px;
+}
+
 .axis-line {
   stroke: #b9c7d8;
   stroke-width: 1;
@@ -746,7 +758,15 @@ select {
 
 .matrix-point-label {
   fill: var(--ink);
-  font-size: 9px;
+  font-size: 10px;
+}
+
+.risk-panel .matrix-axis {
+  font-size: 12px;
+}
+
+.risk-panel .matrix-point-label {
+  font-size: 11px;
 }
 
 .matrix-zone.low {
@@ -1287,6 +1307,10 @@ th {
 
   .chart-panel {
     min-height: 0;
+  }
+
+  .chart-panel.wide {
+    grid-column: auto;
   }
 
   .donut-layout {
