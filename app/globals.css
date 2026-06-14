@@ -218,7 +218,7 @@ select {
 
 .total-assets-hero {
   display: grid;
-  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.7fr);
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 2fr);
   gap: 18px;
   margin-bottom: 12px;
   padding: 18px 20px;
@@ -258,7 +258,7 @@ select {
 
 .total-assets-breakdown {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
   gap: 12px;
   align-items: stretch;
 }

@@ -193,11 +193,16 @@ const palette = ["#1f5fbf", "#07835f", "#b7791f", "#6852bd", "#c53030", "#2b6cb0
 const today = new Date("2026-06-14T00:00:00+08:00");
 
 const initialAccounts: Account[] = [
-  { id: "icbc2616", name: "工行 2616", type: "银行卡", balance: 15000, purpose: "工资主账户", liquid: true },
-  { id: "alipay-a", name: "支付宝 A", type: "支付宝", balance: 3200, purpose: "旅游/余额宝", liquid: true },
-  { id: "alipay-b", name: "支付宝 B", type: "支付宝", balance: 3800, purpose: "投资理财", liquid: true },
-  { id: "wechat-a", name: "微信 A", type: "微信", balance: 600, purpose: "日常零钱", liquid: true },
-  { id: "cash", name: "现金", type: "现金", balance: 900, purpose: "备用", liquid: true },
+  { id: "icbc2616", name: "工行 2616", type: "银行卡", balance: 1479.79, purpose: "工资主账户", liquid: true },
+  { id: "yu-ebao-3034", name: "余额宝 - 3034", type: "支付宝", balance: 6709.62, purpose: "旅游/余额宝", liquid: true },
+  { id: "yu-ebao-8514", name: "余额宝 - 8514", type: "支付宝", balance: 5000, purpose: "去A股", liquid: true },
+  { id: "wechat-3034", name: "微信 - 3034", type: "微信", balance: 0, purpose: "日常零钱", liquid: true },
+  { id: "cash", name: "现金", type: "现金", balance: 0, purpose: "备用", liquid: true },
+  { id: "wechat-8514", name: "微信 - 8514", type: "微信", balance: 0, purpose: "待填写用途", liquid: true },
+  { id: "icbc7768", name: "工行7768", type: "银行卡", balance: 0, purpose: "储蓄", liquid: true },
+  { id: "icbc8615", name: "工行8615", type: "银行卡", balance: 0, purpose: "储蓄", liquid: true },
+  { id: "boc8292", name: "中国银行8292", type: "银行卡", balance: 4389.26, purpose: "去美股", liquid: true },
+  { id: "cmb", name: "招商银行", type: "银行卡", balance: 0, purpose: "储蓄", liquid: true },
 ];
 
 const initialBudgets: Budget[] = [
@@ -352,9 +357,21 @@ function recordSpendingPlan(record: MonthRecord) {
   return record.budgets.reduce((sum, item) => sum + item.plan, 0);
 }
 
-function isInvestmentReserveAccount(account: Account) {
+function investmentReserveKind(account: Account) {
   const text = `${account.name} ${account.type} ${account.purpose}`.toLowerCase();
-  return text.includes("余额宝") || text.includes("投资理财") || text.includes("待投资") || text.includes("投资储蓄");
+  if ((text.includes("余额宝") && text.includes("8514")) || text.includes("a股")) return "aShare";
+  if (
+    (text.includes("中国银行") && text.includes("8292")) ||
+    text.includes("美股") ||
+    text.includes("us stock") ||
+    text.includes("us-stock")
+  )
+    return "usShare";
+  return null;
+}
+
+function isInvestmentReserveAccount(account: Account) {
+  return investmentReserveKind(account) !== null;
 }
 
 function isTravelSavingsAccount(account: Account) {
@@ -594,7 +611,13 @@ export default function FinanceDashboard() {
 
   const totals = useMemo(() => {
     const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
-    const investmentReserve = accounts.filter(isInvestmentReserveAccount).reduce((sum, item) => sum + item.balance, 0);
+    const aShareInvestmentReserve = accounts
+      .filter((item) => investmentReserveKind(item) === "aShare")
+      .reduce((sum, item) => sum + item.balance, 0);
+    const usShareInvestmentReserve = accounts
+      .filter((item) => investmentReserveKind(item) === "usShare")
+      .reduce((sum, item) => sum + item.balance, 0);
+    const investmentReserve = aShareInvestmentReserve + usShareInvestmentReserve;
     const accountTravelSavings = accounts.filter(isTravelSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
     const accountLearningSavings = accounts.filter(isLearningSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
     const accountSpecialSavings = accountTravelSavings + accountLearningSavings;
@@ -651,6 +674,8 @@ export default function FinanceDashboard() {
     return {
       accountTotal,
       operatingAccountTotal,
+      aShareInvestmentReserve,
+      usShareInvestmentReserve,
       investmentReserve,
       accountSpecialSavings,
       liquidAccountTotal,
@@ -1067,7 +1092,8 @@ export default function FinanceDashboard() {
     .filter(Boolean)
     .join(" / ");
   const accountCashDetail = [
-    totals.investmentReserve > 0 ? `待投资 ${money(totals.investmentReserve)}` : "",
+    totals.aShareInvestmentReserve > 0 ? `A股待投 ${money(totals.aShareInvestmentReserve)}` : "",
+    totals.usShareInvestmentReserve > 0 ? `美股待投 ${money(totals.usShareInvestmentReserve)}` : "",
     totals.accountSpecialSavings > 0 ? `专项 ${money(totals.accountSpecialSavings)}` : "",
   ]
     .filter(Boolean)
@@ -1080,10 +1106,16 @@ export default function FinanceDashboard() {
       color: palette[0],
     },
     {
-      label: "投资待分配储蓄",
-      value: totals.investmentReserve,
-      detail: "余额宝 / 投资理财账户，尚未进股市",
+      label: "A股待投储蓄",
+      value: totals.aShareInvestmentReserve,
+      detail: "余额宝-8514，尚未进A股",
       color: palette[6],
+    },
+    {
+      label: "美股待投储蓄",
+      value: totals.usShareInvestmentReserve,
+      detail: "中国银行8292，尚未进美股",
+      color: palette[5],
     },
     {
       label: "已投资市值",
@@ -1133,13 +1165,13 @@ export default function FinanceDashboard() {
     {
       title: "当前现金流",
       value: money(totals.accountTotal),
-      detail: `可动用 ${money(totals.liquidAccountTotal)} / 待投资 ${money(totals.investmentReserve)}`,
+      detail: `可动用 ${money(totals.liquidAccountTotal)} / A股待投 ${money(totals.aShareInvestmentReserve)} / 美股待投 ${money(totals.usShareInvestmentReserve)}`,
       tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? ("red" as Tone) : ("green" as Tone),
     },
     {
       title: "目前总储蓄",
       value: money(totals.accountTotal),
-      detail: `${accounts.length} 个账户 / 投资待分配 ${money(totals.investmentReserve)}`,
+      detail: `${accounts.length} 个账户 / A股待投 ${money(totals.aShareInvestmentReserve)} / 美股待投 ${money(totals.usShareInvestmentReserve)}`,
       tone: "green" as Tone,
     },
     {
@@ -1523,7 +1555,7 @@ export default function FinanceDashboard() {
             <div className="total-assets-main">
               <span>当前总资产</span>
               <strong>{money(totals.totalAssets)}</strong>
-              <small>账户现金、待投资储蓄、已投资市值、专项储蓄和应急金合计；负债另列。</small>
+              <small>账户现金、A股待投、美股待投、已投资市值、专项储蓄和应急金合计；负债另列。</small>
             </div>
             <div className="total-assets-breakdown" aria-label="总资产资金分布">
               {totalAssetBreakdown.map((item) => (
