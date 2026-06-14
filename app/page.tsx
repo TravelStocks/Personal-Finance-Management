@@ -840,30 +840,6 @@ export default function FinanceDashboard() {
 
   const overviewCards = [
     {
-      title: "目前总资产",
-      value: money(totals.totalAssets),
-      detail: `账户 ${money(totals.accountTotal)} / 投资 ${money(totals.investmentValue)}`,
-      tone: "blue" as Tone,
-    },
-    {
-      title: "目前总储蓄",
-      value: money(totals.totalSavings),
-      detail: `旅游 ${money(travelSaving)} / 学习 ${money(learningSaving)}`,
-      tone: "green" as Tone,
-    },
-    {
-      title: "目前总负债",
-      value: money(totals.totalDebt),
-      detail: `房子 ${money(houseDebt)} / 车子 ${money(carDebt)} / 其他 ${money(otherDebt)}`,
-      tone: totals.totalDebt > 0 ? ("red" as Tone) : ("green" as Tone),
-    },
-    {
-      title: "目前总应急",
-      value: money(emergencyFund),
-      detail: `覆盖 ${totals.emergencyCoverage.toFixed(1)} 个月 / 目标 ${emergencyMonths} 个月`,
-      tone: "amber" as Tone,
-    },
-    {
       title: "本月实际收入",
       value: money(actualIncome),
       detail: `${activeMonth.label} / 工资 ${money(salary)} / 炒股 ${money(Math.max(stockIncome, 0))}`,
@@ -876,16 +852,40 @@ export default function FinanceDashboard() {
       tone: totals.fixedRatio > 0.5 ? ("red" as Tone) : totals.fixedRatio >= 0.35 ? ("amber" as Tone) : ("green" as Tone),
     },
     {
+      title: "当前现金流",
+      value: money(totals.accountTotal),
+      detail: `可立即动用 ${money(totals.liquidAccountTotal)} / 当前账户余额`,
+      tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? ("red" as Tone) : ("green" as Tone),
+    },
+    {
+      title: "目前总资产",
+      value: money(totals.totalAssets),
+      detail: `账户 ${money(totals.accountTotal)} / 投资 ${money(totals.investmentValue)}`,
+      tone: "blue" as Tone,
+    },
+    {
       title: "资产分配",
       value: money(totals.assetOutflow),
       detail: `A股 ${money(totals.aShareValue)} / 美股 ${money(totals.usShareValue)} / 港股 ${money(totals.hkShareValue)}`,
       tone: "violet" as Tone,
     },
     {
-      title: "当前现金流",
-      value: money(totals.accountTotal),
-      detail: `可立即动用 ${money(totals.liquidAccountTotal)} / 当前账户余额`,
-      tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? ("red" as Tone) : ("green" as Tone),
+      title: "目前总储蓄",
+      value: money(totals.totalSavings),
+      detail: `旅游 ${money(travelSaving)} / 学习 ${money(learningSaving)}`,
+      tone: "green" as Tone,
+    },
+    {
+      title: "目前总应急",
+      value: money(emergencyFund),
+      detail: `覆盖 ${totals.emergencyCoverage.toFixed(1)} 个月 / 目标 ${emergencyMonths} 个月`,
+      tone: "amber" as Tone,
+    },
+    {
+      title: "目前总负债",
+      value: money(totals.totalDebt),
+      detail: `房子 ${money(houseDebt)} / 车子 ${money(carDebt)} / 其他 ${money(otherDebt)}`,
+      tone: totals.totalDebt > 0 ? ("red" as Tone) : ("green" as Tone),
     },
   ];
 
