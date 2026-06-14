@@ -78,6 +78,12 @@ type FutureCapability = {
   score: number;
 };
 
+type Liability = {
+  id: string;
+  name: string;
+  amount: number;
+};
+
 type CashflowDirection = "inflow" | "outflow";
 
 type CashflowBuiltinId =
@@ -125,9 +131,10 @@ type PersistedFinanceData = {
   emergencyFund: number;
   emergencyMonths: number;
   emergencyMonthlyNeed: number;
-  houseDebt: number;
-  carDebt: number;
-  otherDebt: number;
+  liabilities: Liability[];
+  houseDebt?: number;
+  carDebt?: number;
+  otherDebt?: number;
   reminders: Reminder[];
   goals: Goal[];
   futureCapabilities: FutureCapability[];
@@ -234,6 +241,12 @@ const initialHoldings: Holding[] = [
   { id: "hk", name: "港股组合", market: "港股", cost: 0, value: 0, currency: "HKD" },
 ];
 
+const initialLiabilities: Liability[] = [
+  { id: "house-debt", name: "房子负债", amount: 0 },
+  { id: "car-debt", name: "车子负债", amount: 0 },
+  { id: "other-debt", name: "其他负债", amount: 0 },
+];
+
 const initialReminders: Reminder[] = [
   { id: "rent-reminder", name: "房租提醒", date: "2026-06-30", amount: 1800, kind: "房租" },
   { id: "sub-reminder", name: "订阅服务检查", date: "2026-06-18", amount: 98, kind: "订阅" },
@@ -274,7 +287,7 @@ const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "accounts", title: "账户管理", desc: "银行卡、支付宝、微信、现金余额可编辑" },
   { id: "budget", title: "预算管理", desc: "分类预算和固定支出率" },
   { id: "investment", title: "投资管理", desc: "A股、美股、港股市值和投入计划" },
-  { id: "balance", title: "资产负债表", desc: "总资产、房子/车子/其他负债" },
+  { id: "balance", title: "资产负债表", desc: "总资产、负债项可增删编辑" },
   { id: "emergency", title: "应急金", desc: "目标月数、当前金额、覆盖月数" },
   { id: "reminders", title: "账单与提醒", desc: "提前 7 天提醒账单和到期事项" },
   { id: "goals", title: "目标管理", desc: "旅游、学习、大额支出目标" },
@@ -314,6 +327,33 @@ function recordIncome(record: MonthRecord) {
 
 function recordSpendingActual(record: MonthRecord) {
   return record.budgets.reduce((sum, item) => sum + item.actual, 0);
+}
+
+function normalizeLiabilities(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
+      const raw = item as Partial<Liability>;
+      return {
+        id: typeof raw.id === "string" && raw.id ? raw.id : `liability-${index + 1}`,
+        name: typeof raw.name === "string" && raw.name.trim() ? raw.name : `负债项 ${index + 1}`,
+        amount: typeof raw.amount === "number" ? raw.amount : 0,
+      };
+    })
+    .filter((item): item is Liability => item !== null);
+}
+
+function legacyLiabilitiesFromSaved(saved: Partial<PersistedFinanceData>) {
+  return initialLiabilities.map((item) => ({
+    ...item,
+    amount:
+      item.id === "house-debt"
+        ? saved.houseDebt ?? 0
+        : item.id === "car-debt"
+          ? saved.carDebt ?? 0
+          : saved.otherDebt ?? 0,
+  }));
 }
 
 function dayDistance(date: string) {
@@ -367,9 +407,7 @@ export default function FinanceDashboard() {
   const [emergencyFund, setEmergencyFund] = useState(2000);
   const [emergencyMonths, setEmergencyMonths] = useState(3);
   const [emergencyMonthlyNeed, setEmergencyMonthlyNeed] = useState(4500);
-  const [houseDebt, setHouseDebt] = useState(0);
-  const [carDebt, setCarDebt] = useState(0);
-  const [otherDebt, setOtherDebt] = useState(0);
+  const [liabilities, setLiabilities] = useState<Liability[]>(initialLiabilities);
   const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [futureCapabilities, setFutureCapabilities] = useState<FutureCapability[]>(initialFutureCapabilities);
@@ -396,9 +434,16 @@ export default function FinanceDashboard() {
           if (typeof saved.emergencyFund === "number") setEmergencyFund(saved.emergencyFund);
           if (typeof saved.emergencyMonths === "number") setEmergencyMonths(saved.emergencyMonths);
           if (typeof saved.emergencyMonthlyNeed === "number") setEmergencyMonthlyNeed(saved.emergencyMonthlyNeed);
-          if (typeof saved.houseDebt === "number") setHouseDebt(saved.houseDebt);
-          if (typeof saved.carDebt === "number") setCarDebt(saved.carDebt);
-          if (typeof saved.otherDebt === "number") setOtherDebt(saved.otherDebt);
+          const savedLiabilities = normalizeLiabilities(saved.liabilities);
+          if (savedLiabilities.length > 0) {
+            setLiabilities(savedLiabilities);
+          } else if (
+            typeof saved.houseDebt === "number" ||
+            typeof saved.carDebt === "number" ||
+            typeof saved.otherDebt === "number"
+          ) {
+            setLiabilities(legacyLiabilitiesFromSaved(saved));
+          }
           if (Array.isArray(saved.reminders)) setReminders(saved.reminders);
           if (Array.isArray(saved.goals)) setGoals(saved.goals);
           if (Array.isArray(saved.futureCapabilities)) setFutureCapabilities(saved.futureCapabilities);
@@ -432,9 +477,7 @@ export default function FinanceDashboard() {
       emergencyFund,
       emergencyMonths,
       emergencyMonthlyNeed,
-      houseDebt,
-      carDebt,
-      otherDebt,
+      liabilities,
       reminders,
       goals,
       futureCapabilities,
@@ -457,9 +500,7 @@ export default function FinanceDashboard() {
     emergencyFund,
     emergencyMonths,
     emergencyMonthlyNeed,
-    houseDebt,
-    carDebt,
-    otherDebt,
+    liabilities,
     reminders,
     goals,
     futureCapabilities,
@@ -487,7 +528,7 @@ export default function FinanceDashboard() {
     const usShareValue = holdings.filter((item) => item.market === "美股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const hkShareValue = holdings.filter((item) => item.market === "港股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const totalSavings = travelSaving + learningSaving;
-    const totalDebt = houseDebt + carDebt + otherDebt;
+    const totalDebt = liabilities.reduce((sum, item) => sum + item.amount, 0);
     const totalAssets = accountTotal + investmentValue + totalSavings + emergencyFund;
     const customOutflow = cashflowCustomItems
       .filter((item) => item.direction === "outflow")
@@ -556,9 +597,7 @@ export default function FinanceDashboard() {
     emergencyFund,
     emergencyMonths,
     emergencyMonthlyNeed,
-    houseDebt,
-    carDebt,
-    otherDebt,
+    liabilities,
     aSharePlan,
     usSharePlan,
     hkSharePlan,
@@ -784,6 +823,25 @@ export default function FinanceDashboard() {
     setHoldings((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
   }
 
+  function updateLiability(id: string, patch: Partial<Liability>) {
+    setLiabilities((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  function addLiability() {
+    setLiabilities((items) => [
+      ...items,
+      {
+        id: `liability-${Date.now()}`,
+        name: `新负债 ${items.length + 1}`,
+        amount: 0,
+      },
+    ]);
+  }
+
+  function deleteLiability(id: string) {
+    setLiabilities((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+  }
+
   function updateReminder(id: string, patch: Partial<Reminder>) {
     setReminders((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
@@ -838,6 +896,13 @@ export default function FinanceDashboard() {
     setActiveModules(moduleList.map((item) => item.id));
   }
 
+  const liabilitySummary = liabilities.length
+    ? `${liabilities
+        .slice(0, 3)
+        .map((item) => `${item.name.trim() || "未命名负债"} ${money(item.amount)}`)
+        .join(" / ")}${liabilities.length > 3 ? " / 更多" : ""}`
+    : "暂无负债";
+
   const overviewCards = [
     {
       title: "本月实际收入",
@@ -884,7 +949,7 @@ export default function FinanceDashboard() {
     {
       title: "目前总负债",
       value: money(totals.totalDebt),
-      detail: `房子 ${money(houseDebt)} / 车子 ${money(carDebt)} / 其他 ${money(otherDebt)}`,
+      detail: liabilitySummary,
       tone: totals.totalDebt > 0 ? ("red" as Tone) : ("green" as Tone),
     },
   ];
@@ -1084,11 +1149,11 @@ export default function FinanceDashboard() {
     { label: "总负债", value: totals.totalDebt, color: palette[4] },
     { label: "净资产", value: Math.max(totals.netWorth, 0), color: palette[1] },
   ];
-  const debtData = [
-    { label: "房子负债", value: houseDebt, color: palette[4] },
-    { label: "车子负债", value: carDebt, color: palette[2] },
-    { label: "其他负债", value: otherDebt, color: palette[3] },
-  ];
+  const debtData = liabilities.map((item, index) => ({
+    label: item.name.trim() || "未命名负债",
+    value: item.amount,
+    color: palette[(index + 4) % palette.length],
+  }));
   const goalProgress = goals.map((item, index) => ({
     label: item.name,
     value: item.current,
@@ -1537,17 +1602,15 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "balance" && (
-                  <Module title="资产负债表" desc="总负债拆成房子、车子、其他；所有金额都可编辑。">
+                  <Module title="资产负债表" desc="负债项支持新增、删除和直接编辑。">
                     <DataChartLayout
                       data={
                         <>
                           <EditableDebtTable
-                            carDebt={carDebt}
-                            houseDebt={houseDebt}
-                            otherDebt={otherDebt}
-                            setCarDebt={setCarDebt}
-                            setHouseDebt={setHouseDebt}
-                            setOtherDebt={setOtherDebt}
+                            addLiability={addLiability}
+                            deleteLiability={deleteLiability}
+                            liabilities={liabilities}
+                            updateLiability={updateLiability}
                           />
                           <div className="stat-strip">
                             <Stat label="总资产" value={money(totals.totalAssets)} />
@@ -1769,16 +1832,14 @@ export default function FinanceDashboard() {
                             <span>财务健康分</span>
                           </div>
                           <EditableHealthInputsTable
-                            carDebt={carDebt}
                             emergencyMonthlyNeed={emergencyMonthlyNeed}
                             emergencyMonths={emergencyMonths}
-                            houseDebt={houseDebt}
-                            otherDebt={otherDebt}
-                            setCarDebt={setCarDebt}
+                            addLiability={addLiability}
+                            deleteLiability={deleteLiability}
+                            liabilities={liabilities}
                             setEmergencyMonthlyNeed={setEmergencyMonthlyNeed}
                             setEmergencyMonths={setEmergencyMonths}
-                            setHouseDebt={setHouseDebt}
-                            setOtherDebt={setOtherDebt}
+                            updateLiability={updateLiability}
                           />
                           <div className="stat-strip">
                             <Stat label="固定支出率" value={percent(totals.fixedRatio)} />
@@ -2372,29 +2433,24 @@ function EditableHoldingTable({
 }
 
 function EditableDebtTable({
-  houseDebt,
-  setHouseDebt,
-  carDebt,
-  setCarDebt,
-  otherDebt,
-  setOtherDebt,
+  liabilities,
+  updateLiability,
+  addLiability,
+  deleteLiability,
 }: {
-  houseDebt: number;
-  setHouseDebt: (value: number) => void;
-  carDebt: number;
-  setCarDebt: (value: number) => void;
-  otherDebt: number;
-  setOtherDebt: (value: number) => void;
+  liabilities: Liability[];
+  updateLiability: (id: string, patch: Partial<Liability>) => void;
+  addLiability: () => void;
+  deleteLiability: (id: string) => void;
 }) {
-  const rows = [
-    { label: "房子负债", value: houseDebt, onChange: setHouseDebt },
-    { label: "车子负债", value: carDebt, onChange: setCarDebt },
-    { label: "其他负债", value: otherDebt, onChange: setOtherDebt },
-  ];
-  const total = rows.reduce((sum, item) => sum + item.value, 0);
+  const total = liabilities.reduce((sum, item) => sum + item.amount, 0);
   return (
     <>
-      <TableToolbar title="负债底表" meta={`总负债 ${money(total)}`} />
+      <TableToolbar
+        title="负债底表"
+        meta={`${liabilities.length} 项 / 总负债 ${money(total)}`}
+        action={<button className="secondary-button" type="button" onClick={addLiability}>新增负债</button>}
+      />
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table">
           <thead>
@@ -2402,14 +2458,32 @@ function EditableDebtTable({
               <th>负债项</th>
               <th>金额</th>
               <th>占比</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((item) => (
-              <tr key={item.label}>
-                <td>{item.label}</td>
-                <td><TableNumberInput ariaLabel={item.label} value={item.value} onChange={item.onChange} /></td>
-                <td className="calculated-cell">{percent(total ? item.value / total : 0)}</td>
+            {liabilities.map((item) => (
+              <tr key={item.id}>
+                <td>
+                  <TableTextInput
+                    ariaLabel={`${item.name} 负债项`}
+                    value={item.name}
+                    onChange={(value) => updateLiability(item.id, { name: value })}
+                  />
+                </td>
+                <td>
+                  <TableNumberInput
+                    ariaLabel={`${item.name} 金额`}
+                    value={item.amount}
+                    onChange={(value) => updateLiability(item.id, { amount: value })}
+                  />
+                </td>
+                <td className="calculated-cell">{percent(total ? item.amount / total : 0)}</td>
+                <td>
+                  <button className="danger-button compact" disabled={liabilities.length <= 1} type="button" onClick={() => deleteLiability(item.id)}>
+                    删除
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -2677,27 +2751,28 @@ function EditableHealthInputsTable({
   setEmergencyMonths,
   emergencyMonthlyNeed,
   setEmergencyMonthlyNeed,
-  houseDebt,
-  setHouseDebt,
-  carDebt,
-  setCarDebt,
-  otherDebt,
-  setOtherDebt,
+  liabilities,
+  updateLiability,
+  addLiability,
+  deleteLiability,
 }: {
   emergencyMonths: number;
   setEmergencyMonths: (value: number) => void;
   emergencyMonthlyNeed: number;
   setEmergencyMonthlyNeed: (value: number) => void;
-  houseDebt: number;
-  setHouseDebt: (value: number) => void;
-  carDebt: number;
-  setCarDebt: (value: number) => void;
-  otherDebt: number;
-  setOtherDebt: (value: number) => void;
+  liabilities: Liability[];
+  updateLiability: (id: string, patch: Partial<Liability>) => void;
+  addLiability: () => void;
+  deleteLiability: (id: string) => void;
 }) {
+  const totalDebt = liabilities.reduce((sum, item) => sum + item.amount, 0);
   return (
     <>
-      <TableToolbar title="健康评分输入底表" meta={`目标覆盖 ${emergencyMonths} 月 / 负债 ${money(houseDebt + carDebt + otherDebt)}`} />
+      <TableToolbar
+        title="健康评分输入底表"
+        meta={`目标覆盖 ${emergencyMonths} 月 / 负债 ${money(totalDebt)}`}
+        action={<button className="secondary-button" type="button" onClick={addLiability}>新增负债</button>}
+      />
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table">
           <thead>
@@ -2705,6 +2780,7 @@ function EditableHealthInputsTable({
               <th>项目</th>
               <th>数值</th>
               <th>影响</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -2712,27 +2788,38 @@ function EditableHealthInputsTable({
               <td>目标覆盖月数</td>
               <td><TableNumberInput ariaLabel="健康目标覆盖月数" step={1} value={emergencyMonths} onChange={setEmergencyMonths} /></td>
               <td>抗风险能力</td>
+              <td className="calculated-cell">固定项</td>
             </tr>
             <tr>
               <td>月均必要支出</td>
               <td><TableNumberInput ariaLabel="健康月均必要支出" value={emergencyMonthlyNeed} onChange={setEmergencyMonthlyNeed} /></td>
               <td>应急覆盖</td>
+              <td className="calculated-cell">固定项</td>
             </tr>
-            <tr>
-              <td>房子负债</td>
-              <td><TableNumberInput ariaLabel="健康房子负债" value={houseDebt} onChange={setHouseDebt} /></td>
-              <td>负债率</td>
-            </tr>
-            <tr>
-              <td>车子负债</td>
-              <td><TableNumberInput ariaLabel="健康车子负债" value={carDebt} onChange={setCarDebt} /></td>
-              <td>负债率</td>
-            </tr>
-            <tr>
-              <td>其他负债</td>
-              <td><TableNumberInput ariaLabel="健康其他负债" value={otherDebt} onChange={setOtherDebt} /></td>
-              <td>负债率</td>
-            </tr>
+            {liabilities.map((item) => (
+              <tr key={item.id}>
+                <td>
+                  <TableTextInput
+                    ariaLabel={`健康 ${item.name} 负债项`}
+                    value={item.name}
+                    onChange={(value) => updateLiability(item.id, { name: value })}
+                  />
+                </td>
+                <td>
+                  <TableNumberInput
+                    ariaLabel={`健康 ${item.name} 金额`}
+                    value={item.amount}
+                    onChange={(value) => updateLiability(item.id, { amount: value })}
+                  />
+                </td>
+                <td>负债率</td>
+                <td>
+                  <button className="danger-button compact" disabled={liabilities.length <= 1} type="button" onClick={() => deleteLiability(item.id)}>
+                    删除
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
