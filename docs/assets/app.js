@@ -13215,7 +13215,7 @@ function FinanceDashboard() {
     const partnerSavings = goalSummary.partnerCurrent;
     const otherSavings = goalSummary.otherCurrent;
     const familyFund = partnerSavings;
-    const totalSavings = travelSavings + learningSavings + parentSavings + otherSavings;
+    const totalSavings = travelSavings + learningSavings + otherSavings;
     const savingsOutsideAccounts = Math.max(0, totalSavings - accountSpecialSavings);
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings;
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
@@ -13231,7 +13231,7 @@ function FinanceDashboard() {
     const hkShareValue = holdings.filter((item) => item.market === "\u6E2F\u80A1").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const manualAssetTotal = balanceAssets.reduce((sum, item) => sum + item.amount, 0);
     const totalDebt = liabilities.reduce((sum, item) => sum + item.amount, 0);
-    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + currentEmergencyFund + manualAssetTotal;
+    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + parentSavings + currentEmergencyFund + manualAssetTotal;
     const customOutflow = cashflowCustomItems.filter((item) => item.direction === "outflow").reduce((sum, item) => sum + item.amount, 0);
     const enabledCashflowValue = (id, value) => cashflowHiddenBuiltinIds.includes(id) ? 0 : value;
     const cashflowSpendingPlan = enabledCashflowValue("spendingPlan", spendingPlan);
@@ -13665,9 +13665,14 @@ function FinanceDashboard() {
   const specialSavingsDetail = [
     `\u65C5\u6E38 ${money(totals.travelSavings)}`,
     `\u5B66\u4E60 ${money(totals.learningSavings)}`,
-    `\u7236\u6BCD\u50A8\u84C4 ${money(totals.parentSavings)}`,
     totals.otherSavings > 0 ? `\u5176\u4ED6 ${money(totals.otherSavings)}` : ""
   ].filter(Boolean).join(" / ");
+  const parentSavingsBreakdown = {
+    label: "\u7236\u6BCD\u50A8\u84C4",
+    value: totals.parentSavings,
+    detail: totals.parentSavings > 0 || totals.parentAllocation > 0 ? `\u5F53\u524D ${money(totals.parentSavings)} / \u672C\u6708\u6295\u5165 ${money(totals.parentAllocation)}` : "\u76EE\u6807\u7BA1\u7406\u7236\u6BCD\u50A8\u84C4\uFF0C\u5355\u72EC\u5217\u793A",
+    color: palette[5]
+  };
   const familyFundBreakdown = {
     label: "\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4",
     value: totals.familyFund,
@@ -13712,6 +13717,7 @@ function FinanceDashboard() {
       detail: specialSavingsDetail,
       color: palette[3]
     },
+    parentSavingsBreakdown,
     {
       label: "\u5B9E\u7269\u8D44\u4EA7",
       value: totals.manualAssetTotal,
@@ -14012,7 +14018,7 @@ function FinanceDashboard() {
   ];
   const netWorthTrend = forecast.map((item) => ({
     label: item.month,
-    value: item.balance + totals.investmentValue + totals.totalSavings + totals.currentEmergencyFund + totals.manualAssetTotal - totals.totalDebt
+    value: item.balance + totals.investmentValue + totals.totalSavings + totals.parentSavings + totals.currentEmergencyFund + totals.manualAssetTotal - totals.totalDebt
   }));
   const balanceData = [
     { label: "\u603B\u8D44\u4EA7", value: totals.totalAssets, color: palette[0] },
@@ -14207,7 +14213,7 @@ function FinanceDashboard() {
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "total-assets-main", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5F53\u524D\u603B\u8D44\u4EA7" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(totals.totalAssets) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u3001\u5B9E\u7269\u8D44\u4EA7\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u3001\u7236\u6BCD\u50A8\u84C4\u3001\u5B9E\u7269\u8D44\u4EA7\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "total-assets-breakdown", "aria-label": "\u603B\u8D44\u4EA7\u8D44\u91D1\u5206\u5E03", children: totalAssetBreakdown.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
             "div",
