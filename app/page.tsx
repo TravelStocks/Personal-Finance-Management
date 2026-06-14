@@ -1348,11 +1348,13 @@ export default function FinanceDashboard() {
     },
   ];
 
-  const currentCashflowItems = accounts.map((item) => ({
-    label: item.name.trim() || "未命名账户",
-    value: money(item.balance),
-    note: item.purpose.trim() || item.type.trim() || "账户",
-  }));
+  const currentCashflowItems = accounts
+    .filter((item) => item.balance !== 0)
+    .map((item) => ({
+      label: item.name.trim() || "未命名账户",
+      value: money(item.balance),
+      note: item.purpose.trim() || item.type.trim() || "账户",
+    }));
 
   const overviewCards: Array<{
     title: string;
@@ -1388,7 +1390,7 @@ export default function FinanceDashboard() {
     {
       title: "当前现金流",
       value: money(totals.accountTotal),
-      detail: `${accounts.length} 个账户余额合计 / 可动用 ${money(totals.liquidAccountTotal)}`,
+      detail: `${currentCashflowItems.length} 个非零账户 / 合计 ${money(totals.accountTotal)} / 可动用 ${money(totals.liquidAccountTotal)}`,
       tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? ("red" as Tone) : ("green" as Tone),
       items: currentCashflowItems,
     },

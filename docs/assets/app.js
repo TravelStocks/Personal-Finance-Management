@@ -13726,7 +13726,7 @@ function FinanceDashboard() {
       color: palette[2]
     }
   ];
-  const currentCashflowItems = accounts.map((item) => ({
+  const currentCashflowItems = accounts.filter((item) => item.balance !== 0).map((item) => ({
     label: item.name.trim() || "\u672A\u547D\u540D\u8D26\u6237",
     value: money(item.balance),
     note: item.purpose.trim() || item.type.trim() || "\u8D26\u6237"
@@ -13759,7 +13759,7 @@ function FinanceDashboard() {
     {
       title: "\u5F53\u524D\u73B0\u91D1\u6D41",
       value: money(totals.accountTotal),
-      detail: `${accounts.length} \u4E2A\u8D26\u6237\u4F59\u989D\u5408\u8BA1 / \u53EF\u52A8\u7528 ${money(totals.liquidAccountTotal)}`,
+      detail: `${currentCashflowItems.length} \u4E2A\u975E\u96F6\u8D26\u6237 / \u5408\u8BA1 ${money(totals.accountTotal)} / \u53EF\u52A8\u7528 ${money(totals.liquidAccountTotal)}`,
       tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? "red" : "green",
       items: currentCashflowItems
     },
