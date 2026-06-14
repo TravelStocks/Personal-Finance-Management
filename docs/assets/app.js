@@ -12925,6 +12925,15 @@ function isLearningSavingsAccount(account) {
   const text = `${account.name} ${account.type} ${account.purpose}`.toLowerCase();
   return !isInvestmentReserveAccount(account) && (text.includes("\u5B66\u4E60") || text.includes("\u6559\u80B2") || text.includes("\u6210\u957F"));
 }
+function isTotalSavingsAccount(account) {
+  const text = `${account.name} ${account.type} ${account.purpose}`.toLowerCase();
+  const compactText = text.replace(/\s+/g, "");
+  const isSalaryMainAccount = account.id === "icbc2616" || compactText.includes("\u5DE5\u884C2616");
+  const isExcludedWallet = compactText.includes("\u5FAE\u4FE1") || compactText.includes("\u73B0\u91D1");
+  const isBankCard = compactText.includes("\u94F6\u884C\u5361") || compactText.includes("\u94F6\u884C") || compactText.includes("\u5DE5\u884C");
+  const isYuEBao = compactText.includes("\u4F59\u989D\u5B9D");
+  return !isSalaryMainAccount && !isExcludedWallet && (isBankCard || isYuEBao);
+}
 function goalKind(goal) {
   const text = goal.name.toLowerCase();
   if (text.includes("\u65C5\u6E38") || text.includes("\u65C5\u884C")) return "travel";
@@ -13201,6 +13210,8 @@ function FinanceDashboard() {
   const actualIncome = salary + Math.max(stockIncome, 0) + otherIncome;
   const totals = (0, import_react.useMemo)(() => {
     const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
+    const totalSavingsAccounts = accounts.filter(isTotalSavingsAccount);
+    const totalSavingsAccountTotal = totalSavingsAccounts.reduce((sum, item) => sum + item.balance, 0);
     const aShareInvestmentReserve = accounts.filter((item) => investmentReserveKind(item) === "aShare").reduce((sum, item) => sum + item.balance, 0);
     const usShareInvestmentReserve = accounts.filter((item) => investmentReserveKind(item) === "usShare").reduce((sum, item) => sum + item.balance, 0);
     const investmentReserve = aShareInvestmentReserve + usShareInvestmentReserve;
@@ -13264,6 +13275,8 @@ function FinanceDashboard() {
     );
     return {
       accountTotal,
+      totalSavingsAccountTotal,
+      totalSavingsAccountCount: totalSavingsAccounts.length,
       operatingAccountTotal,
       aShareInvestmentReserve,
       usShareInvestmentReserve,
@@ -13783,8 +13796,8 @@ function FinanceDashboard() {
     },
     {
       title: "\u76EE\u524D\u603B\u50A8\u84C4",
-      value: money(totals.accountTotal),
-      detail: `${accounts.length} \u4E2A\u8D26\u6237 / A\u80A1\u5F85\u6295 ${money(totals.aShareInvestmentReserve)} / \u7F8E\u80A1\u5F85\u6295 ${money(totals.usShareInvestmentReserve)}`,
+      value: money(totals.totalSavingsAccountTotal),
+      detail: `${totals.totalSavingsAccountCount} \u4E2A\u50A8\u84C4\u8D26\u6237 / \u4E0D\u542B\u5DE5\u884C2616\u3001\u5FAE\u4FE1\u3001\u73B0\u91D1 / A\u80A1\u5F85\u6295 ${money(totals.aShareInvestmentReserve)} / \u7F8E\u80A1\u5F85\u6295 ${money(totals.usShareInvestmentReserve)}`,
       tone: "green"
     },
     {
@@ -15491,10 +15504,10 @@ function DonutChart({
 }) {
   const rows = data.filter((item) => item.value > 0);
   const total = rows.reduce((sum, item) => sum + item.value, 0);
-  const centerX = 80;
-  const centerY = 60;
-  const radius = 32;
-  const strokeWidth = 12;
+  const centerX = 110;
+  const centerY = 66;
+  const radius = 31;
+  const strokeWidth = 11;
   const shares = rows.map((item) => total ? item.value / total * 100 : 0);
   const starts = shares.map((_, index) => shares.slice(0, index).reduce((sum, share) => sum + share, 0));
   const slices = rows.map((item, index) => {
@@ -15512,19 +15525,19 @@ function DonutChart({
       start,
       anchorX: centerX + cos * (radius + strokeWidth / 2),
       anchorY: centerY + sin * (radius + strokeWidth / 2),
-      elbowX: centerX + cos * (radius + 15),
-      elbowY: centerY + sin * (radius + 15),
-      labelX: side === "right" ? 148 : 12,
-      lineEndX: side === "right" ? 138 : 22,
+      elbowX: centerX + cos * (radius + 14),
+      elbowY: centerY + sin * (radius + 14),
+      labelX: side === "right" ? 174 : 46,
+      lineEndX: side === "right" ? 164 : 56,
       side,
-      y: clamp(centerY + sin * (radius + 18), 16, 104)
+      y: clamp(centerY + sin * (radius + 22), 18, 114)
     };
   });
   const distributeLabels = (items) => {
     const sorted = [...items].sort((left, right) => left.y - right.y);
-    const minY = 16;
-    const maxY = 104;
-    const gap = 11;
+    const minY = 18;
+    const maxY = 114;
+    const gap = 17;
     let nextY = minY;
     const placed = sorted.map((item) => {
       const y = Math.max(item.y, nextY);
@@ -15549,7 +15562,7 @@ function DonutChart({
     detail: item.detail?.includes("%") ? item.detail : `${percent(item.value / Math.max(total, 1))} / ${money(item.value)}${item.detail ? ` / ${item.detail}` : ""}`
   })) : [{ label: "\u6682\u65E0\u6570\u636E", value: 1, color: "#b8c4d4", detail: "0%" }];
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "donut-layout", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { className: "donut-chart", viewBox: "0 0 160 120", role: "img", "aria-label": `${centerLabel} ${centerValue}`, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { className: "donut-chart", viewBox: "0 0 220 132", role: "img", "aria-label": `${centerLabel} ${centerValue}`, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: centerX, cy: centerY, r: radius, fill: "none", stroke: "#e5edf5", strokeWidth }),
       total > 0 && slices.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
         "circle",
@@ -15571,7 +15584,10 @@ function DonutChart({
       annotations.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { className: "donut-annotation", children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("polyline", { points: `${item.anchorX},${item.anchorY} ${item.elbowX},${item.elbowY} ${item.lineEndX},${item.y}` }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("title", { children: `${item.label} ${percent(item.value / Math.max(total, 1))}` }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { textAnchor: item.side === "right" ? "start" : "end", x: item.labelX, y: item.y + 2, children: `${Math.round(item.share)}%` })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("text", { textAnchor: item.side === "right" ? "start" : "end", x: item.labelX, y: item.y + 2, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tspan", { className: "donut-annotation-label", x: item.labelX, y: item.y - 2, children: item.label }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("tspan", { className: "donut-annotation-percent", x: item.labelX, y: item.y + 7, children: `${Math.round(item.share)}%` })
+        ] })
       ] }, `${item.label}-${item.share}`)),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { className: "donut-value", x: centerX, y: centerY - 4, children: centerValue }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { className: "donut-label", x: centerX, y: centerY + 10, children: centerLabel })

@@ -702,9 +702,9 @@ select {
 }
 
 .donut-chart {
-  width: min(320px, 100%);
+  width: min(360px, 100%);
   height: auto;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 5 / 3;
   justify-self: center;
   overflow: visible;
 }
@@ -740,12 +740,17 @@ select {
 .donut-annotation text {
   fill: var(--ink);
   font-family: "Cascadia Mono", Consolas, monospace;
-  font-size: 6px;
+  font-size: 5.2px;
   font-weight: 900;
   paint-order: stroke;
   stroke: #fff;
   stroke-linejoin: round;
-  stroke-width: 2.2px;
+  stroke-width: 2px;
+}
+
+.donut-annotation-percent {
+  fill: #52657b;
+  font-size: 4.8px;
 }
 
 .legend {
@@ -1466,7 +1471,7 @@ th {
   }
 
   .donut-chart {
-    width: min(360px, 100%);
+    width: min(390px, 100%);
   }
 
   .legend {

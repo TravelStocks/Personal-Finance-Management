@@ -414,6 +414,16 @@ function isLearningSavingsAccount(account: Account) {
   return !isInvestmentReserveAccount(account) && (text.includes("学习") || text.includes("教育") || text.includes("成长"));
 }
 
+function isTotalSavingsAccount(account: Account) {
+  const text = `${account.name} ${account.type} ${account.purpose}`.toLowerCase();
+  const compactText = text.replace(/\s+/g, "");
+  const isSalaryMainAccount = account.id === "icbc2616" || compactText.includes("工行2616");
+  const isExcludedWallet = compactText.includes("微信") || compactText.includes("现金");
+  const isBankCard = compactText.includes("银行卡") || compactText.includes("银行") || compactText.includes("工行");
+  const isYuEBao = compactText.includes("余额宝");
+  return !isSalaryMainAccount && !isExcludedWallet && (isBankCard || isYuEBao);
+}
+
 function goalKind(goal: Goal): GoalKind {
   const text = goal.name.toLowerCase();
   if (text.includes("旅游") || text.includes("旅行")) return "travel";
@@ -727,6 +737,8 @@ export default function FinanceDashboard() {
 
   const totals = useMemo(() => {
     const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
+    const totalSavingsAccounts = accounts.filter(isTotalSavingsAccount);
+    const totalSavingsAccountTotal = totalSavingsAccounts.reduce((sum, item) => sum + item.balance, 0);
     const aShareInvestmentReserve = accounts
       .filter((item) => investmentReserveKind(item) === "aShare")
       .reduce((sum, item) => sum + item.balance, 0);
@@ -811,6 +823,8 @@ export default function FinanceDashboard() {
     );
     return {
       accountTotal,
+      totalSavingsAccountTotal,
+      totalSavingsAccountCount: totalSavingsAccounts.length,
       operatingAccountTotal,
       aShareInvestmentReserve,
       usShareInvestmentReserve,
@@ -1417,8 +1431,8 @@ export default function FinanceDashboard() {
     },
     {
       title: "目前总储蓄",
-      value: money(totals.accountTotal),
-      detail: `${accounts.length} 个账户 / A股待投 ${money(totals.aShareInvestmentReserve)} / 美股待投 ${money(totals.usShareInvestmentReserve)}`,
+      value: money(totals.totalSavingsAccountTotal),
+      detail: `${totals.totalSavingsAccountCount} 个储蓄账户 / 不含工行2616、微信、现金 / A股待投 ${money(totals.aShareInvestmentReserve)} / 美股待投 ${money(totals.usShareInvestmentReserve)}`,
       tone: "green" as Tone,
     },
     {
@@ -3583,10 +3597,10 @@ function DonutChart({
 }) {
   const rows = data.filter((item) => item.value > 0);
   const total = rows.reduce((sum, item) => sum + item.value, 0);
-  const centerX = 80;
-  const centerY = 60;
-  const radius = 32;
-  const strokeWidth = 12;
+  const centerX = 110;
+  const centerY = 66;
+  const radius = 31;
+  const strokeWidth = 11;
   const shares = rows.map((item) => (total ? (item.value / total) * 100 : 0));
   const starts = shares.map((_, index) => shares.slice(0, index).reduce((sum, share) => sum + share, 0));
   const slices = rows.map((item, index) => {
@@ -3604,19 +3618,19 @@ function DonutChart({
       start,
       anchorX: centerX + cos * (radius + strokeWidth / 2),
       anchorY: centerY + sin * (radius + strokeWidth / 2),
-      elbowX: centerX + cos * (radius + 15),
-      elbowY: centerY + sin * (radius + 15),
-      labelX: side === "right" ? 148 : 12,
-      lineEndX: side === "right" ? 138 : 22,
+      elbowX: centerX + cos * (radius + 14),
+      elbowY: centerY + sin * (radius + 14),
+      labelX: side === "right" ? 174 : 46,
+      lineEndX: side === "right" ? 164 : 56,
       side,
-      y: clamp(centerY + sin * (radius + 18), 16, 104),
+      y: clamp(centerY + sin * (radius + 22), 18, 114),
     };
   });
   const distributeLabels = (items: typeof slices) => {
     const sorted = [...items].sort((left, right) => left.y - right.y);
-    const minY = 16;
-    const maxY = 104;
-    const gap = 11;
+    const minY = 18;
+    const maxY = 114;
+    const gap = 17;
     let nextY = minY;
     const placed = sorted.map((item) => {
       const y = Math.max(item.y, nextY);
@@ -3647,7 +3661,7 @@ function DonutChart({
 
   return (
     <div className="donut-layout">
-      <svg className="donut-chart" viewBox="0 0 160 120" role="img" aria-label={`${centerLabel} ${centerValue}`}>
+      <svg className="donut-chart" viewBox="0 0 220 132" role="img" aria-label={`${centerLabel} ${centerValue}`}>
         <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke="#e5edf5" strokeWidth={strokeWidth} />
         {total > 0 &&
           slices.map((item) => (
@@ -3671,7 +3685,12 @@ function DonutChart({
             <polyline points={`${item.anchorX},${item.anchorY} ${item.elbowX},${item.elbowY} ${item.lineEndX},${item.y}`} />
             <title>{`${item.label} ${percent(item.value / Math.max(total, 1))}`}</title>
             <text textAnchor={item.side === "right" ? "start" : "end"} x={item.labelX} y={item.y + 2}>
-              {`${Math.round(item.share)}%`}
+              <tspan className="donut-annotation-label" x={item.labelX} y={item.y - 2}>
+                {item.label}
+              </tspan>
+              <tspan className="donut-annotation-percent" x={item.labelX} y={item.y + 7}>
+                {`${Math.round(item.share)}%`}
+              </tspan>
             </text>
           </g>
         ))}
