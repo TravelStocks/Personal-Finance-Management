@@ -329,6 +329,11 @@ function recordSpendingActual(record: MonthRecord) {
   return record.budgets.reduce((sum, item) => sum + item.actual, 0);
 }
 
+function isInvestmentReserveAccount(account: Account) {
+  const text = `${account.name} ${account.type} ${account.purpose}`.toLowerCase();
+  return text.includes("余额宝") || text.includes("投资理财") || text.includes("待投资") || text.includes("投资储蓄");
+}
+
 function normalizeLiabilities(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value
@@ -517,6 +522,8 @@ export default function FinanceDashboard() {
 
   const totals = useMemo(() => {
     const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
+    const investmentReserve = accounts.filter(isInvestmentReserveAccount).reduce((sum, item) => sum + item.balance, 0);
+    const operatingAccountTotal = accountTotal - investmentReserve;
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
     const spendingActual = budgets.reduce((sum, item) => sum + item.actual, 0);
     const spendingPlan = budgets.reduce((sum, item) => sum + item.plan, 0);
@@ -535,14 +542,15 @@ export default function FinanceDashboard() {
       .reduce((sum, item) => sum + item.amount, 0);
     const enabledCashflowValue = (id: CashflowBuiltinId, value: number) => (cashflowHiddenBuiltinIds.includes(id) ? 0 : value);
     const cashflowSpendingPlan = enabledCashflowValue("spendingPlan", spendingPlan);
-    const assetOutflow =
-      enabledCashflowValue("travelSaving", travelSaving) +
-      enabledCashflowValue("learningSaving", learningSaving) +
-      enabledCashflowValue("emergencyFund", emergencyFund) +
+    const travelAllocation = enabledCashflowValue("travelSaving", travelSaving);
+    const learningAllocation = enabledCashflowValue("learningSaving", learningSaving);
+    const emergencyAllocation = enabledCashflowValue("emergencyFund", emergencyFund);
+    const investmentSavingAllocation =
       enabledCashflowValue("aSharePlan", aSharePlan) +
       enabledCashflowValue("usSharePlan", usSharePlan) +
-      enabledCashflowValue("hkSharePlan", hkSharePlan) +
-      customOutflow;
+      enabledCashflowValue("hkSharePlan", hkSharePlan);
+    const assetOutflow =
+      travelAllocation + learningAllocation + emergencyAllocation + investmentSavingAllocation + customOutflow;
     const monthlySurplus = actualIncome - spendingActual - assetOutflow;
     const fixedRatio = actualIncome ? fixedSpending / actualIncome : 0;
     const savingsRate = actualIncome ? assetOutflow / actualIncome : 0;
@@ -559,6 +567,8 @@ export default function FinanceDashboard() {
     );
     return {
       accountTotal,
+      operatingAccountTotal,
+      investmentReserve,
       liquidAccountTotal,
       spendingActual,
       spendingPlan,
@@ -571,6 +581,11 @@ export default function FinanceDashboard() {
       usShareValue,
       hkShareValue,
       cashflowSpendingPlan,
+      travelAllocation,
+      learningAllocation,
+      emergencyAllocation,
+      investmentSavingAllocation,
+      customOutflow,
       totalSavings,
       totalDebt,
       totalAssets,
@@ -916,6 +931,45 @@ export default function FinanceDashboard() {
         .join(" / ")}${liabilities.length > 3 ? " / 更多" : ""}`
     : "暂无负债";
 
+  const monthlyAssetAllocationSummary = [
+    `旅游 ${money(totals.travelAllocation)}`,
+    `学习 ${money(totals.learningAllocation)}`,
+    `应急 ${money(totals.emergencyAllocation)}`,
+    `投资储蓄 ${money(totals.investmentSavingAllocation)}`,
+  ].join(" / ");
+  const totalAssetBreakdown = [
+    {
+      label: "账户现金",
+      value: totals.operatingAccountTotal,
+      detail: totals.investmentReserve > 0 ? `不含投资待分配 ${money(totals.investmentReserve)}` : "日常账户余额",
+      color: palette[0],
+    },
+    {
+      label: "投资待分配储蓄",
+      value: totals.investmentReserve,
+      detail: "余额宝 / 投资理财账户，尚未进股市",
+      color: palette[6],
+    },
+    {
+      label: "已投资市值",
+      value: totals.investmentValue,
+      detail: `A股 ${money(totals.aShareValue)} / 美股 ${money(totals.usShareValue)} / 港股 ${money(totals.hkShareValue)}`,
+      color: palette[1],
+    },
+    {
+      label: "专项储蓄",
+      value: totals.totalSavings,
+      detail: `旅游 ${money(travelSaving)} / 学习 ${money(learningSaving)}`,
+      color: palette[3],
+    },
+    {
+      label: "应急金",
+      value: emergencyFund,
+      detail: `覆盖 ${totals.emergencyCoverage.toFixed(1)} 月 / 目标 ${emergencyMonths} 月`,
+      color: palette[2],
+    },
+  ];
+
   const overviewCards = [
     {
       title: "本月实际收入",
@@ -930,27 +984,27 @@ export default function FinanceDashboard() {
       tone: totals.fixedRatio > 0.5 ? ("red" as Tone) : totals.fixedRatio >= 0.35 ? ("amber" as Tone) : ("green" as Tone),
     },
     {
+      title: "本月实际资产分配",
+      value: money(totals.assetOutflow),
+      detail: `${monthlyAssetAllocationSummary}${totals.customOutflow > 0 ? ` / 其他 ${money(totals.customOutflow)}` : ""}`,
+      tone: "violet" as Tone,
+    },
+    {
       title: "当前现金流",
       value: money(totals.accountTotal),
-      detail: `可立即动用 ${money(totals.liquidAccountTotal)} / 当前账户余额`,
+      detail: `可动用 ${money(totals.liquidAccountTotal)} / 待投资 ${money(totals.investmentReserve)}`,
       tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? ("red" as Tone) : ("green" as Tone),
     },
     {
-      title: "目前总资产",
-      value: money(totals.totalAssets),
-      detail: `账户 ${money(totals.accountTotal)} / 投资 ${money(totals.investmentValue)}`,
-      tone: "blue" as Tone,
-    },
-    {
       title: "资产分配",
-      value: money(totals.assetOutflow),
+      value: money(totals.investmentValue),
       detail: `A股 ${money(totals.aShareValue)} / 美股 ${money(totals.usShareValue)} / 港股 ${money(totals.hkShareValue)}`,
       tone: "violet" as Tone,
     },
     {
       title: "目前总储蓄",
       value: money(totals.accountTotal),
-      detail: `${accounts.length} 个账户 / 可动用 ${money(totals.liquidAccountTotal)}`,
+      detail: `${accounts.length} 个账户 / 投资待分配 ${money(totals.investmentReserve)}`,
       tone: "green" as Tone,
     },
     {
@@ -1118,12 +1172,11 @@ export default function FinanceDashboard() {
       color: palette[(index + 4) % palette.length],
       detail: item.source,
     }));
-  const assetStructureData = [
-    { label: "账户余额", value: totals.accountTotal, color: palette[0] },
-    { label: "投资市值", value: totals.investmentValue, color: palette[1] },
-    { label: "专项储蓄", value: totals.totalSavings, color: palette[3] },
-    { label: "应急金", value: emergencyFund, color: palette[2] },
-  ];
+  const assetStructureData = totalAssetBreakdown.map((item) => ({
+    label: item.label,
+    value: item.value,
+    color: item.color,
+  }));
   const investmentChartData = [
     { label: "A股", value: totals.aShareValue, color: palette[0] },
     { label: "美股", value: totals.usShareValue, color: palette[1] },
@@ -1331,6 +1384,22 @@ export default function FinanceDashboard() {
             </div>
             <span className="pill good">公开页已脱敏</span>
           </div>
+          <article className="total-assets-hero">
+            <div className="total-assets-main">
+              <span>当前总资产</span>
+              <strong>{money(totals.totalAssets)}</strong>
+              <small>账户现金、待投资储蓄、已投资市值、专项储蓄和应急金合计；负债另列。</small>
+            </div>
+            <div className="total-assets-breakdown" aria-label="总资产资金分布">
+              {totalAssetBreakdown.map((item) => (
+                <div className="asset-breakdown-item" key={item.label} style={{ "--asset-color": item.color } as CSSProperties}>
+                  <span>{item.label}</span>
+                  <strong>{money(item.value)}</strong>
+                  <em>{item.detail}</em>
+                </div>
+              ))}
+            </div>
+          </article>
           <div className="overview-grid">
             {overviewCards.map((item) => (
               <article className={`overview-card ${item.tone}`} key={item.title}>
