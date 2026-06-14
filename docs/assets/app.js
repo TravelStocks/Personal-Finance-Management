@@ -12747,8 +12747,8 @@ var require_jsx_runtime = __commonJS({
 });
 
 // .static-entry.jsx
-var import_react2 = __toESM(require_react(), 1);
-var import_client = __toESM(require_client(), 1);
+var import_react2 = __toESM(require_react());
+var import_client = __toESM(require_client());
 
 // app/page.tsx
 var import_react = __toESM(require_react(), 1);
@@ -14229,9 +14229,17 @@ function FinanceDashboard() {
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", { className: "total-assets-hero", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "total-assets-main", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5F53\u524D\u603B\u8D44\u4EA7" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: "\u5F53\u524D\u603B\u8D44\u4EA7\u4E0E\u8D1F\u503A" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("strong", { children: money(totals.totalAssets) }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: "\u8D26\u6237\u73B0\u91D1\u3001A\u80A1\u5F85\u6295\u3001\u7F8E\u80A1\u5F85\u6295\u3001\u5DF2\u6295\u8D44\u5E02\u503C\u3001\u4E2A\u4EBA\u4E13\u9879\u50A8\u84C4\u3001\u7236\u6BCD\u50A8\u84C4\u3001\u5B9E\u7269\u8D44\u4EA7\u548C\u5E94\u6025\u91D1\u5408\u8BA1\uFF1B\u603B\u8D1F\u503A\u540C\u533A\u5217\u793A\uFF0C\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002" })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("small", { children: [
+              "\u8D44\u4EA7\u5408\u8BA1 ",
+              money(totals.totalAssets),
+              " / \u603B\u8D1F\u503A ",
+              money(totals.totalDebt),
+              " / \u51C0\u8D44\u4EA7 ",
+              money(totals.netWorth),
+              "\uFF1B\u5BB6\u5EAD\u53CA\u4F34\u4FA3\u50A8\u84C4\u5355\u5217\uFF0C\u4E0D\u8BA1\u5165\u4E2A\u4EBA\u603B\u8D44\u4EA7\u3002"
+            ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "total-assets-breakdown", "aria-label": "\u603B\u8D44\u4EA7\u548C\u8D1F\u503A\u8D44\u91D1\u5206\u5E03", children: assetLiabilityBreakdown.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
             "div",
@@ -15483,36 +15491,92 @@ function DonutChart({
 }) {
   const rows = data.filter((item) => item.value > 0);
   const total = rows.reduce((sum, item) => sum + item.value, 0);
-  let offset = 0;
+  const centerX = 80;
+  const centerY = 60;
+  const radius = 32;
+  const strokeWidth = 12;
+  const shares = rows.map((item) => total ? item.value / total * 100 : 0);
+  const starts = shares.map((_, index) => shares.slice(0, index).reduce((sum, share) => sum + share, 0));
+  const slices = rows.map((item, index) => {
+    const share = shares[index] ?? 0;
+    const start = starts[index] ?? 0;
+    const mid = start + share / 2;
+    const radians = (mid / 100 * 360 - 90) * (Math.PI / 180);
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    const side = cos >= 0 ? "right" : "left";
+    return {
+      ...item,
+      color: item.color ?? palette[index % palette.length],
+      share,
+      start,
+      anchorX: centerX + cos * (radius + strokeWidth / 2),
+      anchorY: centerY + sin * (radius + strokeWidth / 2),
+      elbowX: centerX + cos * (radius + 15),
+      elbowY: centerY + sin * (radius + 15),
+      labelX: side === "right" ? 148 : 12,
+      lineEndX: side === "right" ? 138 : 22,
+      side,
+      y: clamp(centerY + sin * (radius + 18), 16, 104)
+    };
+  });
+  const distributeLabels = (items) => {
+    const sorted = [...items].sort((left, right) => left.y - right.y);
+    const minY = 16;
+    const maxY = 104;
+    const gap = 11;
+    let nextY = minY;
+    const placed = sorted.map((item) => {
+      const y = Math.max(item.y, nextY);
+      nextY = y + gap;
+      return { ...item, y };
+    });
+    let overflow = (placed.at(-1)?.y ?? maxY) - maxY;
+    for (let index = placed.length - 1; index >= 0 && overflow > 0; index -= 1) {
+      const floor = index === 0 ? minY : placed[index - 1].y + gap;
+      const shift = Math.min(overflow, placed[index].y - floor);
+      placed[index].y -= shift;
+      overflow -= shift;
+    }
+    return placed;
+  };
+  const annotations = [
+    ...distributeLabels(slices.filter((item) => item.share >= 5 && item.side === "left")),
+    ...distributeLabels(slices.filter((item) => item.share >= 5 && item.side === "right"))
+  ];
+  const legendRows = rows.length ? slices.map((item) => ({
+    ...item,
+    detail: item.detail?.includes("%") ? item.detail : `${percent(item.value / Math.max(total, 1))} / ${money(item.value)}${item.detail ? ` / ${item.detail}` : ""}`
+  })) : [{ label: "\u6682\u65E0\u6570\u636E", value: 1, color: "#b8c4d4", detail: "0%" }];
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "donut-layout", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { className: "donut-chart", viewBox: "0 0 100 100", role: "img", "aria-label": `${centerLabel} ${centerValue}`, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "50", cy: "50", r: "37", fill: "none", stroke: "#e5edf5", strokeWidth: "13" }),
-      total > 0 && rows.map((item, index) => {
-        const share = item.value / total * 100;
-        const strokeDashoffset = -offset;
-        offset += share;
-        return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "circle",
-          {
-            cx: "50",
-            cy: "50",
-            fill: "none",
-            pathLength: 100,
-            r: "37",
-            stroke: item.color ?? palette[index % palette.length],
-            strokeDasharray: `${share} ${100 - share}`,
-            strokeDashoffset,
-            strokeLinecap: "butt",
-            strokeWidth: "13",
-            transform: "rotate(-90 50 50)"
-          },
-          item.label
-        );
-      }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { className: "donut-value", x: "50", y: "47", children: centerValue }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { className: "donut-label", x: "50", y: "60", children: centerLabel })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("svg", { className: "donut-chart", viewBox: "0 0 160 120", role: "img", "aria-label": `${centerLabel} ${centerValue}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: centerX, cy: centerY, r: radius, fill: "none", stroke: "#e5edf5", strokeWidth }),
+      total > 0 && slices.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+        "circle",
+        {
+          cx: centerX,
+          cy: centerY,
+          fill: "none",
+          pathLength: 100,
+          r: radius,
+          stroke: item.color,
+          strokeDasharray: `${item.share} ${100 - item.share}`,
+          strokeDashoffset: -item.start,
+          strokeLinecap: "butt",
+          strokeWidth,
+          transform: `rotate(-90 ${centerX} ${centerY})`
+        },
+        item.label
+      )),
+      annotations.map((item) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("g", { className: "donut-annotation", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("polyline", { points: `${item.anchorX},${item.anchorY} ${item.elbowX},${item.elbowY} ${item.lineEndX},${item.y}` }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("title", { children: `${item.label} ${percent(item.value / Math.max(total, 1))}` }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { textAnchor: item.side === "right" ? "start" : "end", x: item.labelX, y: item.y + 2, children: `${Math.round(item.share)}%` })
+      ] }, `${item.label}-${item.share}`)),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { className: "donut-value", x: centerX, y: centerY - 4, children: centerValue }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("text", { className: "donut-label", x: centerX, y: centerY + 10, children: centerLabel })
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Legend, { data: rows.length ? rows : [{ label: "\u6682\u65E0\u6570\u636E", value: 1, color: "#b8c4d4" }], valueFormatter: money })
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Legend, { data: legendRows, valueFormatter: money })
   ] });
 }
 function Legend({ data, valueFormatter }) {

@@ -695,17 +695,18 @@ select {
 
 .donut-layout {
   display: grid;
-  grid-template-columns: minmax(176px, 0.9fr) minmax(190px, 1.1fr);
-  gap: 18px;
+  grid-template-columns: minmax(250px, 0.95fr) minmax(220px, 1.05fr);
+  gap: 22px;
   align-items: center;
   min-width: 0;
 }
 
 .donut-chart {
-  width: min(210px, 100%);
+  width: min(320px, 100%);
   height: auto;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 3;
   justify-self: center;
+  overflow: visible;
 }
 
 .donut-value,
@@ -726,6 +727,25 @@ select {
   fill: var(--muted);
   font-size: 5px;
   font-weight: 800;
+}
+
+.donut-annotation polyline {
+  fill: none;
+  stroke: #8da0b8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 0.85px;
+}
+
+.donut-annotation text {
+  fill: var(--ink);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 6px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-linejoin: round;
+  stroke-width: 2.2px;
 }
 
 .legend {
@@ -1439,10 +1459,14 @@ th {
   padding: 14px;
 }
 
-@container (max-width: 460px) {
+@container (max-width: 620px) {
   .donut-layout {
     grid-template-columns: 1fr;
     justify-items: center;
+  }
+
+  .donut-chart {
+    width: min(360px, 100%);
   }
 
   .legend {

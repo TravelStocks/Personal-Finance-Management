@@ -1905,9 +1905,9 @@ export default function FinanceDashboard() {
           </div>
           <article className="total-assets-hero">
             <div className="total-assets-main">
-              <span>当前总资产</span>
+              <span>当前总资产与负债</span>
               <strong>{money(totals.totalAssets)}</strong>
-              <small>账户现金、A股待投、美股待投、已投资市值、个人专项储蓄、父母储蓄、实物资产和应急金合计；总负债同区列示，家庭及伴侣储蓄单列，不计入个人总资产。</small>
+              <small>资产合计 {money(totals.totalAssets)} / 总负债 {money(totals.totalDebt)} / 净资产 {money(totals.netWorth)}；家庭及伴侣储蓄单列，不计入个人总资产。</small>
             </div>
             <div className="total-assets-breakdown" aria-label="总资产和负债资金分布">
               {assetLiabilityBreakdown.map((item) => (
@@ -3583,42 +3583,106 @@ function DonutChart({
 }) {
   const rows = data.filter((item) => item.value > 0);
   const total = rows.reduce((sum, item) => sum + item.value, 0);
-  let offset = 0;
+  const centerX = 80;
+  const centerY = 60;
+  const radius = 32;
+  const strokeWidth = 12;
+  const shares = rows.map((item) => (total ? (item.value / total) * 100 : 0));
+  const starts = shares.map((_, index) => shares.slice(0, index).reduce((sum, share) => sum + share, 0));
+  const slices = rows.map((item, index) => {
+    const share = shares[index] ?? 0;
+    const start = starts[index] ?? 0;
+    const mid = start + share / 2;
+    const radians = ((mid / 100) * 360 - 90) * (Math.PI / 180);
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    const side = cos >= 0 ? "right" : "left";
+    return {
+      ...item,
+      color: item.color ?? palette[index % palette.length],
+      share,
+      start,
+      anchorX: centerX + cos * (radius + strokeWidth / 2),
+      anchorY: centerY + sin * (radius + strokeWidth / 2),
+      elbowX: centerX + cos * (radius + 15),
+      elbowY: centerY + sin * (radius + 15),
+      labelX: side === "right" ? 148 : 12,
+      lineEndX: side === "right" ? 138 : 22,
+      side,
+      y: clamp(centerY + sin * (radius + 18), 16, 104),
+    };
+  });
+  const distributeLabels = (items: typeof slices) => {
+    const sorted = [...items].sort((left, right) => left.y - right.y);
+    const minY = 16;
+    const maxY = 104;
+    const gap = 11;
+    let nextY = minY;
+    const placed = sorted.map((item) => {
+      const y = Math.max(item.y, nextY);
+      nextY = y + gap;
+      return { ...item, y };
+    });
+    let overflow = (placed.at(-1)?.y ?? maxY) - maxY;
+    for (let index = placed.length - 1; index >= 0 && overflow > 0; index -= 1) {
+      const floor = index === 0 ? minY : placed[index - 1].y + gap;
+      const shift = Math.min(overflow, placed[index].y - floor);
+      placed[index].y -= shift;
+      overflow -= shift;
+    }
+    return placed;
+  };
+  const annotations = [
+    ...distributeLabels(slices.filter((item) => item.share >= 5 && item.side === "left")),
+    ...distributeLabels(slices.filter((item) => item.share >= 5 && item.side === "right")),
+  ];
+  const legendRows = rows.length
+    ? slices.map((item) => ({
+        ...item,
+        detail: item.detail?.includes("%")
+          ? item.detail
+          : `${percent(item.value / Math.max(total, 1))} / ${money(item.value)}${item.detail ? ` / ${item.detail}` : ""}`,
+      }))
+    : [{ label: "暂无数据", value: 1, color: "#b8c4d4", detail: "0%" }];
 
   return (
     <div className="donut-layout">
-      <svg className="donut-chart" viewBox="0 0 100 100" role="img" aria-label={`${centerLabel} ${centerValue}`}>
-        <circle cx="50" cy="50" r="37" fill="none" stroke="#e5edf5" strokeWidth="13" />
+      <svg className="donut-chart" viewBox="0 0 160 120" role="img" aria-label={`${centerLabel} ${centerValue}`}>
+        <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke="#e5edf5" strokeWidth={strokeWidth} />
         {total > 0 &&
-          rows.map((item, index) => {
-            const share = (item.value / total) * 100;
-            const strokeDashoffset = -offset;
-            offset += share;
-            return (
-              <circle
-                cx="50"
-                cy="50"
-                fill="none"
-                key={item.label}
-                pathLength={100}
-                r="37"
-                stroke={item.color ?? palette[index % palette.length]}
-                strokeDasharray={`${share} ${100 - share}`}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="butt"
-                strokeWidth="13"
-                transform="rotate(-90 50 50)"
-              />
-            );
-          })}
-        <text className="donut-value" x="50" y="47">
+          slices.map((item) => (
+            <circle
+              cx={centerX}
+              cy={centerY}
+              fill="none"
+              key={item.label}
+              pathLength={100}
+              r={radius}
+              stroke={item.color}
+              strokeDasharray={`${item.share} ${100 - item.share}`}
+              strokeDashoffset={-item.start}
+              strokeLinecap="butt"
+              strokeWidth={strokeWidth}
+              transform={`rotate(-90 ${centerX} ${centerY})`}
+            />
+          ))}
+        {annotations.map((item) => (
+          <g className="donut-annotation" key={`${item.label}-${item.share}`}>
+            <polyline points={`${item.anchorX},${item.anchorY} ${item.elbowX},${item.elbowY} ${item.lineEndX},${item.y}`} />
+            <title>{`${item.label} ${percent(item.value / Math.max(total, 1))}`}</title>
+            <text textAnchor={item.side === "right" ? "start" : "end"} x={item.labelX} y={item.y + 2}>
+              {`${Math.round(item.share)}%`}
+            </text>
+          </g>
+        ))}
+        <text className="donut-value" x={centerX} y={centerY - 4}>
           {centerValue}
         </text>
-        <text className="donut-label" x="50" y="60">
+        <text className="donut-label" x={centerX} y={centerY + 10}>
           {centerLabel}
         </text>
       </svg>
-      <Legend data={rows.length ? rows : [{ label: "暂无数据", value: 1, color: "#b8c4d4" }]} valueFormatter={money} />
+      <Legend data={legendRows} valueFormatter={money} />
     </div>
   );
 }
