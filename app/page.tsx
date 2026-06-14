@@ -431,6 +431,7 @@ function summarizeGoals(goals: Goal[]) {
     partnerCurrent: 0,
     partnerMonthly: 0,
     partnerActualMonthly: 0,
+    emergencyCurrent: 0,
     emergencyMonthly: 0,
     emergencyActualMonthly: 0,
     otherCurrent: 0,
@@ -460,6 +461,7 @@ function summarizeGoals(goals: Goal[]) {
       summary.partnerActualMonthly += goal.actualMonthly;
       summary.hasPartner = true;
     } else if (kind === "emergency") {
+      summary.emergencyCurrent += goal.current;
       summary.emergencyMonthly += goal.monthly;
       summary.emergencyActualMonthly += goal.actualMonthly;
       summary.hasEmergency = true;
@@ -720,6 +722,7 @@ export default function FinanceDashboard() {
     const travelSavings = accountTravelSavings > 0 ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
     const learningSavings =
       accountLearningSavings > 0 ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
+    const currentEmergencyFund = goalSummary.hasEmergency ? goalSummary.emergencyCurrent : emergencyFund;
     const partnerSavings = goalSummary.partnerCurrent;
     const otherSavings = goalSummary.otherCurrent;
     const familyFund = partnerSavings;
@@ -739,7 +742,7 @@ export default function FinanceDashboard() {
     const hkShareValue = holdings.filter((item) => item.market === "港股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const manualAssetTotal = balanceAssets.reduce((sum, item) => sum + item.amount, 0);
     const totalDebt = liabilities.reduce((sum, item) => sum + item.amount, 0);
-    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + emergencyFund + manualAssetTotal;
+    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + currentEmergencyFund + manualAssetTotal;
     const customOutflow = cashflowCustomItems
       .filter((item) => item.direction === "outflow")
       .reduce((sum, item) => sum + item.amount, 0);
@@ -768,7 +771,7 @@ export default function FinanceDashboard() {
     const savingsRate = actualIncome ? assetOutflow / actualIncome : 0;
     const emergencyNeed = Math.max(0, emergencyMonthlyNeed);
     const emergencyTarget = emergencyNeed * emergencyMonths;
-    const emergencyCoverage = emergencyNeed ? emergencyFund / emergencyNeed : 0;
+    const emergencyCoverage = emergencyNeed ? currentEmergencyFund / emergencyNeed : 0;
     const debtRatio = totalAssets ? totalDebt / totalAssets : 0;
     const score = Math.round(
       Math.max(0, Math.min(25, 25 - Math.max(0, fixedRatio - 0.35) * 85)) +
@@ -827,6 +830,7 @@ export default function FinanceDashboard() {
       fixedRatio,
       savingsRate,
       emergencyCoverage,
+      currentEmergencyFund,
       debtRatio,
       score,
       emergencyMonthlyNeed: emergencyNeed,
@@ -1180,6 +1184,11 @@ export default function FinanceDashboard() {
     updateFirstGoalByKind("emergency", { actualMonthly: value });
   }
 
+  function setEmergencyFundFromInput(value: number) {
+    setEmergencyFund(value);
+    updateFirstGoalByKind("emergency", { current: value });
+  }
+
   function addGoal() {
     setGoals((items) => [
       ...items,
@@ -1294,7 +1303,7 @@ export default function FinanceDashboard() {
     familyFundBreakdown,
     {
       label: "应急金",
-      value: emergencyFund,
+      value: totals.currentEmergencyFund,
       detail: `覆盖 ${totals.emergencyCoverage.toFixed(1)} 月 / 目标 ${emergencyMonths} 月`,
       color: palette[2],
     },
@@ -1352,7 +1361,7 @@ export default function FinanceDashboard() {
     },
     {
       title: "目前总应急",
-      value: money(emergencyFund),
+      value: money(totals.currentEmergencyFund),
       detail: `覆盖 ${totals.emergencyCoverage.toFixed(1)} 个月 / 目标 ${emergencyMonths} 个月`,
       tone: "amber" as Tone,
     },
@@ -1599,7 +1608,7 @@ export default function FinanceDashboard() {
   ];
   const netWorthTrend = forecast.map((item) => ({
     label: item.month,
-    value: item.balance + totals.investmentValue + totals.totalSavings + emergencyFund + totals.manualAssetTotal - totals.totalDebt,
+    value: item.balance + totals.investmentValue + totals.totalSavings + totals.currentEmergencyFund + totals.manualAssetTotal - totals.totalDebt,
   }));
   const balanceData = [
     { label: "总资产", value: totals.totalAssets, color: palette[0] },
@@ -2182,22 +2191,22 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "emergency" && (
-                  <Module title="应急金" desc="应急金单独管理，不混进普通储蓄目标。">
+                  <Module title="应急金" desc="当前金额与目标管理的应急储备自动同步。">
                     <DataChartLayout
                       data={
                         <>
                           <EditableEmergencyTable
-                            emergencyFund={emergencyFund}
+                            emergencyFund={totals.currentEmergencyFund}
                             emergencyMonthlyNeed={emergencyMonthlyNeed}
                             emergencyMonths={emergencyMonths}
-                            setEmergencyFund={setEmergencyFund}
+                            setEmergencyFund={setEmergencyFundFromInput}
                             setEmergencyMonthlyNeed={setEmergencyMonthlyNeed}
                             setEmergencyMonths={setEmergencyMonths}
                           />
                           <div className="stat-strip">
                             <Stat label="覆盖月数" value={`${totals.emergencyCoverage.toFixed(1)} 个月`} />
                             <Stat label="目标金额" value={money(totals.emergencyTarget)} />
-                            <Stat label="缺口" value={money(Math.max(0, totals.emergencyTarget - emergencyFund))} />
+                            <Stat label="缺口" value={money(Math.max(0, totals.emergencyTarget - totals.currentEmergencyFund))} />
                             <Stat label="当前进度" value={percent(totals.emergencyCoverage / Math.max(emergencyMonths, 1))} />
                           </div>
                         </>
@@ -2209,10 +2218,10 @@ export default function FinanceDashboard() {
                               data={[
                                 {
                                   label: "应急金目标",
-                                  value: emergencyFund,
+                                  value: totals.currentEmergencyFund,
                                   max: totals.emergencyTarget,
                                   color: palette[1],
-                                  detail: `缺口 ${money(Math.max(0, totals.emergencyTarget - emergencyFund))}`,
+                                  detail: `缺口 ${money(Math.max(0, totals.emergencyTarget - totals.currentEmergencyFund))}`,
                                 },
                               ]}
                               valueFormatter={money}

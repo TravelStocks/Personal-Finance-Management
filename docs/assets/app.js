@@ -12942,6 +12942,7 @@ function summarizeGoals(goals) {
     partnerCurrent: 0,
     partnerMonthly: 0,
     partnerActualMonthly: 0,
+    emergencyCurrent: 0,
     emergencyMonthly: 0,
     emergencyActualMonthly: 0,
     otherCurrent: 0,
@@ -12970,6 +12971,7 @@ function summarizeGoals(goals) {
       summary.partnerActualMonthly += goal.actualMonthly;
       summary.hasPartner = true;
     } else if (kind === "emergency") {
+      summary.emergencyCurrent += goal.current;
       summary.emergencyMonthly += goal.monthly;
       summary.emergencyActualMonthly += goal.actualMonthly;
       summary.hasEmergency = true;
@@ -13192,6 +13194,7 @@ function FinanceDashboard() {
     const goalSummary = summarizeGoals(goals);
     const travelSavings = accountTravelSavings > 0 ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
     const learningSavings = accountLearningSavings > 0 ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
+    const currentEmergencyFund = goalSummary.hasEmergency ? goalSummary.emergencyCurrent : emergencyFund;
     const partnerSavings = goalSummary.partnerCurrent;
     const otherSavings = goalSummary.otherCurrent;
     const familyFund = partnerSavings;
@@ -13211,7 +13214,7 @@ function FinanceDashboard() {
     const hkShareValue = holdings.filter((item) => item.market === "\u6E2F\u80A1").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const manualAssetTotal = balanceAssets.reduce((sum, item) => sum + item.amount, 0);
     const totalDebt = liabilities.reduce((sum, item) => sum + item.amount, 0);
-    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + emergencyFund + manualAssetTotal;
+    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + currentEmergencyFund + manualAssetTotal;
     const customOutflow = cashflowCustomItems.filter((item) => item.direction === "outflow").reduce((sum, item) => sum + item.amount, 0);
     const enabledCashflowValue = (id, value) => cashflowHiddenBuiltinIds.includes(id) ? 0 : value;
     const cashflowSpendingPlan = enabledCashflowValue("spendingPlan", spendingPlan);
@@ -13234,7 +13237,7 @@ function FinanceDashboard() {
     const savingsRate = actualIncome ? assetOutflow / actualIncome : 0;
     const emergencyNeed = Math.max(0, emergencyMonthlyNeed);
     const emergencyTarget = emergencyNeed * emergencyMonths;
-    const emergencyCoverage = emergencyNeed ? emergencyFund / emergencyNeed : 0;
+    const emergencyCoverage = emergencyNeed ? currentEmergencyFund / emergencyNeed : 0;
     const debtRatio = totalAssets ? totalDebt / totalAssets : 0;
     const score = Math.round(
       Math.max(0, Math.min(25, 25 - Math.max(0, fixedRatio - 0.35) * 85)) + Math.min(25, emergencyCoverage / Math.max(emergencyMonths, 1) * 25) + (totalDebt === 0 ? 20 : Math.max(0, 20 - debtRatio * 50)) + Math.min(20, savingsRate / 0.45 * 20) + (investmentValue >= investmentCost ? 10 : 6)
@@ -13289,6 +13292,7 @@ function FinanceDashboard() {
       fixedRatio,
       savingsRate,
       emergencyCoverage,
+      currentEmergencyFund,
       debtRatio,
       score,
       emergencyMonthlyNeed: emergencyNeed,
@@ -13593,6 +13597,10 @@ function FinanceDashboard() {
   function setEmergencyAllocationFromInput(value) {
     updateFirstGoalByKind("emergency", { actualMonthly: value });
   }
+  function setEmergencyFundFromInput(value) {
+    setEmergencyFund(value);
+    updateFirstGoalByKind("emergency", { current: value });
+  }
   function addGoal() {
     setGoals((items) => [
       ...items,
@@ -13684,7 +13692,7 @@ function FinanceDashboard() {
     familyFundBreakdown,
     {
       label: "\u5E94\u6025\u91D1",
-      value: emergencyFund,
+      value: totals.currentEmergencyFund,
       detail: `\u8986\u76D6 ${totals.emergencyCoverage.toFixed(1)} \u6708 / \u76EE\u6807 ${emergencyMonths} \u6708`,
       color: palette[2]
     }
@@ -13734,7 +13742,7 @@ function FinanceDashboard() {
     },
     {
       title: "\u76EE\u524D\u603B\u5E94\u6025",
-      value: money(emergencyFund),
+      value: money(totals.currentEmergencyFund),
       detail: `\u8986\u76D6 ${totals.emergencyCoverage.toFixed(1)} \u4E2A\u6708 / \u76EE\u6807 ${emergencyMonths} \u4E2A\u6708`,
       tone: "amber"
     },
@@ -13965,7 +13973,7 @@ function FinanceDashboard() {
   ];
   const netWorthTrend = forecast.map((item) => ({
     label: item.month,
-    value: item.balance + totals.investmentValue + totals.totalSavings + emergencyFund + totals.manualAssetTotal - totals.totalDebt
+    value: item.balance + totals.investmentValue + totals.totalSavings + totals.currentEmergencyFund + totals.manualAssetTotal - totals.totalDebt
   }));
   const balanceData = [
     { label: "\u603B\u8D44\u4EA7", value: totals.totalAssets, color: palette[0] },
@@ -14428,17 +14436,17 @@ function FinanceDashboard() {
               ] })
             }
           ) }),
-          moduleId === "emergency" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Module, { title: "\u5E94\u6025\u91D1", desc: "\u5E94\u6025\u91D1\u5355\u72EC\u7BA1\u7406\uFF0C\u4E0D\u6DF7\u8FDB\u666E\u901A\u50A8\u84C4\u76EE\u6807\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+          moduleId === "emergency" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Module, { title: "\u5E94\u6025\u91D1", desc: "\u5F53\u524D\u91D1\u989D\u4E0E\u76EE\u6807\u7BA1\u7406\u7684\u5E94\u6025\u50A8\u5907\u81EA\u52A8\u540C\u6B65\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
             DataChartLayout,
             {
               data: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
                   EditableEmergencyTable,
                   {
-                    emergencyFund,
+                    emergencyFund: totals.currentEmergencyFund,
                     emergencyMonthlyNeed,
                     emergencyMonths,
-                    setEmergencyFund,
+                    setEmergencyFund: setEmergencyFundFromInput,
                     setEmergencyMonthlyNeed,
                     setEmergencyMonths
                   }
@@ -14446,7 +14454,7 @@ function FinanceDashboard() {
                 /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "stat-strip", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Stat, { label: "\u8986\u76D6\u6708\u6570", value: `${totals.emergencyCoverage.toFixed(1)} \u4E2A\u6708` }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Stat, { label: "\u76EE\u6807\u91D1\u989D", value: money(totals.emergencyTarget) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Stat, { label: "\u7F3A\u53E3", value: money(Math.max(0, totals.emergencyTarget - emergencyFund)) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Stat, { label: "\u7F3A\u53E3", value: money(Math.max(0, totals.emergencyTarget - totals.currentEmergencyFund)) }),
                   /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Stat, { label: "\u5F53\u524D\u8FDB\u5EA6", value: percent(totals.emergencyCoverage / Math.max(emergencyMonths, 1)) })
                 ] })
               ] }),
@@ -14457,10 +14465,10 @@ function FinanceDashboard() {
                     data: [
                       {
                         label: "\u5E94\u6025\u91D1\u76EE\u6807",
-                        value: emergencyFund,
+                        value: totals.currentEmergencyFund,
                         max: totals.emergencyTarget,
                         color: palette[1],
-                        detail: `\u7F3A\u53E3 ${money(Math.max(0, totals.emergencyTarget - emergencyFund))}`
+                        detail: `\u7F3A\u53E3 ${money(Math.max(0, totals.emergencyTarget - totals.currentEmergencyFund))}`
                       }
                     ],
                     valueFormatter: money
