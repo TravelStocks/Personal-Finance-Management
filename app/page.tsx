@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 type Period = "周" | "月" | "季" | "年";
 type Tone = "blue" | "green" | "amber" | "red" | "violet";
@@ -137,6 +137,8 @@ type ReportRow = {
 };
 
 type PersistedFinanceData = {
+  period?: Period;
+  selectedMonth?: string;
   monthlyRecords: MonthRecord[];
   accounts: Account[];
   holdings: Holding[];
@@ -160,6 +162,12 @@ type PersistedFinanceData = {
   futureCapabilities: FutureCapability[];
   cashflowHiddenBuiltinIds: CashflowBuiltinId[];
   cashflowCustomItems: CashflowCustomItem[];
+};
+
+type FinanceSnapshot = {
+  id: string;
+  createdAt: string;
+  data: PersistedFinanceData;
 };
 
 type ChartDatum = {
@@ -316,6 +324,8 @@ const cashflowBuiltinIds: CashflowBuiltinId[] = [
 
 const reportStartMonthId = "2026-06";
 const financeStorageKey = "personal-finance-management-data-v2";
+const financeSnapshotsKey = "personal-finance-management-snapshots-v1";
+const maxSnapshots = 20;
 
 const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "income", title: "收入", desc: "税后工资、实际到账、炒股月结算记录" },
@@ -576,6 +586,16 @@ function dayDistance(date: string) {
   return Math.ceil((target.getTime() - today.getTime()) / 86400000);
 }
 
+function formatSnapshotTime(value: string) {
+  return new Date(value).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function EditableNumber({
   label,
   value,
@@ -629,59 +649,16 @@ export default function FinanceDashboard() {
   const [futureCapabilities, setFutureCapabilities] = useState<FutureCapability[]>(initialFutureCapabilities);
   const [cashflowHiddenBuiltinIds, setCashflowHiddenBuiltinIds] = useState<CashflowBuiltinId[]>([]);
   const [cashflowCustomItems, setCashflowCustomItems] = useState<CashflowCustomItem[]>([]);
+  const [snapshots, setSnapshots] = useState<FinanceSnapshot[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("正在读取本地数据…");
   const [savedDataReady, setSavedDataReady] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const loadSavedData = window.setTimeout(() => {
-      try {
-        const raw = window.localStorage.getItem(financeStorageKey);
-        if (raw) {
-          const saved = JSON.parse(raw) as Partial<PersistedFinanceData>;
-          if (Array.isArray(saved.monthlyRecords)) setMonthlyRecords(saved.monthlyRecords);
-          if (Array.isArray(saved.accounts)) setAccounts(saved.accounts);
-          if (Array.isArray(saved.holdings)) setHoldings(saved.holdings);
-          if (typeof saved.fxUsd === "number") setFxUsd(saved.fxUsd);
-          if (typeof saved.fxHkd === "number") setFxHkd(saved.fxHkd);
-          if (typeof saved.aSharePlan === "number") setASharePlan(saved.aSharePlan);
-          if (typeof saved.usSharePlan === "number") setUsSharePlan(saved.usSharePlan);
-          if (typeof saved.hkSharePlan === "number") setHkSharePlan(saved.hkSharePlan);
-          if (typeof saved.travelSaving === "number") setTravelSaving(saved.travelSaving);
-          if (typeof saved.learningSaving === "number") setLearningSaving(saved.learningSaving);
-          if (typeof saved.emergencyFund === "number") setEmergencyFund(saved.emergencyFund);
-          if (typeof saved.emergencyMonths === "number") setEmergencyMonths(saved.emergencyMonths);
-          if (typeof saved.emergencyMonthlyNeed === "number") setEmergencyMonthlyNeed(saved.emergencyMonthlyNeed);
-          const savedBalanceAssets = normalizeBalanceAssets(saved.balanceAssets);
-          if (savedBalanceAssets.length > 0) setBalanceAssets(savedBalanceAssets);
-          const savedLiabilities = normalizeLiabilities(saved.liabilities);
-          if (savedLiabilities.length > 0) {
-            setLiabilities(savedLiabilities);
-          } else if (
-            typeof saved.houseDebt === "number" ||
-            typeof saved.carDebt === "number" ||
-            typeof saved.otherDebt === "number"
-          ) {
-            setLiabilities(legacyLiabilitiesFromSaved(saved));
-          }
-          if (Array.isArray(saved.reminders)) setReminders(saved.reminders);
-          if (Array.isArray(saved.goals)) setGoals(normalizeGoals(saved.goals));
-          if (Array.isArray(saved.futureCapabilities)) setFutureCapabilities(saved.futureCapabilities);
-          if (Array.isArray(saved.cashflowHiddenBuiltinIds)) {
-            setCashflowHiddenBuiltinIds(saved.cashflowHiddenBuiltinIds.filter((id) => cashflowBuiltinIds.includes(id)));
-          }
-          if (Array.isArray(saved.cashflowCustomItems)) setCashflowCustomItems(saved.cashflowCustomItems);
-        }
-      } catch {
-        window.localStorage.removeItem(financeStorageKey);
-      } finally {
-        setSavedDataReady(true);
-      }
-    }, 0);
-    return () => window.clearTimeout(loadSavedData);
-  }, []);
-
-  useEffect(() => {
-    if (!savedDataReady) return;
-    const data: PersistedFinanceData = {
+  function getPersistedFinanceData(): PersistedFinanceData {
+    return {
+      period,
+      selectedMonth,
       monthlyRecords,
       accounts,
       holdings,
@@ -703,9 +680,84 @@ export default function FinanceDashboard() {
       cashflowHiddenBuiltinIds,
       cashflowCustomItems,
     };
-    window.localStorage.setItem(financeStorageKey, JSON.stringify(data));
+  }
+
+  function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
+    if (saved.period) setPeriod(saved.period);
+    if (saved.selectedMonth) setSelectedMonth(saved.selectedMonth);
+    if (Array.isArray(saved.monthlyRecords)) setMonthlyRecords(saved.monthlyRecords);
+    if (Array.isArray(saved.accounts)) setAccounts(saved.accounts);
+    if (Array.isArray(saved.holdings)) setHoldings(saved.holdings);
+    if (typeof saved.fxUsd === "number") setFxUsd(saved.fxUsd);
+    if (typeof saved.fxHkd === "number") setFxHkd(saved.fxHkd);
+    if (typeof saved.aSharePlan === "number") setASharePlan(saved.aSharePlan);
+    if (typeof saved.usSharePlan === "number") setUsSharePlan(saved.usSharePlan);
+    if (typeof saved.hkSharePlan === "number") setHkSharePlan(saved.hkSharePlan);
+    if (typeof saved.travelSaving === "number") setTravelSaving(saved.travelSaving);
+    if (typeof saved.learningSaving === "number") setLearningSaving(saved.learningSaving);
+    if (typeof saved.emergencyFund === "number") setEmergencyFund(saved.emergencyFund);
+    if (typeof saved.emergencyMonths === "number") setEmergencyMonths(saved.emergencyMonths);
+    if (typeof saved.emergencyMonthlyNeed === "number") setEmergencyMonthlyNeed(saved.emergencyMonthlyNeed);
+    const savedBalanceAssets = normalizeBalanceAssets(saved.balanceAssets);
+    if (savedBalanceAssets.length > 0) setBalanceAssets(savedBalanceAssets);
+    const savedLiabilities = normalizeLiabilities(saved.liabilities);
+    if (savedLiabilities.length > 0) {
+      setLiabilities(savedLiabilities);
+    } else if (
+      typeof saved.houseDebt === "number" ||
+      typeof saved.carDebt === "number" ||
+      typeof saved.otherDebt === "number"
+    ) {
+      setLiabilities(legacyLiabilitiesFromSaved(saved));
+    }
+    if (Array.isArray(saved.reminders)) setReminders(saved.reminders);
+    if (Array.isArray(saved.goals)) setGoals(normalizeGoals(saved.goals));
+    if (Array.isArray(saved.futureCapabilities)) setFutureCapabilities(saved.futureCapabilities);
+    if (Array.isArray(saved.cashflowHiddenBuiltinIds)) {
+      setCashflowHiddenBuiltinIds(saved.cashflowHiddenBuiltinIds.filter((id) => cashflowBuiltinIds.includes(id)));
+    }
+    if (Array.isArray(saved.cashflowCustomItems)) setCashflowCustomItems(saved.cashflowCustomItems);
+  }
+
+  useEffect(() => {
+    const loadSavedData = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(financeStorageKey);
+        const rawSnapshots = window.localStorage.getItem(financeSnapshotsKey);
+        if (raw) {
+          const saved = JSON.parse(raw) as Partial<PersistedFinanceData>;
+          applyPersistedFinanceData(saved);
+        }
+        if (rawSnapshots) {
+          const savedSnapshots = JSON.parse(rawSnapshots) as FinanceSnapshot[];
+          if (Array.isArray(savedSnapshots)) setSnapshots(savedSnapshots.slice(0, maxSnapshots));
+        }
+        setSaveStatus(raw ? "已恢复上次保存的数据" : "已启用自动保存");
+      } catch {
+        window.localStorage.removeItem(financeStorageKey);
+        setSaveStatus("本地数据读取失败，已使用默认数据");
+      } finally {
+        setSavedDataReady(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(loadSavedData);
+  }, []);
+
+  useEffect(() => {
+    if (!savedDataReady) return;
+    const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(financeStorageKey, JSON.stringify(getPersistedFinanceData()));
+        setSaveStatus(`已自动保存 · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`);
+      } catch {
+        setSaveStatus("自动保存失败，请导出备份");
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
   }, [
     savedDataReady,
+    period,
+    selectedMonth,
     monthlyRecords,
     accounts,
     holdings,
@@ -727,6 +779,68 @@ export default function FinanceDashboard() {
     cashflowHiddenBuiltinIds,
     cashflowCustomItems,
   ]);
+
+  function saveSnapshot() {
+    const snapshot: FinanceSnapshot = {
+      id: `${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      data: getPersistedFinanceData(),
+    };
+    const nextSnapshots = [snapshot, ...snapshots].slice(0, maxSnapshots);
+    setSnapshots(nextSnapshots);
+    window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(nextSnapshots));
+    setHistoryOpen(true);
+    setSaveStatus("历史版本已保存");
+  }
+
+  function restoreSnapshot(snapshot: FinanceSnapshot) {
+    if (!window.confirm(`确定恢复 ${formatSnapshotTime(snapshot.createdAt)} 的版本吗？当前数据会被该版本覆盖。`)) return;
+    applyPersistedFinanceData(snapshot.data);
+    setSaveStatus("历史版本已恢复并自动保存");
+  }
+
+  function deleteSnapshot(id: string) {
+    const nextSnapshots = snapshots.filter((snapshot) => snapshot.id !== id);
+    setSnapshots(nextSnapshots);
+    window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(nextSnapshots));
+  }
+
+  function exportBackup() {
+    const backup = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: getPersistedFinanceData(),
+      snapshots,
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `personal-finance-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setSaveStatus("备份文件已导出");
+  }
+
+  async function importBackup(file: File) {
+    try {
+      const backup = JSON.parse(await file.text()) as { data?: Partial<PersistedFinanceData>; snapshots?: FinanceSnapshot[] };
+      if (!backup.data || !Array.isArray(backup.data.accounts) || !Array.isArray(backup.data.monthlyRecords)) {
+        throw new Error("invalid backup");
+      }
+      applyPersistedFinanceData(backup.data);
+      if (Array.isArray(backup.snapshots)) {
+        const importedSnapshots = backup.snapshots.slice(0, maxSnapshots);
+        setSnapshots(importedSnapshots);
+        window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(importedSnapshots));
+      }
+      setSaveStatus("备份已导入并自动保存");
+    } catch {
+      window.alert("无法导入：请选择由本网页导出的 JSON 备份文件。");
+    } finally {
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
 
   const activeMonth = monthlyRecords.find((item) => item.id === selectedMonth) ?? monthlyRecords[0];
   const salary = activeMonth.salary;
@@ -1908,6 +2022,64 @@ export default function FinanceDashboard() {
             ))}
           </div>
         </header>
+
+        <section className="data-safety-bar" aria-label="数据保存与备份">
+          <div className="save-indicator">
+            <span className={savedDataReady ? "save-dot ready" : "save-dot"} />
+            <div>
+              <strong>{saveStatus}</strong>
+              <small>数据实时保存在当前浏览器；跨电脑使用时请导出备份。</small>
+            </div>
+          </div>
+          <div className="data-actions">
+            <button className="primary-button" type="button" onClick={saveSnapshot}>保存历史版本</button>
+            <button className="secondary-button" type="button" onClick={() => setHistoryOpen((open) => !open)}>
+              历史版本 {snapshots.length > 0 ? `(${snapshots.length})` : ""}
+            </button>
+            <button className="secondary-button" type="button" onClick={exportBackup}>导出备份</button>
+            <button className="secondary-button" type="button" onClick={() => importInputRef.current?.click()}>导入备份</button>
+            <input
+              ref={importInputRef}
+              className="visually-hidden"
+              accept="application/json,.json"
+              type="file"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void importBackup(file);
+              }}
+            />
+          </div>
+        </section>
+
+        {historyOpen && (
+          <section className="history-panel">
+            <div className="history-heading">
+              <div>
+                <h2>历史版本</h2>
+                <p>最多保留最近 {maxSnapshots} 个手动快照。恢复前可以先保存当前版本。</p>
+              </div>
+              <button className="secondary-button" type="button" onClick={() => setHistoryOpen(false)}>关闭</button>
+            </div>
+            {snapshots.length === 0 ? (
+              <div className="history-empty">还没有历史版本。点击“保存历史版本”即可创建第一个快照。</div>
+            ) : (
+              <div className="history-list">
+                {snapshots.map((snapshot) => (
+                  <article className="history-item" key={snapshot.id}>
+                    <div>
+                      <strong>{formatSnapshotTime(snapshot.createdAt)}</strong>
+                      <span>{snapshot.data.selectedMonth ?? selectedMonth} · {snapshot.data.accounts.length} 个账户</span>
+                    </div>
+                    <div className="history-actions">
+                      <button className="secondary-button" type="button" onClick={() => restoreSnapshot(snapshot)}>恢复</button>
+                      <button className="danger-button" type="button" onClick={() => deleteSnapshot(snapshot.id)}>删除</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="overview">
           <div className="section-title">

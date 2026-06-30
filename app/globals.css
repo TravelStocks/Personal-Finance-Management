@@ -197,6 +197,110 @@ select {
   color: #fff;
 }
 
+.data-safety-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: -8px 0 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+}
+
+.save-indicator {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.save-indicator strong,
+.history-item strong {
+  display: block;
+  line-height: 1.25;
+}
+
+.save-indicator small,
+.history-item span,
+.history-heading p,
+.history-empty {
+  color: var(--muted);
+}
+
+.save-dot {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--amber);
+  box-shadow: 0 0 0 4px rgba(183, 121, 31, 0.13);
+}
+
+.save-dot.ready {
+  background: var(--green);
+  box-shadow: 0 0 0 4px rgba(7, 131, 95, 0.13);
+}
+
+.data-actions,
+.history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.history-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--shadow);
+  padding: 14px;
+}
+
+.history-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-heading h2,
+.history-heading p {
+  margin: 0;
+}
+
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 10px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
 .section-title {
   display: flex;
   align-items: flex-end;
@@ -1192,6 +1296,7 @@ select {
   gap: 10px;
 }
 
+.primary-button,
 .secondary-button,
 .danger-button {
   min-height: 38px;
@@ -1201,6 +1306,12 @@ select {
   color: var(--ink);
   padding: 0 12px;
   font-weight: 900;
+}
+
+.primary-button {
+  border-color: rgba(31, 95, 191, 0.2);
+  background: var(--blue);
+  color: #fff;
 }
 
 .secondary-button {
@@ -1215,6 +1326,8 @@ select {
   color: var(--red);
 }
 
+.primary-button:hover,
+.primary-button:focus-visible,
 .secondary-button:hover,
 .secondary-button:focus-visible {
   outline: 3px solid rgba(31, 95, 191, 0.14);
@@ -1576,6 +1689,18 @@ th {
     position: static;
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .data-safety-bar,
+  .history-heading,
+  .history-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .data-actions,
+  .history-actions {
+    justify-content: flex-start;
   }
 
   .panel-actions {
