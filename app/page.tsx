@@ -506,6 +506,11 @@ function percent(value: number) {
   return `${clamp(value * 100).toFixed(0)}%`;
 }
 
+function ratioPercent(value: number) {
+  if (!Number.isFinite(value)) return "0.0%";
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 function shortMonth(label: string) {
   return label.replace("2026年", "").replace("月", "月");
 }
@@ -4938,21 +4943,29 @@ function ReportAutoSyncTable({
             <tr>
               <th>项目</th>
               <th>数值</th>
+              <th>占收入</th>
               <th>流向</th>
               <th>来源</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.name}</td>
-                <td>
-                  <span className={`calculated-cell ${row.amount < 0 ? "negative" : ""}`.trim()}>{money(row.amount)}</span>
-                </td>
-                <td>{row.flow}</td>
-                <td>{row.source}</td>
-              </tr>
-            ))}
+            {rows.map((row) => {
+              const shareOfIncome = income ? row.amount / income : 0;
+              const valueClassName = `calculated-cell ${row.amount < 0 ? "negative" : ""}`.trim();
+              return (
+                <tr key={row.id}>
+                  <td>{row.name}</td>
+                  <td>
+                    <span className={valueClassName}>{money(row.amount)}</span>
+                  </td>
+                  <td>
+                    <span className={valueClassName}>{ratioPercent(shareOfIncome)}</span>
+                  </td>
+                  <td>{row.flow}</td>
+                  <td>{row.source}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
