@@ -17,6 +17,7 @@ type ModuleId =
   | "goals"
   | "reports"
   | "monthlyArchive"
+  | "cloudSync"
   | "health"
   | "future";
 
@@ -191,6 +192,39 @@ type MonthlyArchive = {
   accounts: MonthlyArchiveAccount[];
 };
 
+type CloudSyncSettings = {
+  gistId: string;
+  token: string;
+  autoSync: boolean;
+  lastPushedAt?: string;
+  lastPulledAt?: string;
+};
+
+type CloudSyncBackup = {
+  version: 1;
+  exportedAt: string;
+  data: PersistedFinanceData;
+  snapshots: FinanceSnapshot[];
+  monthlyArchives: MonthlyArchive[];
+};
+
+type CloudSyncEnvelope = {
+  version: 1;
+  app: "personal-finance-management";
+  encryptedAt: string;
+  kdf: {
+    name: "PBKDF2";
+    hash: "SHA-256";
+    iterations: number;
+    salt: string;
+  };
+  cipher: {
+    name: "AES-GCM";
+    iv: string;
+    data: string;
+  };
+};
+
 type ChartDatum = {
   label: string;
   value: number;
@@ -347,6 +381,8 @@ const reportStartMonthId = "2026-06";
 const financeStorageKey = "personal-finance-management-data-v2";
 const financeSnapshotsKey = "personal-finance-management-snapshots-v1";
 const financeMonthlyArchiveKey = "personal-finance-management-monthly-archives-v1";
+const financeCloudSyncKey = "personal-finance-management-cloud-sync-v1";
+const cloudSyncFileName = "personal-finance-management-sync.json";
 const maxSnapshots = 20;
 const maxMonthlyArchives = 48;
 
@@ -363,6 +399,7 @@ const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "goals", title: "目标管理", desc: "旅游、学习、父母储蓄、伴侣基金和大额支出目标" },
   { id: "reports", title: "财务报表", desc: "收入、支出、结余、投资表现" },
   { id: "monthlyArchive", title: "月度存档", desc: "保存每月收入、支出、账户余额和净资产变化" },
+  { id: "cloudSync", title: "云同步", desc: "用加密 GitHub Gist 跨电脑保存和恢复数据" },
   { id: "health", title: "健康评分", desc: "100 分制财务健康状态" },
   { id: "future", title: "数据能力", desc: "保险、债务策略、规则引擎、数据质量" },
 ];
@@ -642,6 +679,18 @@ function normalizeMonthlyArchives(value: unknown) {
     .slice(0, maxMonthlyArchives);
 }
 
+function normalizeCloudSyncSettings(value: unknown): CloudSyncSettings {
+  if (!value || typeof value !== "object") return { gistId: "", token: "", autoSync: false };
+  const raw = value as Partial<CloudSyncSettings>;
+  return {
+    gistId: typeof raw.gistId === "string" ? raw.gistId : "",
+    token: typeof raw.token === "string" ? raw.token : "",
+    autoSync: Boolean(raw.autoSync),
+    lastPushedAt: typeof raw.lastPushedAt === "string" ? raw.lastPushedAt : undefined,
+    lastPulledAt: typeof raw.lastPulledAt === "string" ? raw.lastPulledAt : undefined,
+  };
+}
+
 function legacyLiabilitiesFromSaved(saved: Partial<PersistedFinanceData>) {
   return initialLiabilities.map((item) => ({
     ...item,
@@ -689,6 +738,132 @@ function previousMonthlyArchive(archives: MonthlyArchive[], monthId: string) {
   return sortMonthlyArchivesAsc(archives)
     .filter((archive) => archive.monthId < monthId)
     .at(-1);
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
+  return window.btoa(binary);
+}
+
+function base64ToBytes(value: string) {
+  const binary = window.atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+async function deriveCloudSyncKey(passphrase: string, salt: Uint8Array, iterations: number) {
+  const passphraseBytes = new TextEncoder().encode(passphrase);
+  const baseKey = await window.crypto.subtle.importKey("raw", passphraseBytes, "PBKDF2", false, ["deriveKey"]);
+  return window.crypto.subtle.deriveKey(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    baseKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+async function encryptCloudSyncBackup(backup: CloudSyncBackup, passphrase: string): Promise<CloudSyncEnvelope> {
+  const salt = window.crypto.getRandomValues(new Uint8Array(16));
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const iterations = 180000;
+  const key = await deriveCloudSyncKey(passphrase, salt, iterations);
+  const plaintext = new TextEncoder().encode(JSON.stringify(backup));
+  const encrypted = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext);
+  return {
+    version: 1,
+    app: "personal-finance-management",
+    encryptedAt: new Date().toISOString(),
+    kdf: {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      iterations,
+      salt: bytesToBase64(salt),
+    },
+    cipher: {
+      name: "AES-GCM",
+      iv: bytesToBase64(iv),
+      data: bytesToBase64(new Uint8Array(encrypted)),
+    },
+  };
+}
+
+async function decryptCloudSyncBackup(envelope: CloudSyncEnvelope, passphrase: string): Promise<CloudSyncBackup> {
+  if (envelope.app !== "personal-finance-management" || envelope.version !== 1) {
+    throw new Error("invalid cloud backup");
+  }
+  const key = await deriveCloudSyncKey(passphrase, base64ToBytes(envelope.kdf.salt), envelope.kdf.iterations);
+  const decrypted = await window.crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64ToBytes(envelope.cipher.iv) },
+    key,
+    base64ToBytes(envelope.cipher.data),
+  );
+  return JSON.parse(new TextDecoder().decode(decrypted)) as CloudSyncBackup;
+}
+
+async function githubGistRequest<T>(path: string, token: string, init: RequestInit = {}) {
+  const response = await window.fetch(`https://api.github.com${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...init.headers,
+    },
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message || `GitHub request failed: ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
+async function pushCloudSyncBackup({
+  backup,
+  gistId,
+  passphrase,
+  token,
+}: {
+  backup: CloudSyncBackup;
+  gistId: string;
+  passphrase: string;
+  token: string;
+}) {
+  const envelope = await encryptCloudSyncBackup(backup, passphrase);
+  const body = {
+    description: "Personal Finance Management encrypted sync data",
+    public: false,
+    files: {
+      [cloudSyncFileName]: {
+        content: JSON.stringify(envelope, null, 2),
+      },
+    },
+  };
+
+  if (gistId.trim()) {
+    return githubGistRequest<{ id: string; html_url: string }>(`/gists/${gistId.trim()}`, token, {
+      method: "PATCH",
+      body: JSON.stringify({ files: body.files }),
+    });
+  }
+  return githubGistRequest<{ id: string; html_url: string }>("/gists", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+async function pullCloudSyncBackup(gistId: string, token: string, passphrase: string) {
+  const gist = await githubGistRequest<{ files?: Record<string, { content?: string; raw_url?: string }> }>(
+    `/gists/${gistId.trim()}`,
+    token,
+  );
+  const file = gist.files?.[cloudSyncFileName] ?? Object.values(gist.files ?? {})[0];
+  if (!file?.content) throw new Error("cloud sync file not found");
+  const envelope = JSON.parse(file.content) as CloudSyncEnvelope;
+  return decryptCloudSyncBackup(envelope, passphrase);
 }
 
 function EditableNumber({
@@ -746,9 +921,18 @@ export default function FinanceDashboard() {
   const [cashflowCustomItems, setCashflowCustomItems] = useState<CashflowCustomItem[]>([]);
   const [snapshots, setSnapshots] = useState<FinanceSnapshot[]>([]);
   const [monthlyArchives, setMonthlyArchives] = useState<MonthlyArchive[]>([]);
+  const [cloudSyncSettings, setCloudSyncSettings] = useState<CloudSyncSettings>({
+    gistId: "",
+    token: "",
+    autoSync: false,
+  });
+  const [cloudPassphrase, setCloudPassphrase] = useState("");
+  const [cloudStatus, setCloudStatus] = useState("未连接云同步");
+  const [cloudSyncing, setCloudSyncing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState("正在读取本地数据…");
   const [savedDataReady, setSavedDataReady] = useState(false);
+  const cloudAutoSyncTimerRef = useRef<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   function getPersistedFinanceData(): PersistedFinanceData {
@@ -776,6 +960,21 @@ export default function FinanceDashboard() {
       cashflowHiddenBuiltinIds,
       cashflowCustomItems,
     };
+  }
+
+  function getCloudSyncBackup(): CloudSyncBackup {
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: getPersistedFinanceData(),
+      snapshots,
+      monthlyArchives,
+    };
+  }
+
+  function persistCloudSyncSettings(nextSettings: CloudSyncSettings) {
+    setCloudSyncSettings(nextSettings);
+    window.localStorage.setItem(financeCloudSyncKey, JSON.stringify(nextSettings));
   }
 
   function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
@@ -821,6 +1020,7 @@ export default function FinanceDashboard() {
         const raw = window.localStorage.getItem(financeStorageKey);
         const rawSnapshots = window.localStorage.getItem(financeSnapshotsKey);
         const rawMonthlyArchives = window.localStorage.getItem(financeMonthlyArchiveKey);
+        const rawCloudSync = window.localStorage.getItem(financeCloudSyncKey);
         if (raw) {
           const saved = JSON.parse(raw) as Partial<PersistedFinanceData>;
           applyPersistedFinanceData(saved);
@@ -830,6 +1030,11 @@ export default function FinanceDashboard() {
           if (Array.isArray(savedSnapshots)) setSnapshots(savedSnapshots.slice(0, maxSnapshots));
         }
         if (rawMonthlyArchives) setMonthlyArchives(normalizeMonthlyArchives(JSON.parse(rawMonthlyArchives)));
+        if (rawCloudSync) {
+          const savedCloudSync = normalizeCloudSyncSettings(JSON.parse(rawCloudSync));
+          setCloudSyncSettings(savedCloudSync);
+          setCloudStatus(savedCloudSync.gistId ? "已读取云同步配置，请输入同步密码" : "未连接云同步");
+        }
         setSaveStatus(raw ? "已恢复上次保存的数据" : "已启用自动保存");
       } catch {
         window.localStorage.removeItem(financeStorageKey);
@@ -847,11 +1052,26 @@ export default function FinanceDashboard() {
       try {
         window.localStorage.setItem(financeStorageKey, JSON.stringify(getPersistedFinanceData()));
         setSaveStatus(`已自动保存 · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`);
+        if (
+          cloudSyncSettings.autoSync &&
+          cloudSyncSettings.gistId.trim() &&
+          cloudSyncSettings.token.trim() &&
+          cloudPassphrase.trim() &&
+          !cloudSyncing
+        ) {
+          if (cloudAutoSyncTimerRef.current) window.clearTimeout(cloudAutoSyncTimerRef.current);
+          cloudAutoSyncTimerRef.current = window.setTimeout(() => {
+            void uploadCloudSync(true);
+          }, 3500);
+        }
       } catch {
         setSaveStatus("自动保存失败，请导出备份");
       }
     }, 300);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      if (cloudAutoSyncTimerRef.current) window.clearTimeout(cloudAutoSyncTimerRef.current);
+    };
   }, [
     savedDataReady,
     period,
@@ -876,6 +1096,11 @@ export default function FinanceDashboard() {
     futureCapabilities,
     cashflowHiddenBuiltinIds,
     cashflowCustomItems,
+    cloudSyncSettings.autoSync,
+    cloudSyncSettings.gistId,
+    cloudSyncSettings.token,
+    cloudPassphrase,
+    cloudSyncing,
   ]);
 
   function saveSnapshot() {
@@ -904,13 +1129,7 @@ export default function FinanceDashboard() {
   }
 
   function exportBackup() {
-    const backup = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      data: getPersistedFinanceData(),
-      snapshots,
-      monthlyArchives,
-    };
+    const backup = getCloudSyncBackup();
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -947,6 +1166,94 @@ export default function FinanceDashboard() {
       window.alert("无法导入：请选择由本网页导出的 JSON 备份文件。");
     } finally {
       if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
+
+  function updateCloudSyncSettings(patch: Partial<CloudSyncSettings>) {
+    persistCloudSyncSettings({ ...cloudSyncSettings, ...patch });
+  }
+
+  function clearCloudSyncSettings() {
+    const nextSettings = { gistId: "", token: "", autoSync: false };
+    persistCloudSyncSettings(nextSettings);
+    setCloudPassphrase("");
+    setCloudStatus("已断开云同步配置");
+  }
+
+  function applyCloudSyncBackup(backup: CloudSyncBackup) {
+    applyPersistedFinanceData(backup.data);
+    const importedSnapshots = Array.isArray(backup.snapshots) ? backup.snapshots.slice(0, maxSnapshots) : [];
+    const importedMonthlyArchives = normalizeMonthlyArchives(backup.monthlyArchives);
+    setSnapshots(importedSnapshots);
+    setMonthlyArchives(importedMonthlyArchives);
+    window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(importedSnapshots));
+    window.localStorage.setItem(financeMonthlyArchiveKey, JSON.stringify(importedMonthlyArchives));
+  }
+
+  async function uploadCloudSync(silent = false) {
+    if (!cloudSyncSettings.token.trim()) {
+      if (!silent) window.alert("请先填写 GitHub Token。");
+      return;
+    }
+    if (!cloudPassphrase.trim()) {
+      if (!silent) window.alert("请先填写同步密码。这个密码用于加密云端数据。");
+      return;
+    }
+
+    setCloudSyncing(true);
+    if (!silent) setCloudStatus("正在加密并上传到 GitHub Gist…");
+    try {
+      const gist = await pushCloudSyncBackup({
+        backup: getCloudSyncBackup(),
+        gistId: cloudSyncSettings.gistId,
+        passphrase: cloudPassphrase,
+        token: cloudSyncSettings.token,
+      });
+      const pushedAt = new Date().toISOString();
+      const nextSettings = {
+        ...cloudSyncSettings,
+        gistId: gist.id,
+        lastPushedAt: pushedAt,
+      };
+      persistCloudSyncSettings(nextSettings);
+      setCloudStatus(`${silent ? "已自动云同步" : "云端保存完成"} · ${formatSnapshotTime(pushedAt)}`);
+    } catch (error) {
+      setCloudStatus("云端保存失败，请检查 Token、Gist ID 和网络。");
+      if (!silent) window.alert(error instanceof Error ? error.message : "云端保存失败");
+    } finally {
+      setCloudSyncing(false);
+    }
+  }
+
+  async function downloadCloudSync() {
+    if (!cloudSyncSettings.gistId.trim()) {
+      window.alert("请先填写 Gist ID，或先上传一次创建云端存档。");
+      return;
+    }
+    if (!cloudSyncSettings.token.trim()) {
+      window.alert("请先填写 GitHub Token。");
+      return;
+    }
+    if (!cloudPassphrase.trim()) {
+      window.alert("请先填写同步密码。");
+      return;
+    }
+    if (!window.confirm("确定从云端覆盖当前本机数据吗？建议覆盖前先导出备份。")) return;
+
+    setCloudSyncing(true);
+    setCloudStatus("正在从 GitHub Gist 拉取并解密…");
+    try {
+      const backup = await pullCloudSyncBackup(cloudSyncSettings.gistId, cloudSyncSettings.token, cloudPassphrase);
+      applyCloudSyncBackup(backup);
+      const pulledAt = new Date().toISOString();
+      persistCloudSyncSettings({ ...cloudSyncSettings, lastPulledAt: pulledAt });
+      setSaveStatus("已从云端恢复并自动保存到本机");
+      setCloudStatus(`云端数据已拉取 · ${formatSnapshotTime(pulledAt)}`);
+    } catch (error) {
+      setCloudStatus("云端拉取失败，请检查同步密码、Token 和 Gist ID。");
+      window.alert(error instanceof Error ? error.message : "云端拉取失败");
+    } finally {
+      setCloudSyncing(false);
     }
   }
 
@@ -2192,12 +2499,15 @@ export default function FinanceDashboard() {
             <span className={savedDataReady ? "save-dot ready" : "save-dot"} />
             <div>
               <strong>{saveStatus}</strong>
-              <small>数据实时保存在当前浏览器；每月底保存月报后，可查看收支和账户环比变化。</small>
+              <small>这是本机浏览器保存；跨电脑实时同步请打开云同步。{cloudStatus ? `云端：${cloudStatus}` : ""}</small>
             </div>
           </div>
           <div className="data-actions">
             <button className="primary-button" type="button" onClick={saveMonthlyArchive}>保存本月月报</button>
             <button className="secondary-button" type="button" onClick={saveSnapshot}>保存完整版本</button>
+            <button className="secondary-button" type="button" onClick={() => setActiveModules((items) => (items.includes("cloudSync") ? items : [...items, "cloudSync"]))}>
+              打开云同步
+            </button>
             <button className="secondary-button" type="button" onClick={() => setHistoryOpen((open) => !open)}>
               历史版本 {snapshots.length > 0 ? `(${snapshots.length})` : ""}
             </button>
@@ -2861,6 +3171,61 @@ export default function FinanceDashboard() {
                   </Module>
                 )}
 
+                {moduleId === "cloudSync" && (
+                  <Module title="云同步" desc="本机自动保存只在当前浏览器生效；这里用于跨电脑加密同步。">
+                    <DataChartLayout
+                      data={
+                        <CloudSyncPanel
+                          cloudPassphrase={cloudPassphrase}
+                          cloudStatus={cloudStatus}
+                          cloudSyncing={cloudSyncing}
+                          clearCloudSyncSettings={clearCloudSyncSettings}
+                          downloadCloudSync={downloadCloudSync}
+                          settings={cloudSyncSettings}
+                          setCloudPassphrase={setCloudPassphrase}
+                          updateCloudSyncSettings={updateCloudSyncSettings}
+                          uploadCloudSync={() => void uploadCloudSync(false)}
+                        />
+                      }
+                      charts={
+                        <div className="chart-grid two">
+                          <ChartPanel title="同步状态" summary={cloudSyncSettings.gistId ? "已配置 Gist" : "未创建云端存档"}>
+                            <div className="cloud-status-board">
+                              <div>
+                                <span>云端 Gist</span>
+                                <strong>{cloudSyncSettings.gistId || "未创建"}</strong>
+                              </div>
+                              <div>
+                                <span>自动同步</span>
+                                <strong>{cloudSyncSettings.autoSync ? "开启" : "关闭"}</strong>
+                              </div>
+                              <div>
+                                <span>上次上传</span>
+                                <strong>{cloudSyncSettings.lastPushedAt ? formatSnapshotTime(cloudSyncSettings.lastPushedAt) : "暂无"}</strong>
+                              </div>
+                              <div>
+                                <span>上次拉取</span>
+                                <strong>{cloudSyncSettings.lastPulledAt ? formatSnapshotTime(cloudSyncSettings.lastPulledAt) : "暂无"}</strong>
+                              </div>
+                            </div>
+                          </ChartPanel>
+                          <ChartPanel title="本机数据包" summary={`${monthlyRecords.length} 个月 / ${monthlyArchives.length} 条月报`}>
+                            <HorizontalBarChart
+                              data={[
+                                { label: "收入月份", value: monthlyRecords.length, color: palette[0] },
+                                { label: "月度存档", value: monthlyArchives.length, color: palette[1] },
+                                { label: "完整版本", value: snapshots.length, color: palette[3] },
+                                { label: "账户数量", value: accounts.length, color: palette[2] },
+                              ]}
+                              valueFormatter={(value) => `${value.toFixed(0)} 条`}
+                            />
+                          </ChartPanel>
+                        </div>
+                      }
+                    />
+                  </Module>
+                )}
+
                 {moduleId === "health" && (
                   <Module title="财务健康评分" desc="100 分制，用现金流、应急金、负债、增长和趋势综合判断。">
                     <DataChartLayout
@@ -3253,6 +3618,97 @@ function EditableMonthlyIncomeTable({
             ))}
           </tbody>
         </table>
+      </div>
+    </>
+  );
+}
+
+function CloudSyncPanel({
+  settings,
+  cloudPassphrase,
+  cloudStatus,
+  cloudSyncing,
+  updateCloudSyncSettings,
+  setCloudPassphrase,
+  uploadCloudSync,
+  downloadCloudSync,
+  clearCloudSyncSettings,
+}: {
+  settings: CloudSyncSettings;
+  cloudPassphrase: string;
+  cloudStatus: string;
+  cloudSyncing: boolean;
+  updateCloudSyncSettings: (patch: Partial<CloudSyncSettings>) => void;
+  setCloudPassphrase: (value: string) => void;
+  uploadCloudSync: () => void;
+  downloadCloudSync: () => void;
+  clearCloudSyncSettings: () => void;
+}) {
+  return (
+    <>
+      <TableToolbar
+        title="云同步连接"
+        meta={settings.gistId ? `Gist ${settings.gistId}` : "首次上传会自动创建私密 Gist"}
+        action={<span className={settings.autoSync ? "pill good" : "pill"}>{settings.autoSync ? "自动云同步" : "手动同步"}</span>}
+      />
+      <div className="cloud-sync-card">
+        <div className="form-grid cloud-sync-form">
+          <label className="field">
+            <span>Gist ID</span>
+            <input
+              autoComplete="off"
+              placeholder="首次上传可留空"
+              value={settings.gistId}
+              onChange={(event) => updateCloudSyncSettings({ gistId: event.target.value.trim() })}
+            />
+          </label>
+          <label className="field">
+            <span>GitHub Token</span>
+            <input
+              autoComplete="off"
+              placeholder="需要 gist 权限"
+              type="password"
+              value={settings.token}
+              onChange={(event) => updateCloudSyncSettings({ token: event.target.value.trim() })}
+            />
+          </label>
+          <label className="field">
+            <span>同步密码</span>
+            <input
+              autoComplete="new-password"
+              placeholder="本机不保存"
+              type="password"
+              value={cloudPassphrase}
+              onChange={(event) => setCloudPassphrase(event.target.value)}
+            />
+          </label>
+          <label className="field cloud-switch-field">
+            <span>自动云同步</span>
+            <span className="cloud-switch-row">
+              <input
+                checked={settings.autoSync}
+                type="checkbox"
+                onChange={(event) => updateCloudSyncSettings({ autoSync: event.target.checked })}
+              />
+              <em>{settings.autoSync ? "已开启" : "已关闭"}</em>
+            </span>
+          </label>
+        </div>
+        <div className="cloud-sync-actions">
+          <button className="primary-button" disabled={cloudSyncing} type="button" onClick={uploadCloudSync}>
+            上传云端
+          </button>
+          <button className="secondary-button" disabled={cloudSyncing} type="button" onClick={downloadCloudSync}>
+            从云端拉取
+          </button>
+          <button className="danger-button" disabled={cloudSyncing && !settings.gistId} type="button" onClick={clearCloudSyncSettings}>
+            断开本机配置
+          </button>
+        </div>
+        <div className="cloud-sync-status">
+          <strong>{cloudSyncing ? "同步中…" : cloudStatus}</strong>
+          <span>云端内容使用同步密码加密；GitHub Token 只保存在当前浏览器。</span>
+        </div>
       </div>
     </>
   );
