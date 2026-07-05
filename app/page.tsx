@@ -15,6 +15,7 @@ type ModuleId =
   | "emergency"
   | "reminders"
   | "goals"
+  | "fundBuckets"
   | "reports"
   | "monthlyArchive"
   | "cloudSync"
@@ -115,6 +116,19 @@ type CashflowCustomItem = {
   direction: CashflowDirection;
 };
 
+type FundBucketKind = "应急" | "旅行" | "搬家" | "分期" | "投资" | "家庭" | "其他";
+
+type FundBucket = {
+  id: string;
+  name: string;
+  kind: FundBucketKind;
+  target: number;
+  current: number;
+  dueDate: string;
+  locked: boolean;
+  note: string;
+};
+
 type CashflowTableRow = {
   id: string;
   name: string;
@@ -161,6 +175,7 @@ type PersistedFinanceData = {
   otherDebt?: number;
   reminders: Reminder[];
   goals: Goal[];
+  fundBuckets: FundBucket[];
   futureCapabilities: FutureCapability[];
   cashflowHiddenBuiltinIds: CashflowBuiltinId[];
   cashflowCustomItems: CashflowCustomItem[];
@@ -357,6 +372,71 @@ const initialGoals: Goal[] = [
   { id: "emergency-goal", name: "应急储备", target: 13500, current: 2000, monthly: 2000, actualMonthly: 0 },
 ];
 
+const fundBucketKinds: FundBucketKind[] = ["应急", "旅行", "搬家", "分期", "投资", "家庭", "其他"];
+
+const initialFundBuckets: FundBucket[] = [
+  {
+    id: "hard-emergency",
+    name: "硬应急金",
+    kind: "应急",
+    target: 4500,
+    current: 0,
+    dueDate: "2026-07-31",
+    locked: true,
+    note: "最低 1 个月必要支出，禁止挪作投资",
+  },
+  {
+    id: "moving-2026-08",
+    name: "8月搬家",
+    kind: "搬家",
+    target: 1000,
+    current: 0,
+    dueDate: "2026-08-15",
+    locked: true,
+    note: "8月中旬预计支出",
+  },
+  {
+    id: "travel-2026-10",
+    name: "10月大旅行",
+    kind: "旅行",
+    target: 8000,
+    current: 0,
+    dueDate: "2026-10-01",
+    locked: true,
+    note: "总共两次大旅行之一",
+  },
+  {
+    id: "travel-2026-12",
+    name: "12月大旅行",
+    kind: "旅行",
+    target: 8000,
+    current: 0,
+    dueDate: "2026-12-01",
+    locked: true,
+    note: "总共两次大旅行之一",
+  },
+  {
+    id: "phone-installment",
+    name: "手机三期分期",
+    kind: "分期",
+    target: 2490,
+    current: 0,
+    dueDate: "2026-10-31",
+    locked: true,
+    note: "8-10月，每期约 830",
+  },
+  {
+    id: "small-trips",
+    name: "小旅行上限",
+    kind: "旅行",
+    target: 3000,
+    current: 0,
+    dueDate: "2026-12-31",
+    locked: false,
+    note: "最多两次，每次约 1500；现金紧张时取消",
+  },
+];
+
 const initialFutureCapabilities: FutureCapability[] = [
   { id: "debt-strategy", name: "债务策略", score: 70 },
   { id: "insurance", name: "保险管理", score: 20 },
@@ -397,6 +477,7 @@ const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "emergency", title: "应急金", desc: "目标月数、当前金额、覆盖月数" },
   { id: "reminders", title: "账单与提醒", desc: "提前 7 天提醒账单和到期事项" },
   { id: "goals", title: "目标管理", desc: "旅游、学习、父母储蓄、伴侣基金和大额支出目标" },
+  { id: "fundBuckets", title: "资金桶", desc: "旅行、搬家、分期、应急金和待投资金隔离" },
   { id: "reports", title: "财务报表", desc: "收入、支出、结余、投资表现" },
   { id: "monthlyArchive", title: "月度存档", desc: "保存每月收入、支出、账户余额和净资产变化" },
   { id: "cloudSync", title: "云同步", desc: "用加密 GitHub Gist 跨电脑保存和恢复数据" },
@@ -630,6 +711,27 @@ function normalizeBalanceAssets(value: unknown) {
     .filter((item): item is BalanceAsset => item !== null);
 }
 
+function normalizeFundBuckets(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
+      const raw = item as Partial<FundBucket>;
+      const kind = fundBucketKinds.includes(raw.kind as FundBucketKind) ? (raw.kind as FundBucketKind) : "其他";
+      return {
+        id: typeof raw.id === "string" && raw.id ? raw.id : `fund-bucket-${index + 1}`,
+        name: typeof raw.name === "string" && raw.name.trim() ? raw.name : `资金桶 ${index + 1}`,
+        kind,
+        target: typeof raw.target === "number" ? raw.target : 0,
+        current: typeof raw.current === "number" ? raw.current : 0,
+        dueDate: typeof raw.dueDate === "string" && raw.dueDate ? raw.dueDate : "2026-12-31",
+        locked: typeof raw.locked === "boolean" ? raw.locked : true,
+        note: typeof raw.note === "string" ? raw.note : "",
+      };
+    })
+    .filter((item): item is FundBucket => item !== null);
+}
+
 function normalizeMonthlyArchiveAccounts(value: unknown): MonthlyArchiveAccount[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -706,6 +808,17 @@ function legacyLiabilitiesFromSaved(saved: Partial<PersistedFinanceData>) {
 function dayDistance(date: string) {
   const target = new Date(`${date}T00:00:00+08:00`);
   return Math.ceil((target.getTime() - today.getTime()) / 86400000);
+}
+
+function monthsBetweenMonthIdAndDate(monthId: string, date: string) {
+  const [baseYearText, baseMonthText] = monthId.split("-");
+  const [targetYearText, targetMonthText] = date.split("-");
+  const baseYear = Number(baseYearText);
+  const baseMonth = Number(baseMonthText);
+  const targetYear = Number(targetYearText);
+  const targetMonth = Number(targetMonthText);
+  if (![baseYear, baseMonth, targetYear, targetMonth].every(Number.isFinite)) return 1;
+  return Math.max(1, (targetYear - baseYear) * 12 + targetMonth - baseMonth + 1);
 }
 
 function formatSnapshotTime(value: string) {
@@ -916,6 +1029,7 @@ export default function FinanceDashboard() {
   const [liabilities, setLiabilities] = useState<Liability[]>(initialLiabilities);
   const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
+  const [fundBuckets, setFundBuckets] = useState<FundBucket[]>(initialFundBuckets);
   const [futureCapabilities, setFutureCapabilities] = useState<FutureCapability[]>(initialFutureCapabilities);
   const [cashflowHiddenBuiltinIds, setCashflowHiddenBuiltinIds] = useState<CashflowBuiltinId[]>([]);
   const [cashflowCustomItems, setCashflowCustomItems] = useState<CashflowCustomItem[]>([]);
@@ -931,6 +1045,7 @@ export default function FinanceDashboard() {
   const [cloudSyncing, setCloudSyncing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState("正在读取本地数据…");
+  const [reportCopyStatus, setReportCopyStatus] = useState("报告随数据自动更新");
   const [savedDataReady, setSavedDataReady] = useState(false);
   const cloudAutoSyncTimerRef = useRef<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -956,6 +1071,7 @@ export default function FinanceDashboard() {
       liabilities,
       reminders,
       goals,
+      fundBuckets,
       futureCapabilities,
       cashflowHiddenBuiltinIds,
       cashflowCustomItems,
@@ -1007,6 +1123,10 @@ export default function FinanceDashboard() {
     }
     if (Array.isArray(saved.reminders)) setReminders(saved.reminders);
     if (Array.isArray(saved.goals)) setGoals(normalizeGoals(saved.goals));
+    if (Array.isArray(saved.fundBuckets)) {
+      const savedFundBuckets = normalizeFundBuckets(saved.fundBuckets);
+      if (savedFundBuckets.length > 0) setFundBuckets(savedFundBuckets);
+    }
     if (Array.isArray(saved.futureCapabilities)) setFutureCapabilities(saved.futureCapabilities);
     if (Array.isArray(saved.cashflowHiddenBuiltinIds)) {
       setCashflowHiddenBuiltinIds(saved.cashflowHiddenBuiltinIds.filter((id) => cashflowBuiltinIds.includes(id)));
@@ -1093,6 +1213,7 @@ export default function FinanceDashboard() {
     liabilities,
     reminders,
     goals,
+    fundBuckets,
     futureCapabilities,
     cashflowHiddenBuiltinIds,
     cashflowCustomItems,
@@ -1815,6 +1936,30 @@ export default function FinanceDashboard() {
     setGoals((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
   }
 
+  function updateFundBucket(id: string, patch: Partial<FundBucket>) {
+    setFundBuckets((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  function addFundBucket() {
+    setFundBuckets((items) => [
+      ...items,
+      {
+        id: `fund-bucket-${Date.now()}`,
+        name: `新资金桶 ${items.length + 1}`,
+        kind: "其他",
+        target: 0,
+        current: 0,
+        dueDate: selectedMonth.length >= 7 ? `${selectedMonth}-28` : "2026-12-31",
+        locked: true,
+        note: "待分配",
+      },
+    ]);
+  }
+
+  function deleteFundBucket(id: string) {
+    setFundBuckets((items) => (items.length > 1 ? items.filter((item) => item.id !== id) : items));
+  }
+
   function updateFutureCapability(id: string, patch: Partial<FutureCapability>) {
     setFutureCapabilities((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
@@ -2320,6 +2465,131 @@ export default function FinanceDashboard() {
         totalGoalExpectedInput * Math.max(0, index - selectedMonthIndex - 1),
     ),
   }));
+  const fundBucketRows = fundBuckets.map((item, index) => {
+    const gap = Math.max(0, item.target - item.current);
+    const monthsLeft = monthsBetweenMonthIdAndDate(selectedMonth, item.dueDate);
+    return {
+      ...item,
+      index,
+      gap,
+      monthsLeft,
+      monthlyNeed: gap / monthsLeft,
+      status: gap <= 0 ? "已覆盖" : monthsLeft <= 2 ? "紧急补齐" : "持续准备",
+    };
+  });
+  const fundBucketPreparedTotal = fundBucketRows.reduce((sum, item) => sum + item.current, 0);
+  const lockedFundBucketPrepared = fundBucketRows
+    .filter((item) => item.locked)
+    .reduce((sum, item) => sum + item.current, 0);
+  const fundBucketTargetTotal = fundBucketRows.reduce((sum, item) => sum + item.target, 0);
+  const fundBucketGapTotal = fundBucketRows.reduce((sum, item) => sum + item.gap, 0);
+  const urgentFundBucketGap = fundBucketRows
+    .filter((item) => item.gap > 0 && item.monthsLeft <= 2)
+    .reduce((sum, item) => sum + item.gap, 0);
+  const monthlyFundBucketNeed = fundBucketRows.reduce((sum, item) => sum + item.monthlyNeed, 0);
+  const liquidAfterBuckets = totals.liquidAccountTotal - totals.investmentReserve - lockedFundBucketPrepared;
+  const investmentReserveCoverage = totals.investmentSavingAllocation
+    ? totals.investmentReserve / totals.investmentSavingAllocation
+    : 0;
+  const cashAfterFamily = actualIncome - totals.spendingActual - totals.parentAllocation - totals.partnerAllocation;
+  const cashAfterFamilyAndInvestment = cashAfterFamily - totals.investmentSavingAllocation;
+  const fundBucketChartData = [
+    {
+      label: "投资待投金",
+      value: totals.investmentReserve,
+      color: palette[6],
+      detail: `约覆盖 ${investmentReserveCoverage.toFixed(1)} 个月投资计划`,
+    },
+    ...fundBucketRows
+      .filter((item) => item.current > 0)
+      .map((item, index) => ({
+        label: item.name,
+        value: item.current,
+        color: palette[(index + 1) % palette.length],
+        detail: `${item.kind} / ${item.locked ? "锁定" : "可调整"}`,
+      })),
+  ];
+  const fundBucketGapData = fundBucketRows
+    .filter((item) => item.gap > 0)
+    .sort((left, right) => left.dueDate.localeCompare(right.dueDate))
+    .map((item, index) => ({
+      label: item.name,
+      value: item.gap,
+      color: item.monthsLeft <= 2 ? palette[4] : palette[(index + 2) % palette.length],
+      detail: `${item.dueDate} / 每月需 ${money(item.monthlyNeed)}`,
+    }));
+  const fundBucketMonthlyNeedData = fundBucketRows
+    .filter((item) => item.gap > 0)
+    .map((item, index) => ({
+      label: item.name,
+      value: item.monthlyNeed,
+      color: item.monthsLeft <= 2 ? palette[4] : palette[index % palette.length],
+      detail: `${item.monthsLeft} 个月内`,
+    }));
+  const monthlyAnalysisSections = [
+    {
+      title: "现金流安全",
+      tone:
+        totals.monthlySurplus < 0
+          ? ("red" as Tone)
+          : cashAfterFamilyAndInvestment < monthlyFundBucketNeed
+            ? ("amber" as Tone)
+            : ("green" as Tone),
+      summary: `当月余额 ${money(totals.monthlySurplus)}，家庭与投资后可用 ${money(cashAfterFamilyAndInvestment)}`,
+      detail: `收入 ${money(actualIncome)}，生活支出 ${money(totals.spendingActual)}，家庭责任 ${money(totals.parentAllocation + totals.partnerAllocation)}，投资计划 ${money(totals.investmentSavingAllocation)}。`,
+      action:
+        totals.monthlySurplus < 0
+          ? "先把当月余额转正，暂停非必要小旅行和新增非刚性支出。"
+          : cashAfterFamilyAndInvestment < monthlyFundBucketNeed
+            ? "未来资金桶每月需求高于可用现金，优先压缩可调整桶或生活支出。"
+            : "现金流可以覆盖当前安排，继续保持每月复盘。",
+    },
+    {
+      title: "资金桶覆盖",
+      tone: liquidAfterBuckets < 0 ? ("red" as Tone) : urgentFundBucketGap > 0 ? ("amber" as Tone) : ("green" as Tone),
+      summary: `资金桶缺口 ${money(fundBucketGapTotal)}，未分配现金 ${money(liquidAfterBuckets)}`,
+      detail: `手动资金桶已准备 ${money(fundBucketPreparedTotal)} / 目标 ${money(fundBucketTargetTotal)}；投资待投金 ${money(totals.investmentReserve)} 单独锁定。`,
+      action:
+        liquidAfterBuckets < 0
+          ? "资金标签超过可动用现金，需要减少已锁定金额或重新分配账户用途。"
+          : urgentFundBucketGap > 0
+            ? "两个月内到期的资金桶仍有缺口，优先补齐搬家、分期和近期旅行。"
+            : "资金桶结构健康，按截止日期继续补齐缺口。",
+    },
+    {
+      title: "投资纪律",
+      tone: investmentReserveCoverage >= 2 ? ("green" as Tone) : investmentReserveCoverage >= 1 ? ("amber" as Tone) : ("red" as Tone),
+      summary: `待投资金可覆盖 ${investmentReserveCoverage.toFixed(1)} 个月计划`,
+      detail: `A股待投 ${money(totals.aShareInvestmentReserve)}，美股待投 ${money(totals.usShareInvestmentReserve)}，每月投资计划 ${money(totals.investmentSavingAllocation)}。`,
+      action:
+        investmentReserveCoverage >= 2
+          ? "不需要额外加速投入；保持只用待投资金，不动应急、旅行和家庭责任资金。"
+          : "待投资金覆盖不足，新增投入前先确认应急金和大额支出资金桶不被挤占。",
+    },
+    {
+      title: "应急与负债",
+      tone: totals.emergencyCoverage >= 3 && totals.totalDebt <= actualIncome * 0.2 ? ("green" as Tone) : ("amber" as Tone),
+      summary: `应急覆盖 ${totals.emergencyCoverage.toFixed(1)} 个月，负债 ${money(totals.totalDebt)}`,
+      detail: `应急目标 ${money(totals.emergencyTarget)}，当前 ${money(totals.currentEmergencyFund)}；总负债率 ${percent(totals.debtRatio)}。`,
+      action:
+        totals.emergencyCoverage < 1
+          ? "先把硬应急金做到 1 个月必要支出，再追求更高投资速度。"
+          : "应急金继续向 3 个月推进，手机分期按期结束即可。",
+    },
+  ];
+  const monthlyAnalysisReportText = [
+    `${activeMonth.label}财务分析报告`,
+    "",
+    `1. 净资产与现金：总资产 ${money(totals.totalAssets)}，净资产 ${money(totals.netWorth)}，可动用现金 ${money(totals.liquidAccountTotal)}，资金桶后未分配现金 ${money(liquidAfterBuckets)}。`,
+    `2. 收支：收入 ${money(actualIncome)}，生活支出 ${money(totals.spendingActual)}，资产/责任分配 ${money(totals.assetOutflow)}，当月余额 ${money(totals.monthlySurplus)}。`,
+    `3. 家庭责任：父母 ${money(totals.parentAllocation)}，伴侣 ${money(totals.partnerAllocation)}，合计占收入 ${percent((totals.parentAllocation + totals.partnerAllocation) / Math.max(actualIncome, 1))}。`,
+    `4. 资金桶：目标 ${money(fundBucketTargetTotal)}，已准备 ${money(fundBucketPreparedTotal)}，缺口 ${money(fundBucketGapTotal)}，其中两个月内缺口 ${money(urgentFundBucketGap)}。`,
+    `5. 投资：投资市值 ${money(totals.investmentValue)}，待投资金 ${money(totals.investmentReserve)}，计划覆盖 ${investmentReserveCoverage.toFixed(1)} 个月，浮动盈亏 ${money(totals.investmentPnL)}。`,
+    `6. 应急与负债：应急覆盖 ${totals.emergencyCoverage.toFixed(1)} 个月，总负债 ${money(totals.totalDebt)}，负债率 ${percent(totals.debtRatio)}。`,
+    "",
+    "行动建议：",
+    ...monthlyAnalysisSections.map((section, index) => `${index + 1}. ${section.title}：${section.action}`),
+  ].join("\n");
   const reminderAmountData = reminders.map((item, index) => ({
     label: item.name,
     value: item.amount,
@@ -2347,6 +2617,9 @@ export default function FinanceDashboard() {
     { id: "ashare-plan", name: "A股计划", amount: aSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
     { id: "usshare-plan", name: "美股计划", amount: usSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
     { id: "hkshare-plan", name: "港股计划", amount: hkSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
+    { id: "investment-reserve", name: "投资待投金", amount: totals.investmentReserve, flow: "资金桶", source: "账户用途自动识别：A股待投 + 美股待投" },
+    { id: "fund-bucket-gap", name: "大额支出缺口", amount: fundBucketGapTotal, flow: "资金桶", source: "资金桶目标 - 已准备金额" },
+    { id: "liquid-after-buckets", name: "资金桶后未分配现金", amount: liquidAfterBuckets, flow: "安全垫", source: "可动用现金 - 待投资金 - 已锁定资金桶" },
     { id: "monthly-surplus", name: "当月余额", amount: totals.monthlySurplus, flow: "结余", source: "收入 - 实际支出 - 实际资产分配" },
   ];
   const reportData = [
@@ -2454,6 +2727,15 @@ export default function FinanceDashboard() {
   const selectedArchiveSpendingDelta = monthlyArchiveForComparison.spending - (previousSelectedMonthlyArchive?.spending ?? 0);
   const selectedArchiveAccountDelta = monthlyArchiveForComparison.accountTotal - (previousSelectedMonthlyArchive?.accountTotal ?? 0);
   const selectedArchiveNetWorthDelta = monthlyArchiveForComparison.netWorth - (previousSelectedMonthlyArchive?.netWorth ?? 0);
+
+  async function copyMonthlyAnalysisReport() {
+    try {
+      await navigator.clipboard.writeText(monthlyAnalysisReportText);
+      setReportCopyStatus("报告已复制到剪贴板");
+    } catch {
+      setReportCopyStatus("复制失败，可以直接选中文本复制");
+    }
+  }
 
   return (
     <main className="finance-page">
@@ -3068,8 +3350,55 @@ export default function FinanceDashboard() {
                   </Module>
                 )}
 
+                {moduleId === "fundBuckets" && (
+                  <Module title="资金桶" desc="把旅行、搬家、手机分期、应急金和投资待投金拆开，避免同一笔钱被重复占用。">
+                    <DataChartLayout
+                      data={
+                        <>
+                          <div className="stat-strip">
+                            <Stat label="可动用现金" value={money(totals.liquidAccountTotal)} />
+                            <Stat label="投资待投金" value={money(totals.investmentReserve)} />
+                            <Stat label="资金桶缺口" value={money(fundBucketGapTotal)} />
+                            <Stat label="未分配现金" value={money(liquidAfterBuckets)} />
+                          </div>
+                          <EditableFundBucketTable
+                            buckets={fundBucketRows}
+                            addFundBucket={addFundBucket}
+                            deleteFundBucket={deleteFundBucket}
+                            investmentReserve={totals.investmentReserve}
+                            liquidAfterBuckets={liquidAfterBuckets}
+                            monthlyNeed={monthlyFundBucketNeed}
+                            updateFundBucket={updateFundBucket}
+                          />
+                        </>
+                      }
+                      charts={
+                        <div className="chart-grid two">
+                          <ChartPanel title="已锁定资金" summary={`含待投资金 ${money(totals.investmentReserve)}`}>
+                            <DonutChart data={fundBucketChartData} centerLabel="已准备" centerValue={money(fundBucketPreparedTotal + totals.investmentReserve)} />
+                          </ChartPanel>
+                          <ChartPanel title="资金桶缺口" summary={`总缺口 ${money(fundBucketGapTotal)}`}>
+                            <HorizontalBarChart data={fundBucketGapData} valueFormatter={money} />
+                          </ChartPanel>
+                          <ChartPanel title="每月补齐压力" summary={`每月需 ${money(monthlyFundBucketNeed)}`}>
+                            <VerticalBarChart data={fundBucketMonthlyNeedData} valueFormatter={money} />
+                          </ChartPanel>
+                          <ChartPanel title="资金桶结论" summary={liquidAfterBuckets < 0 ? "存在重复占用" : "现金标签可执行"}>
+                            <div className="fund-bucket-note">
+                              <strong>{liquidAfterBuckets < 0 ? "先处理现金占用冲突" : "当前标签可落地"}</strong>
+                              <span>
+                                待投资金会自动从账户用途识别，不需要手动重复录入。旅行、搬家、分期和应急金只记录额外需要锁定的现金。
+                              </span>
+                            </div>
+                          </ChartPanel>
+                        </div>
+                      }
+                    />
+                  </Module>
+                )}
+
                 {moduleId === "reports" && (
-                  <Module title="财务报表" desc="月度复盘先给关键结论，后续可以接历史数据做趋势。">
+                  <Module title="财务报表" desc="每月自动生成完整分析报告，覆盖净资产、现金流、投资、资金桶、家庭责任和风险。">
                     <DataChartLayout
                       data={
                         <>
@@ -3077,8 +3406,14 @@ export default function FinanceDashboard() {
                             <Stat label="收入" value={money(actualIncome)} />
                             <Stat label="支出" value={money(totals.spendingActual)} />
                             <Stat label="结余" value={money(totals.monthlySurplus)} />
-                            <Stat label="储蓄率" value={percent(totals.savingsRate)} />
+                            <Stat label="资金桶后现金" value={money(liquidAfterBuckets)} />
                           </div>
+                          <MonthlyAnalysisReport
+                            copyStatus={reportCopyStatus}
+                            reportText={monthlyAnalysisReportText}
+                            sections={monthlyAnalysisSections}
+                            onCopy={copyMonthlyAnalysisReport}
+                          />
                           <ReportAutoSyncTable
                             allocation={totals.assetOutflow}
                             income={actualIncome}
@@ -3086,11 +3421,6 @@ export default function FinanceDashboard() {
                             spending={totals.spendingActual}
                             surplus={totals.monthlySurplus}
                           />
-                          <p className="review-copy">
-                            {activeMonth.label} 实际收入 {money(actualIncome)}，已记录支出 {money(totals.spendingActual)}，
-                            资产分配 {money(totals.assetOutflow)}。投资浮动盈亏 {money(totals.investmentPnL)}。
-                            下月重点关注现金流预测、固定支出率和 7 天内提醒。
-                          </p>
                         </>
                       }
                       charts={
@@ -4463,6 +4793,123 @@ function EditableGoalsTable({
         </table>
       </div>
     </>
+  );
+}
+
+function EditableFundBucketTable({
+  buckets,
+  updateFundBucket,
+  addFundBucket,
+  deleteFundBucket,
+  investmentReserve,
+  liquidAfterBuckets,
+  monthlyNeed,
+}: {
+  buckets: Array<FundBucket & { gap: number; monthsLeft: number; monthlyNeed: number; status: string }>;
+  updateFundBucket: (id: string, patch: Partial<FundBucket>) => void;
+  addFundBucket: () => void;
+  deleteFundBucket: (id: string) => void;
+  investmentReserve: number;
+  liquidAfterBuckets: number;
+  monthlyNeed: number;
+}) {
+  const target = buckets.reduce((sum, item) => sum + item.target, 0);
+  const current = buckets.reduce((sum, item) => sum + item.current, 0);
+  return (
+    <>
+      <TableToolbar
+        title="资金桶底表"
+        meta={`目标 ${money(target)} / 已准备 ${money(current)} / 每月还需 ${money(monthlyNeed)} / 资金桶后现金 ${money(liquidAfterBuckets)}`}
+        action={<button className="secondary-button" type="button" onClick={addFundBucket}>新增资金桶</button>}
+      />
+      <div className="auto-bucket-row">
+        <strong>自动锁定：投资待投金 {money(investmentReserve)}</strong>
+        <span>A股待投和美股待投从账户用途自动识别，不在下表重复录入。</span>
+      </div>
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table fund-bucket-table">
+          <thead>
+            <tr>
+              <th>资金桶</th>
+              <th>类型</th>
+              <th>截止日期</th>
+              <th>目标</th>
+              <th>已准备</th>
+              <th>缺口</th>
+              <th>每月需补</th>
+              <th>锁定</th>
+              <th>备注</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {buckets.map((item) => (
+              <tr key={item.id}>
+                <td><TableTextInput ariaLabel={`${item.name} 名称`} value={item.name} onChange={(value) => updateFundBucket(item.id, { name: value })} /></td>
+                <td>
+                  <TableSelect
+                    ariaLabel={`${item.name} 类型`}
+                    options={fundBucketKinds}
+                    value={item.kind}
+                    onChange={(value) => updateFundBucket(item.id, { kind: value as FundBucketKind })}
+                  />
+                </td>
+                <td><TableDateInput ariaLabel={`${item.name} 截止日期`} value={item.dueDate} onChange={(value) => updateFundBucket(item.id, { dueDate: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 目标`} value={item.target} onChange={(value) => updateFundBucket(item.id, { target: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 已准备`} value={item.current} onChange={(value) => updateFundBucket(item.id, { current: value })} /></td>
+                <td>
+                  <span className={item.gap > 0 ? "negative" : "positive"}>{money(item.gap)}</span>
+                  <span className="table-subtext">{item.status}</span>
+                </td>
+                <td className="calculated-cell">{money(item.monthlyNeed)}</td>
+                <td><TableCheckbox ariaLabel={`${item.name} 锁定`} checked={item.locked} onChange={(value) => updateFundBucket(item.id, { locked: value })} /></td>
+                <td><TableTextInput ariaLabel={`${item.name} 备注`} value={item.note} onChange={(value) => updateFundBucket(item.id, { note: value })} /></td>
+                <td>
+                  <button className="danger-button compact" disabled={buckets.length <= 1} type="button" onClick={() => deleteFundBucket(item.id)}>
+                    删除
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function MonthlyAnalysisReport({
+  sections,
+  reportText,
+  copyStatus,
+  onCopy,
+}: {
+  sections: Array<{ title: string; tone: Tone; summary: string; detail: string; action: string }>;
+  reportText: string;
+  copyStatus: string;
+  onCopy: () => void;
+}) {
+  return (
+    <section className="monthly-report-panel">
+      <div className="monthly-report-head">
+        <div>
+          <strong>本月财务分析报告</strong>
+          <span>{copyStatus}</span>
+        </div>
+        <button className="secondary-button" type="button" onClick={onCopy}>复制报告</button>
+      </div>
+      <div className="report-section-grid">
+        {sections.map((section) => (
+          <article className={`report-section ${section.tone}`} key={section.title}>
+            <span>{section.title}</span>
+            <strong>{section.summary}</strong>
+            <p>{section.detail}</p>
+            <em>{section.action}</em>
+          </article>
+        ))}
+      </div>
+      <pre className="monthly-report-text">{reportText}</pre>
+    </section>
   );
 }
 
