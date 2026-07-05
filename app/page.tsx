@@ -477,7 +477,7 @@ const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "emergency", title: "应急金", desc: "目标月数、当前金额、覆盖月数" },
   { id: "reminders", title: "账单与提醒", desc: "提前 7 天提醒账单和到期事项" },
   { id: "goals", title: "目标管理", desc: "旅游、学习、父母储蓄、伴侣基金和大额支出目标" },
-  { id: "fundBuckets", title: "资金桶", desc: "旅行、搬家、分期、应急金和待投资金隔离" },
+  { id: "fundBuckets", title: "大花费项目", desc: "旅行、搬家、分期、应急金和待投资金隔离" },
   { id: "reports", title: "财务报表", desc: "收入、支出、结余、投资表现" },
   { id: "monthlyArchive", title: "月度存档", desc: "保存每月收入、支出、账户余额和净资产变化" },
   { id: "cloudSync", title: "云同步", desc: "用加密 GitHub Gist 跨电脑保存和恢复数据" },
@@ -725,7 +725,7 @@ function normalizeFundBuckets(value: unknown) {
       const kind = fundBucketKinds.includes(raw.kind as FundBucketKind) ? (raw.kind as FundBucketKind) : "其他";
       return {
         id: typeof raw.id === "string" && raw.id ? raw.id : `fund-bucket-${index + 1}`,
-        name: typeof raw.name === "string" && raw.name.trim() ? raw.name : `资金桶 ${index + 1}`,
+        name: typeof raw.name === "string" && raw.name.trim() ? raw.name : `大花费项目 ${index + 1}`,
         kind,
         target: typeof raw.target === "number" ? raw.target : 0,
         current: typeof raw.current === "number" ? raw.current : 0,
@@ -1950,7 +1950,7 @@ export default function FinanceDashboard() {
       ...items,
       {
         id: `fund-bucket-${Date.now()}`,
-        name: `新资金桶 ${items.length + 1}`,
+        name: `新大花费项目 ${items.length + 1}`,
         kind: "其他",
         target: 0,
         current: 0,
@@ -2546,20 +2546,20 @@ export default function FinanceDashboard() {
         totals.monthlySurplus < 0
           ? "先把当月余额转正，暂停非必要小旅行和新增非刚性支出。"
           : cashAfterFamilyAndInvestment < monthlyFundBucketNeed
-            ? "未来资金桶每月需求高于可用现金，优先压缩可调整桶或生活支出。"
+            ? "未来大花费项目每月需求高于可用现金，优先压缩可调整项目或生活支出。"
             : "现金流可以覆盖当前安排，继续保持每月复盘。",
     },
     {
-      title: "资金桶覆盖",
+      title: "大花费项目覆盖",
       tone: liquidAfterBuckets < 0 ? ("red" as Tone) : urgentFundBucketGap > 0 ? ("amber" as Tone) : ("green" as Tone),
-      summary: `资金桶缺口 ${money(fundBucketGapTotal)}，未分配现金 ${money(liquidAfterBuckets)}`,
-      detail: `手动资金桶已准备 ${money(fundBucketPreparedTotal)} / 目标 ${money(fundBucketTargetTotal)}；投资待投金 ${money(totals.investmentReserve)} 单独锁定。`,
+      summary: `大花费项目缺口 ${money(fundBucketGapTotal)}，未分配现金 ${money(liquidAfterBuckets)}`,
+      detail: `手动项目已准备 ${money(fundBucketPreparedTotal)} / 目标 ${money(fundBucketTargetTotal)}；投资待投金 ${money(totals.investmentReserve)} 单独锁定。`,
       action:
         liquidAfterBuckets < 0
           ? "资金标签超过可动用现金，需要减少已锁定金额或重新分配账户用途。"
           : urgentFundBucketGap > 0
-            ? "两个月内到期的资金桶仍有缺口，优先补齐搬家、分期和近期旅行。"
-            : "资金桶结构健康，按截止日期继续补齐缺口。",
+            ? "两个月内到期的大花费项目仍有缺口，优先补齐搬家、分期和近期旅行。"
+            : "大花费项目结构健康，按截止日期继续补齐缺口。",
     },
     {
       title: "投资纪律",
@@ -2569,7 +2569,7 @@ export default function FinanceDashboard() {
       action:
         investmentReserveCoverage >= 2
           ? "不需要额外加速投入；保持只用待投资金，不动应急、旅行和家庭责任资金。"
-          : "待投资金覆盖不足，新增投入前先确认应急金和大额支出资金桶不被挤占。",
+          : "待投资金覆盖不足，新增投入前先确认应急金和大花费项目不被挤占。",
     },
     {
       title: "应急与负债",
@@ -2585,10 +2585,10 @@ export default function FinanceDashboard() {
   const monthlyAnalysisReportText = [
     `${activeMonth.label}财务分析报告`,
     "",
-    `1. 净资产与现金：总资产 ${money(totals.totalAssets)}，净资产 ${money(totals.netWorth)}，可动用现金 ${money(totals.liquidAccountTotal)}，资金桶后未分配现金 ${money(liquidAfterBuckets)}。`,
+    `1. 净资产与现金：总资产 ${money(totals.totalAssets)}，净资产 ${money(totals.netWorth)}，可动用现金 ${money(totals.liquidAccountTotal)}，大花费项目后未分配现金 ${money(liquidAfterBuckets)}。`,
     `2. 收支：收入 ${money(actualIncome)}，生活支出 ${money(totals.spendingActual)}，资产/责任分配 ${money(totals.assetOutflow)}，当月余额 ${money(totals.monthlySurplus)}。`,
     `3. 家庭责任：父母 ${money(totals.parentAllocation)}，伴侣 ${money(totals.partnerAllocation)}，合计占收入 ${percent((totals.parentAllocation + totals.partnerAllocation) / Math.max(actualIncome, 1))}。`,
-    `4. 资金桶：目标 ${money(fundBucketTargetTotal)}，已准备 ${money(fundBucketPreparedTotal)}，缺口 ${money(fundBucketGapTotal)}，其中两个月内缺口 ${money(urgentFundBucketGap)}。`,
+    `4. 大花费项目：目标 ${money(fundBucketTargetTotal)}，已准备 ${money(fundBucketPreparedTotal)}，缺口 ${money(fundBucketGapTotal)}，其中两个月内缺口 ${money(urgentFundBucketGap)}。`,
     `5. 投资：投资市值 ${money(totals.investmentValue)}，待投资金 ${money(totals.investmentReserve)}，计划覆盖 ${investmentReserveCoverage.toFixed(1)} 个月，浮动盈亏 ${money(totals.investmentPnL)}。`,
     `6. 应急与负债：应急覆盖 ${totals.emergencyCoverage.toFixed(1)} 个月，总负债 ${money(totals.totalDebt)}，负债率 ${percent(totals.debtRatio)}。`,
     "",
@@ -2622,9 +2622,9 @@ export default function FinanceDashboard() {
     { id: "ashare-plan", name: "A股计划", amount: aSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
     { id: "usshare-plan", name: "美股计划", amount: usSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
     { id: "hkshare-plan", name: "港股计划", amount: hkSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
-    { id: "investment-reserve", name: "投资待投金", amount: totals.investmentReserve, flow: "资金桶", source: "账户用途自动识别：A股待投 + 美股待投" },
-    { id: "fund-bucket-gap", name: "大额支出缺口", amount: fundBucketGapTotal, flow: "资金桶", source: "资金桶目标 - 已准备金额" },
-    { id: "liquid-after-buckets", name: "资金桶后未分配现金", amount: liquidAfterBuckets, flow: "安全垫", source: "可动用现金 - 待投资金 - 已锁定资金桶" },
+    { id: "investment-reserve", name: "投资待投金", amount: totals.investmentReserve, flow: "大花费项目", source: "账户用途自动识别：A股待投 + 美股待投" },
+    { id: "fund-bucket-gap", name: "大花费项目缺口", amount: fundBucketGapTotal, flow: "大花费项目", source: "大花费项目目标 - 已准备金额" },
+    { id: "liquid-after-buckets", name: "大花费项目后未分配现金", amount: liquidAfterBuckets, flow: "安全垫", source: "可动用现金 - 待投资金 - 已锁定大花费项目" },
     { id: "monthly-surplus", name: "当月余额", amount: totals.monthlySurplus, flow: "结余", source: "收入 - 实际支出 - 实际资产分配" },
   ];
   const reportData = [
@@ -3356,14 +3356,14 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "fundBuckets" && (
-                  <Module title="资金桶" desc="把旅行、搬家、手机分期、应急金和投资待投金拆开，避免同一笔钱被重复占用。">
+                  <Module title="大花费项目" desc="把旅行、搬家、手机分期、应急金和投资待投金拆开，避免同一笔钱被重复占用。">
                     <DataChartLayout
                       data={
                         <>
                           <div className="stat-strip">
                             <Stat label="可动用现金" value={money(totals.liquidAccountTotal)} />
                             <Stat label="投资待投金" value={money(totals.investmentReserve)} />
-                            <Stat label="资金桶缺口" value={money(fundBucketGapTotal)} />
+                            <Stat label="项目缺口" value={money(fundBucketGapTotal)} />
                             <Stat label="未分配现金" value={money(liquidAfterBuckets)} />
                           </div>
                           <EditableFundBucketTable
@@ -3382,13 +3382,13 @@ export default function FinanceDashboard() {
                           <ChartPanel title="已锁定资金" summary={`含待投资金 ${money(totals.investmentReserve)}`}>
                             <DonutChart data={fundBucketChartData} centerLabel="已准备" centerValue={money(fundBucketPreparedTotal + totals.investmentReserve)} />
                           </ChartPanel>
-                          <ChartPanel title="资金桶缺口" summary={`总缺口 ${money(fundBucketGapTotal)}`}>
+                          <ChartPanel title="大花费项目缺口" summary={`总缺口 ${money(fundBucketGapTotal)}`}>
                             <HorizontalBarChart data={fundBucketGapData} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="每月补齐压力" summary={`每月需 ${money(monthlyFundBucketNeed)}`}>
                             <VerticalBarChart data={fundBucketMonthlyNeedData} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="资金桶结论" summary={liquidAfterBuckets < 0 ? "存在重复占用" : "现金标签可执行"}>
+                          <ChartPanel title="大花费项目结论" summary={liquidAfterBuckets < 0 ? "存在重复占用" : "现金标签可执行"}>
                             <div className="fund-bucket-note">
                               <strong>{liquidAfterBuckets < 0 ? "先处理现金占用冲突" : "当前标签可落地"}</strong>
                               <span>
@@ -3403,7 +3403,7 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "reports" && (
-                  <Module title="财务报表" desc="每月自动生成完整分析报告，覆盖净资产、现金流、投资、资金桶、家庭责任和风险。">
+                  <Module title="财务报表" desc="每月自动生成完整分析报告，覆盖净资产、现金流、投资、大花费项目、家庭责任和风险。">
                     <DataChartLayout
                       data={
                         <>
@@ -3411,7 +3411,7 @@ export default function FinanceDashboard() {
                             <Stat label="收入" value={money(actualIncome)} />
                             <Stat label="支出" value={money(totals.spendingActual)} />
                             <Stat label="结余" value={money(totals.monthlySurplus)} />
-                            <Stat label="资金桶后现金" value={money(liquidAfterBuckets)} />
+                            <Stat label="项目后现金" value={money(liquidAfterBuckets)} />
                           </div>
                           <MonthlyAnalysisReport
                             copyStatus={reportCopyStatus}
@@ -4823,9 +4823,9 @@ function EditableFundBucketTable({
   return (
     <>
       <TableToolbar
-        title="资金桶底表"
-        meta={`目标 ${money(target)} / 已准备 ${money(current)} / 每月还需 ${money(monthlyNeed)} / 资金桶后现金 ${money(liquidAfterBuckets)}`}
-        action={<button className="secondary-button" type="button" onClick={addFundBucket}>新增资金桶</button>}
+        title="大花费项目底表"
+        meta={`目标 ${money(target)} / 已准备 ${money(current)} / 每月还需 ${money(monthlyNeed)} / 项目后现金 ${money(liquidAfterBuckets)}`}
+        action={<button className="secondary-button" type="button" onClick={addFundBucket}>新增大花费项目</button>}
       />
       <div className="auto-bucket-row">
         <strong>自动锁定：投资待投金 {money(investmentReserve)}</strong>
@@ -4835,7 +4835,7 @@ function EditableFundBucketTable({
         <table className="spreadsheet-table fund-bucket-table">
           <thead>
             <tr>
-              <th>资金桶</th>
+              <th>大花费项目</th>
               <th>类型</th>
               <th>截止日期</th>
               <th>目标</th>

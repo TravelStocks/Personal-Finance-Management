@@ -8530,7 +8530,7 @@ var re = [
 	},
 	{
 		id: "fundBuckets",
-		title: "资金桶",
+		title: "大花费项目",
 		desc: "旅行、搬家、分期、应急金和待投资金隔离"
 	},
 	{
@@ -8705,7 +8705,7 @@ function Ie(e) {
 		let n = e, r = le.includes(n.kind) ? n.kind : "其他";
 		return {
 			id: typeof n.id == "string" && n.id ? n.id : `fund-bucket-${t + 1}`,
-			name: typeof n.name == "string" && n.name.trim() ? n.name : `资金桶 ${t + 1}`,
+			name: typeof n.name == "string" && n.name.trim() ? n.name : `大花费项目 ${t + 1}`,
 			kind: r,
 			target: typeof n.target == "number" ? n.target : 0,
 			current: typeof n.current == "number" ? n.current : 0,
@@ -9529,7 +9529,7 @@ function nt() {
 	function Dr() {
 		lt((e) => [...e, {
 			id: `fund-bucket-${Date.now()}`,
-			name: `新资金桶 ${e.length + 1}`,
+			name: `新大花费项目 ${e.length + 1}`,
 			kind: "其他",
 			target: 0,
 			current: 0,
@@ -10059,21 +10059,21 @@ function nt() {
 			tone: z.monthlySurplus < 0 ? "red" : Ni < Mi ? "amber" : "green",
 			summary: `当月余额 ${O(z.monthlySurplus)}，家庭与投资后可用 ${O(Ni)}`,
 			detail: `收入 ${O(Mn)}，生活支出 ${O(z.spendingActual)}，家庭责任 ${O(z.parentAllocation + z.partnerAllocation)}，投资计划 ${O(z.investmentSavingAllocation)}。`,
-			action: z.monthlySurplus < 0 ? "先把当月余额转正，暂停非必要小旅行和新增非刚性支出。" : Ni < Mi ? "未来资金桶每月需求高于可用现金，优先压缩可调整桶或生活支出。" : "现金流可以覆盖当前安排，继续保持每月复盘。"
+			action: z.monthlySurplus < 0 ? "先把当月余额转正，暂停非必要小旅行和新增非刚性支出。" : Ni < Mi ? "未来大花费项目每月需求高于可用现金，优先压缩可调整项目或生活支出。" : "现金流可以覆盖当前安排，继续保持每月复盘。"
 		},
 		{
-			title: "资金桶覆盖",
+			title: "大花费项目覆盖",
 			tone: B < 0 ? "red" : ji > 0 ? "amber" : "green",
-			summary: `资金桶缺口 ${O(Ai)}，未分配现金 ${O(B)}`,
-			detail: `手动资金桶已准备 ${O(Di)} / 目标 ${O(ki)}；投资待投金 ${O(z.investmentReserve)} 单独锁定。`,
-			action: B < 0 ? "资金标签超过可动用现金，需要减少已锁定金额或重新分配账户用途。" : ji > 0 ? "两个月内到期的资金桶仍有缺口，优先补齐搬家、分期和近期旅行。" : "资金桶结构健康，按截止日期继续补齐缺口。"
+			summary: `大花费项目缺口 ${O(Ai)}，未分配现金 ${O(B)}`,
+			detail: `手动项目已准备 ${O(Di)} / 目标 ${O(ki)}；投资待投金 ${O(z.investmentReserve)} 单独锁定。`,
+			action: B < 0 ? "资金标签超过可动用现金，需要减少已锁定金额或重新分配账户用途。" : ji > 0 ? "两个月内到期的大花费项目仍有缺口，优先补齐搬家、分期和近期旅行。" : "大花费项目结构健康，按截止日期继续补齐缺口。"
 		},
 		{
 			title: "投资纪律",
 			tone: V >= 2 ? "green" : V >= 1 ? "amber" : "red",
 			summary: `待投资金可覆盖 ${V.toFixed(1)} 个月计划`,
 			detail: `A股待投 ${O(z.aShareInvestmentReserve)}，美股待投 ${O(z.usShareInvestmentReserve)}，每月投资计划 ${O(z.investmentSavingAllocation)}。`,
-			action: V >= 2 ? "不需要额外加速投入；保持只用待投资金，不动应急、旅行和家庭责任资金。" : "待投资金覆盖不足，新增投入前先确认应急金和大额支出资金桶不被挤占。"
+			action: V >= 2 ? "不需要额外加速投入；保持只用待投资金，不动应急、旅行和家庭责任资金。" : "待投资金覆盖不足，新增投入前先确认应急金和大花费项目不被挤占。"
 		},
 		{
 			title: "应急与负债",
@@ -10085,10 +10085,10 @@ function nt() {
 	], Ri = [
 		`${Dn.label}财务分析报告`,
 		"",
-		`1. 净资产与现金：总资产 ${O(z.totalAssets)}，净资产 ${O(z.netWorth)}，可动用现金 ${O(z.liquidAccountTotal)}，资金桶后未分配现金 ${O(B)}。`,
+		`1. 净资产与现金：总资产 ${O(z.totalAssets)}，净资产 ${O(z.netWorth)}，可动用现金 ${O(z.liquidAccountTotal)}，大花费项目后未分配现金 ${O(B)}。`,
 		`2. 收支：收入 ${O(Mn)}，生活支出 ${O(z.spendingActual)}，资产/责任分配 ${O(z.assetOutflow)}，当月余额 ${O(z.monthlySurplus)}。`,
 		`3. 家庭责任：父母 ${O(z.parentAllocation)}，伴侣 ${O(z.partnerAllocation)}，合计占收入 ${A((z.parentAllocation + z.partnerAllocation) / Math.max(Mn, 1))}。`,
-		`4. 资金桶：目标 ${O(ki)}，已准备 ${O(Di)}，缺口 ${O(Ai)}，其中两个月内缺口 ${O(ji)}。`,
+		`4. 大花费项目：目标 ${O(ki)}，已准备 ${O(Di)}，缺口 ${O(Ai)}，其中两个月内缺口 ${O(ji)}。`,
 		`5. 投资：投资市值 ${O(z.investmentValue)}，待投资金 ${O(z.investmentReserve)}，计划覆盖 ${V.toFixed(1)} 个月，浮动盈亏 ${O(z.investmentPnL)}。`,
 		`6. 应急与负债：应急覆盖 ${z.emergencyCoverage.toFixed(1)} 个月，总负债 ${O(z.totalDebt)}，负债率 ${A(z.debtRatio)}。`,
 		"",
@@ -10207,22 +10207,22 @@ function nt() {
 			id: "investment-reserve",
 			name: "投资待投金",
 			amount: z.investmentReserve,
-			flow: "资金桶",
+			flow: "大花费项目",
 			source: "账户用途自动识别：A股待投 + 美股待投"
 		},
 		{
 			id: "fund-bucket-gap",
-			name: "大额支出缺口",
+			name: "大花费项目缺口",
 			amount: Ai,
-			flow: "资金桶",
-			source: "资金桶目标 - 已准备金额"
+			flow: "大花费项目",
+			source: "大花费项目目标 - 已准备金额"
 		},
 		{
 			id: "liquid-after-buckets",
-			name: "资金桶后未分配现金",
+			name: "大花费项目后未分配现金",
 			amount: B,
 			flow: "安全垫",
-			source: "可动用现金 - 待投资金 - 已锁定资金桶"
+			source: "可动用现金 - 待投资金 - 已锁定大花费项目"
 		},
 		{
 			id: "monthly-surplus",
@@ -11300,7 +11300,7 @@ function nt() {
 								})
 							}),
 							e === "fundBuckets" && /* @__PURE__ */ (0, x.jsx)(ot, {
-								title: "资金桶",
+								title: "大花费项目",
 								desc: "把旅行、搬家、手机分期、应急金和投资待投金拆开，避免同一笔钱被重复占用。",
 								children: /* @__PURE__ */ (0, x.jsx)(at, {
 									data: /* @__PURE__ */ (0, x.jsxs)(x.Fragment, { children: [/* @__PURE__ */ (0, x.jsxs)("div", {
@@ -11315,7 +11315,7 @@ function nt() {
 												value: O(z.investmentReserve)
 											}),
 											/* @__PURE__ */ (0, x.jsx)(M, {
-												label: "资金桶缺口",
+												label: "项目缺口",
 												value: O(Ai)
 											}),
 											/* @__PURE__ */ (0, x.jsx)(M, {
@@ -11345,7 +11345,7 @@ function nt() {
 												})
 											}),
 											/* @__PURE__ */ (0, x.jsx)(N, {
-												title: "资金桶缺口",
+												title: "大花费项目缺口",
 												summary: `总缺口 ${O(Ai)}`,
 												children: /* @__PURE__ */ (0, x.jsx)(kt, {
 													data: Fi,
@@ -11361,7 +11361,7 @@ function nt() {
 												})
 											}),
 											/* @__PURE__ */ (0, x.jsx)(N, {
-												title: "资金桶结论",
+												title: "大花费项目结论",
 												summary: B < 0 ? "存在重复占用" : "现金标签可执行",
 												children: /* @__PURE__ */ (0, x.jsxs)("div", {
 													className: "fund-bucket-note",
@@ -11374,7 +11374,7 @@ function nt() {
 							}),
 							e === "reports" && /* @__PURE__ */ (0, x.jsx)(ot, {
 								title: "财务报表",
-								desc: "每月自动生成完整分析报告，覆盖净资产、现金流、投资、资金桶、家庭责任和风险。",
+								desc: "每月自动生成完整分析报告，覆盖净资产、现金流、投资、大花费项目、家庭责任和风险。",
 								children: /* @__PURE__ */ (0, x.jsx)(at, {
 									data: /* @__PURE__ */ (0, x.jsxs)(x.Fragment, { children: [
 										/* @__PURE__ */ (0, x.jsxs)("div", {
@@ -11393,7 +11393,7 @@ function nt() {
 													value: O(z.monthlySurplus)
 												}),
 												/* @__PURE__ */ (0, x.jsx)(M, {
-													label: "资金桶后现金",
+													label: "项目后现金",
 													value: O(B)
 												})
 											]
@@ -12738,13 +12738,13 @@ function St({ buckets: e, updateFundBucket: t, addFundBucket: n, deleteFundBucke
 	let s = e.reduce((e, t) => e + t.target, 0), c = e.reduce((e, t) => e + t.current, 0);
 	return /* @__PURE__ */ (0, x.jsxs)(x.Fragment, { children: [
 		/* @__PURE__ */ (0, x.jsx)(L, {
-			title: "资金桶底表",
-			meta: `目标 ${O(s)} / 已准备 ${O(c)} / 每月还需 ${O(o)} / 资金桶后现金 ${O(a)}`,
+			title: "大花费项目底表",
+			meta: `目标 ${O(s)} / 已准备 ${O(c)} / 每月还需 ${O(o)} / 项目后现金 ${O(a)}`,
 			action: /* @__PURE__ */ (0, x.jsx)("button", {
 				className: "secondary-button",
 				type: "button",
 				onClick: n,
-				children: "新增资金桶"
+				children: "新增大花费项目"
 			})
 		}),
 		/* @__PURE__ */ (0, x.jsxs)("div", {
@@ -12756,7 +12756,7 @@ function St({ buckets: e, updateFundBucket: t, addFundBucket: n, deleteFundBucke
 			children: /* @__PURE__ */ (0, x.jsxs)("table", {
 				className: "spreadsheet-table fund-bucket-table",
 				children: [/* @__PURE__ */ (0, x.jsx)("thead", { children: /* @__PURE__ */ (0, x.jsxs)("tr", { children: [
-					/* @__PURE__ */ (0, x.jsx)("th", { children: "资金桶" }),
+					/* @__PURE__ */ (0, x.jsx)("th", { children: "大花费项目" }),
 					/* @__PURE__ */ (0, x.jsx)("th", { children: "类型" }),
 					/* @__PURE__ */ (0, x.jsx)("th", { children: "截止日期" }),
 					/* @__PURE__ */ (0, x.jsx)("th", { children: "目标" }),
