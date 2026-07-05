@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 type Period = "周" | "月" | "季" | "年";
 type Tone = "blue" | "green" | "amber" | "red" | "violet";
@@ -16,6 +16,7 @@ type ModuleId =
   | "reminders"
   | "goals"
   | "reports"
+  | "monthlyArchive"
   | "health"
   | "future";
 
@@ -168,6 +169,26 @@ type FinanceSnapshot = {
   id: string;
   createdAt: string;
   data: PersistedFinanceData;
+};
+
+type MonthlyArchiveAccount = Pick<Account, "id" | "name" | "type" | "balance" | "purpose" | "liquid">;
+
+type MonthlyArchive = {
+  id: string;
+  monthId: string;
+  label: string;
+  savedAt: string;
+  income: number;
+  spending: number;
+  allocation: number;
+  surplus: number;
+  accountTotal: number;
+  totalAssets: number;
+  netWorth: number;
+  totalDebt: number;
+  emergencyFund: number;
+  savings: number;
+  accounts: MonthlyArchiveAccount[];
 };
 
 type ChartDatum = {
@@ -325,7 +346,9 @@ const cashflowBuiltinIds: CashflowBuiltinId[] = [
 const reportStartMonthId = "2026-06";
 const financeStorageKey = "personal-finance-management-data-v2";
 const financeSnapshotsKey = "personal-finance-management-snapshots-v1";
+const financeMonthlyArchiveKey = "personal-finance-management-monthly-archives-v1";
 const maxSnapshots = 20;
+const maxMonthlyArchives = 48;
 
 const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "income", title: "收入", desc: "税后工资、实际到账、炒股月结算记录" },
@@ -339,6 +362,7 @@ const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "reminders", title: "账单与提醒", desc: "提前 7 天提醒账单和到期事项" },
   { id: "goals", title: "目标管理", desc: "旅游、学习、父母储蓄、伴侣基金和大额支出目标" },
   { id: "reports", title: "财务报表", desc: "收入、支出、结余、投资表现" },
+  { id: "monthlyArchive", title: "月度存档", desc: "保存每月收入、支出、账户余额和净资产变化" },
   { id: "health", title: "健康评分", desc: "100 分制财务健康状态" },
   { id: "future", title: "数据能力", desc: "保险、债务策略、规则引擎、数据质量" },
 ];
@@ -569,6 +593,55 @@ function normalizeBalanceAssets(value: unknown) {
     .filter((item): item is BalanceAsset => item !== null);
 }
 
+function normalizeMonthlyArchiveAccounts(value: unknown): MonthlyArchiveAccount[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
+      const raw = item as Partial<MonthlyArchiveAccount>;
+      return {
+        id: typeof raw.id === "string" && raw.id ? raw.id : `archive-account-${index + 1}`,
+        name: typeof raw.name === "string" && raw.name.trim() ? raw.name : `账户 ${index + 1}`,
+        type: typeof raw.type === "string" ? raw.type : "",
+        balance: typeof raw.balance === "number" ? raw.balance : 0,
+        purpose: typeof raw.purpose === "string" ? raw.purpose : "",
+        liquid: typeof raw.liquid === "boolean" ? raw.liquid : true,
+      };
+    })
+    .filter((item): item is MonthlyArchiveAccount => item !== null);
+}
+
+function normalizeMonthlyArchives(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null;
+      const raw = item as Partial<MonthlyArchive>;
+      const monthId = typeof raw.monthId === "string" && raw.monthId ? raw.monthId : "";
+      if (!monthId) return null;
+      return {
+        id: typeof raw.id === "string" && raw.id ? raw.id : `${monthId}-${index}`,
+        monthId,
+        label: typeof raw.label === "string" && raw.label ? raw.label : monthLabelFromId(monthId),
+        savedAt: typeof raw.savedAt === "string" && raw.savedAt ? raw.savedAt : new Date().toISOString(),
+        income: typeof raw.income === "number" ? raw.income : 0,
+        spending: typeof raw.spending === "number" ? raw.spending : 0,
+        allocation: typeof raw.allocation === "number" ? raw.allocation : 0,
+        surplus: typeof raw.surplus === "number" ? raw.surplus : 0,
+        accountTotal: typeof raw.accountTotal === "number" ? raw.accountTotal : 0,
+        totalAssets: typeof raw.totalAssets === "number" ? raw.totalAssets : 0,
+        netWorth: typeof raw.netWorth === "number" ? raw.netWorth : 0,
+        totalDebt: typeof raw.totalDebt === "number" ? raw.totalDebt : 0,
+        emergencyFund: typeof raw.emergencyFund === "number" ? raw.emergencyFund : 0,
+        savings: typeof raw.savings === "number" ? raw.savings : 0,
+        accounts: normalizeMonthlyArchiveAccounts(raw.accounts),
+      };
+    })
+    .filter((item): item is MonthlyArchive => item !== null)
+    .sort((a, b) => b.monthId.localeCompare(a.monthId) || b.savedAt.localeCompare(a.savedAt))
+    .slice(0, maxMonthlyArchives);
+}
+
 function legacyLiabilitiesFromSaved(saved: Partial<PersistedFinanceData>) {
   return initialLiabilities.map((item) => ({
     ...item,
@@ -594,6 +667,28 @@ function formatSnapshotTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function signedMoney(value: number) {
+  if (value > 0) return `+${money(value)}`;
+  if (value < 0) return `-${money(Math.abs(value))}`;
+  return money(0);
+}
+
+function changeClassName(value: number) {
+  if (value > 0) return "positive";
+  if (value < 0) return "negative";
+  return "calculated-cell";
+}
+
+function sortMonthlyArchivesAsc(archives: MonthlyArchive[]) {
+  return [...archives].sort((a, b) => a.monthId.localeCompare(b.monthId) || a.savedAt.localeCompare(b.savedAt));
+}
+
+function previousMonthlyArchive(archives: MonthlyArchive[], monthId: string) {
+  return sortMonthlyArchivesAsc(archives)
+    .filter((archive) => archive.monthId < monthId)
+    .at(-1);
 }
 
 function EditableNumber({
@@ -650,6 +745,7 @@ export default function FinanceDashboard() {
   const [cashflowHiddenBuiltinIds, setCashflowHiddenBuiltinIds] = useState<CashflowBuiltinId[]>([]);
   const [cashflowCustomItems, setCashflowCustomItems] = useState<CashflowCustomItem[]>([]);
   const [snapshots, setSnapshots] = useState<FinanceSnapshot[]>([]);
+  const [monthlyArchives, setMonthlyArchives] = useState<MonthlyArchive[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState("正在读取本地数据…");
   const [savedDataReady, setSavedDataReady] = useState(false);
@@ -724,6 +820,7 @@ export default function FinanceDashboard() {
       try {
         const raw = window.localStorage.getItem(financeStorageKey);
         const rawSnapshots = window.localStorage.getItem(financeSnapshotsKey);
+        const rawMonthlyArchives = window.localStorage.getItem(financeMonthlyArchiveKey);
         if (raw) {
           const saved = JSON.parse(raw) as Partial<PersistedFinanceData>;
           applyPersistedFinanceData(saved);
@@ -732,6 +829,7 @@ export default function FinanceDashboard() {
           const savedSnapshots = JSON.parse(rawSnapshots) as FinanceSnapshot[];
           if (Array.isArray(savedSnapshots)) setSnapshots(savedSnapshots.slice(0, maxSnapshots));
         }
+        if (rawMonthlyArchives) setMonthlyArchives(normalizeMonthlyArchives(JSON.parse(rawMonthlyArchives)));
         setSaveStatus(raw ? "已恢复上次保存的数据" : "已启用自动保存");
       } catch {
         window.localStorage.removeItem(financeStorageKey);
@@ -811,6 +909,7 @@ export default function FinanceDashboard() {
       exportedAt: new Date().toISOString(),
       data: getPersistedFinanceData(),
       snapshots,
+      monthlyArchives,
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -824,7 +923,11 @@ export default function FinanceDashboard() {
 
   async function importBackup(file: File) {
     try {
-      const backup = JSON.parse(await file.text()) as { data?: Partial<PersistedFinanceData>; snapshots?: FinanceSnapshot[] };
+      const backup = JSON.parse(await file.text()) as {
+        data?: Partial<PersistedFinanceData>;
+        snapshots?: FinanceSnapshot[];
+        monthlyArchives?: MonthlyArchive[];
+      };
       if (!backup.data || !Array.isArray(backup.data.accounts) || !Array.isArray(backup.data.monthlyRecords)) {
         throw new Error("invalid backup");
       }
@@ -833,6 +936,11 @@ export default function FinanceDashboard() {
         const importedSnapshots = backup.snapshots.slice(0, maxSnapshots);
         setSnapshots(importedSnapshots);
         window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(importedSnapshots));
+      }
+      if (Array.isArray(backup.monthlyArchives)) {
+        const importedMonthlyArchives = normalizeMonthlyArchives(backup.monthlyArchives);
+        setMonthlyArchives(importedMonthlyArchives);
+        window.localStorage.setItem(financeMonthlyArchiveKey, JSON.stringify(importedMonthlyArchives));
       }
       setSaveStatus("备份已导入并自动保存");
     } catch {
@@ -849,7 +957,7 @@ export default function FinanceDashboard() {
   const budgets = activeMonth.budgets;
   const actualIncome = salary + Math.max(stockIncome, 0) + otherIncome;
 
-  const totals = useMemo(() => {
+  const totals = (() => {
     const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
     const totalSavingsAccounts = accounts.filter(isTotalSavingsAccount);
     const totalSavingsAccountTotal = totalSavingsAccounts.reduce((sum, item) => sum + item.balance, 0);
@@ -997,29 +1105,66 @@ export default function FinanceDashboard() {
       emergencyMonthlyNeed: emergencyNeed,
       emergencyTarget,
     };
-  }, [
-    accounts,
-    goals,
-    budgets,
-    actualIncome,
-    holdings,
-    fxUsd,
-    fxHkd,
-    travelSaving,
-    learningSaving,
-    emergencyFund,
-    emergencyMonths,
-    emergencyMonthlyNeed,
-    balanceAssets,
-    liabilities,
-    aSharePlan,
-    usSharePlan,
-    hkSharePlan,
-    cashflowHiddenBuiltinIds,
-    cashflowCustomItems,
-  ]);
+  })();
 
-  const forecast = useMemo(() => {
+  function createMonthlyArchive(savedAt: string, id: string): MonthlyArchive {
+    return {
+      id,
+      monthId: selectedMonth,
+      label: activeMonth.label,
+      savedAt,
+      income: actualIncome,
+      spending: totals.spendingActual,
+      allocation: totals.assetOutflow,
+      surplus: totals.monthlySurplus,
+      accountTotal: totals.accountTotal,
+      totalAssets: totals.totalAssets,
+      netWorth: totals.netWorth,
+      totalDebt: totals.totalDebt,
+      emergencyFund: totals.currentEmergencyFund,
+      savings: totals.totalSavingsAccountTotal,
+      accounts: accounts.map((account) => ({
+        id: account.id,
+        name: account.name,
+        type: account.type,
+        balance: account.balance,
+        purpose: account.purpose,
+        liquid: account.liquid,
+      })),
+    };
+  }
+
+  function saveMonthlyArchive() {
+    const savedAt = new Date().toISOString();
+    const archive = createMonthlyArchive(savedAt, `${selectedMonth}-${savedAt}`);
+    const nextArchives = normalizeMonthlyArchives([
+      archive,
+      ...monthlyArchives.filter((item) => item.monthId !== selectedMonth),
+    ]);
+    setMonthlyArchives(nextArchives);
+    window.localStorage.setItem(financeMonthlyArchiveKey, JSON.stringify(nextArchives));
+    setActiveModules((items) => (items.includes("monthlyArchive") ? items : [...items, "monthlyArchive"]));
+    setSaveStatus(`${activeMonth.label} 月报已保存`);
+  }
+
+  function deleteMonthlyArchive(id: string) {
+    const nextArchives = monthlyArchives.filter((archive) => archive.id !== id);
+    setMonthlyArchives(nextArchives);
+    window.localStorage.setItem(financeMonthlyArchiveKey, JSON.stringify(nextArchives));
+  }
+
+  const currentMonthlyArchive = createMonthlyArchive("current-preview", `current-${selectedMonth}`);
+  const savedSelectedMonthlyArchive = monthlyArchives.find((archive) => archive.monthId === selectedMonth);
+  const monthlyArchiveForComparison = savedSelectedMonthlyArchive ?? currentMonthlyArchive;
+  const previousSelectedMonthlyArchive = previousMonthlyArchive(monthlyArchives, selectedMonth);
+  const monthlyArchiveTimeline = sortMonthlyArchivesAsc(
+    normalizeMonthlyArchives([
+      currentMonthlyArchive,
+      ...monthlyArchives.filter((archive) => archive.monthId !== selectedMonth),
+    ]),
+  );
+
+  const forecast = (() => {
     const rows: Array<{ month: string; inflow: number; outflow: number; balance: number }> = [];
     let balance = totals.accountTotal;
     const customInflow = cashflowCustomItems
@@ -1041,18 +1186,9 @@ export default function FinanceDashboard() {
       });
     }
     return rows;
-  }, [
-    cashflowCustomItems,
-    cashflowHiddenBuiltinIds,
-    monthlyRecords,
-    salary,
-    selectedMonth,
-    totals.accountTotal,
-    totals.assetOutflow,
-    totals.spendingPlan,
-  ]);
+  })();
 
-  const cashflowEvents = useMemo(() => {
+  const cashflowEvents = (() => {
     const customInflow = cashflowCustomItems
       .filter((item) => item.direction === "inflow")
       .reduce((sum, item) => sum + item.amount, 0);
@@ -1078,7 +1214,7 @@ export default function FinanceDashboard() {
       },
       { balance: totals.accountTotal, rows: [] },
     ).rows;
-  }, [cashflowCustomItems, cashflowHiddenBuiltinIds, reminders, salary, totals.accountTotal, totals.assetOutflow]);
+  })();
 
   function updateAccount(id: string, patch: Partial<Account>) {
     setAccounts((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -1983,6 +2119,34 @@ export default function FinanceDashboard() {
     value: item.score,
     color: palette[index % palette.length],
   }));
+  const monthlyArchiveIncomeTrend = monthlyArchiveTimeline.map((archive, index) => ({
+    label: shortMonth(archive.label),
+    value: archive.income,
+    color: archive.monthId === selectedMonth ? palette[0] : palette[index % palette.length],
+    detail: archive.monthId === selectedMonth && !savedSelectedMonthlyArchive ? "当前预览" : "已存档",
+  }));
+  const monthlyArchiveSpendingTrend = monthlyArchiveTimeline.map((archive, index) => ({
+    label: shortMonth(archive.label),
+    value: archive.spending,
+    color: archive.monthId === selectedMonth ? palette[4] : palette[(index + 4) % palette.length],
+    detail: archive.monthId === selectedMonth && !savedSelectedMonthlyArchive ? "当前预览" : "已存档",
+  }));
+  const monthlyArchiveNetWorthLine = monthlyArchiveTimeline.map((archive) => ({
+    label: shortMonth(archive.label),
+    value: archive.netWorth,
+  }));
+  const monthlyArchiveAccountLine = monthlyArchiveTimeline.map((archive) => ({
+    label: shortMonth(archive.label),
+    value: archive.accountTotal,
+  }));
+  const monthlyArchiveSurplusLine = monthlyArchiveTimeline.map((archive) => ({
+    label: shortMonth(archive.label),
+    value: archive.surplus,
+  }));
+  const selectedArchiveIncomeDelta = monthlyArchiveForComparison.income - (previousSelectedMonthlyArchive?.income ?? 0);
+  const selectedArchiveSpendingDelta = monthlyArchiveForComparison.spending - (previousSelectedMonthlyArchive?.spending ?? 0);
+  const selectedArchiveAccountDelta = monthlyArchiveForComparison.accountTotal - (previousSelectedMonthlyArchive?.accountTotal ?? 0);
+  const selectedArchiveNetWorthDelta = monthlyArchiveForComparison.netWorth - (previousSelectedMonthlyArchive?.netWorth ?? 0);
 
   return (
     <main className="finance-page">
@@ -2028,11 +2192,12 @@ export default function FinanceDashboard() {
             <span className={savedDataReady ? "save-dot ready" : "save-dot"} />
             <div>
               <strong>{saveStatus}</strong>
-              <small>数据实时保存在当前浏览器；跨电脑使用时请导出备份。</small>
+              <small>数据实时保存在当前浏览器；每月底保存月报后，可查看收支和账户环比变化。</small>
             </div>
           </div>
           <div className="data-actions">
-            <button className="primary-button" type="button" onClick={saveSnapshot}>保存历史版本</button>
+            <button className="primary-button" type="button" onClick={saveMonthlyArchive}>保存本月月报</button>
+            <button className="secondary-button" type="button" onClick={saveSnapshot}>保存完整版本</button>
             <button className="secondary-button" type="button" onClick={() => setHistoryOpen((open) => !open)}>
               历史版本 {snapshots.length > 0 ? `(${snapshots.length})` : ""}
             </button>
@@ -2641,6 +2806,61 @@ export default function FinanceDashboard() {
                   </Module>
                 )}
 
+                {moduleId === "monthlyArchive" && (
+                  <Module title="月度存档" desc="每月底保存一次月报，用来追踪收入、支出、账户余额和净资产的环比变化。">
+                    <DataChartLayout
+                      data={
+                        <>
+                          <MonthSelector
+                            records={monthlyRecords}
+                            selectedMonth={selectedMonth}
+                            onAddMonth={addMonthRecord}
+                            onChange={setSelectedMonth}
+                            onDeleteSelectedMonth={() => deleteMonthRecord(selectedMonth)}
+                          />
+                          <div className="stat-strip">
+                            <Stat label="收入变化" value={previousSelectedMonthlyArchive ? signedMoney(selectedArchiveIncomeDelta) : "待对比"} />
+                            <Stat label="支出变化" value={previousSelectedMonthlyArchive ? signedMoney(selectedArchiveSpendingDelta) : "待对比"} />
+                            <Stat label="账户变化" value={previousSelectedMonthlyArchive ? signedMoney(selectedArchiveAccountDelta) : "待对比"} />
+                            <Stat label="净资产变化" value={previousSelectedMonthlyArchive ? signedMoney(selectedArchiveNetWorthDelta) : "待对比"} />
+                          </div>
+                          <MonthlyArchiveTable
+                            archives={monthlyArchives}
+                            currentArchive={currentMonthlyArchive}
+                            deleteMonthlyArchive={deleteMonthlyArchive}
+                            saveMonthlyArchive={saveMonthlyArchive}
+                            selectedMonth={selectedMonth}
+                            onSelectMonth={setSelectedMonth}
+                          />
+                          <AccountArchiveChangeTable
+                            currentArchive={monthlyArchiveForComparison}
+                            previousArchive={previousSelectedMonthlyArchive}
+                          />
+                        </>
+                      }
+                      charts={
+                        <div className="chart-grid two">
+                          <ChartPanel title="存档收入趋势" summary={`${monthlyArchiveTimeline.length} 个月 / 当前 ${money(actualIncome)}`}>
+                            <VerticalBarChart data={monthlyArchiveIncomeTrend} valueFormatter={money} />
+                          </ChartPanel>
+                          <ChartPanel title="存档支出趋势" summary={`当前支出 ${money(totals.spendingActual)}`}>
+                            <VerticalBarChart data={monthlyArchiveSpendingTrend} valueFormatter={money} />
+                          </ChartPanel>
+                          <ChartPanel title="账户余额变化" summary={`当前账户 ${money(totals.accountTotal)}`}>
+                            <LineChart data={monthlyArchiveAccountLine} valueFormatter={money} />
+                          </ChartPanel>
+                          <ChartPanel title="净资产变化" summary={`当前净资产 ${money(totals.netWorth)}`}>
+                            <LineChart data={monthlyArchiveNetWorthLine} valueFormatter={money} />
+                          </ChartPanel>
+                          <ChartPanel title="当月余额变化" summary="收入 - 支出 - 分配">
+                            <LineChart data={monthlyArchiveSurplusLine} valueFormatter={money} />
+                          </ChartPanel>
+                        </div>
+                      }
+                    />
+                  </Module>
+                )}
+
                 {moduleId === "health" && (
                   <Module title="财务健康评分" desc="100 分制，用现金流、应急金、负债、增长和趋势综合判断。">
                     <DataChartLayout
@@ -3031,6 +3251,201 @@ function EditableMonthlyIncomeTable({
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function MonthlyArchiveTable({
+  archives,
+  currentArchive,
+  selectedMonth,
+  saveMonthlyArchive,
+  deleteMonthlyArchive,
+  onSelectMonth,
+}: {
+  archives: MonthlyArchive[];
+  currentArchive: MonthlyArchive;
+  selectedMonth: string;
+  saveMonthlyArchive: () => void;
+  deleteMonthlyArchive: (id: string) => void;
+  onSelectMonth: (monthId: string) => void;
+}) {
+  const sortedArchives = [...archives].sort((a, b) => b.monthId.localeCompare(a.monthId) || b.savedAt.localeCompare(a.savedAt));
+  const selectedSavedArchive = archives.find((archive) => archive.monthId === selectedMonth);
+  const previousArchive = previousMonthlyArchive(archives, selectedMonth);
+  const incomeDelta = previousArchive ? currentArchive.income - previousArchive.income : 0;
+  const spendingDelta = previousArchive ? currentArchive.spending - previousArchive.spending : 0;
+  const accountDelta = previousArchive ? currentArchive.accountTotal - previousArchive.accountTotal : 0;
+  const netWorthDelta = previousArchive ? currentArchive.netWorth - previousArchive.netWorth : 0;
+
+  return (
+    <>
+      <TableToolbar
+        title="月度存档底表"
+        meta={`${archives.length} 条月报 / 当前 ${currentArchive.label}${selectedSavedArchive ? " 已保存" : " 未保存"}`}
+        action={<button className="primary-button" type="button" onClick={saveMonthlyArchive}>保存当前月报</button>}
+      />
+      <div className="archive-current-grid" aria-label="当前月报预览">
+        <div className="archive-current-metric">
+          <span>当前收入</span>
+          <strong>{money(currentArchive.income)}</strong>
+          <em className={previousArchive ? changeClassName(incomeDelta) : ""}>{previousArchive ? signedMoney(incomeDelta) : "等待上月月报"}</em>
+        </div>
+        <div className="archive-current-metric">
+          <span>当前支出</span>
+          <strong>{money(currentArchive.spending)}</strong>
+          <em>{previousArchive ? signedMoney(spendingDelta) : "等待上月月报"}</em>
+        </div>
+        <div className="archive-current-metric">
+          <span>账户余额</span>
+          <strong>{money(currentArchive.accountTotal)}</strong>
+          <em className={previousArchive ? changeClassName(accountDelta) : ""}>{previousArchive ? signedMoney(accountDelta) : "等待上月月报"}</em>
+        </div>
+        <div className="archive-current-metric">
+          <span>净资产</span>
+          <strong>{money(currentArchive.netWorth)}</strong>
+          <em className={previousArchive ? changeClassName(netWorthDelta) : ""}>{previousArchive ? signedMoney(netWorthDelta) : "等待上月月报"}</em>
+        </div>
+      </div>
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table monthly-archive-table">
+          <thead>
+            <tr>
+              <th>月份</th>
+              <th>保存时间</th>
+              <th>收入</th>
+              <th>支出</th>
+              <th>资产分配</th>
+              <th>当月余额</th>
+              <th>账户余额</th>
+              <th>净资产</th>
+              <th>环比变化</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedArchives.length === 0 && (
+              <tr>
+                <td className="calculated-cell" colSpan={10}>还没有月度存档。确认当月数据后点击“保存当前月报”。</td>
+              </tr>
+            )}
+            {sortedArchives.map((archive) => {
+              const previous = previousMonthlyArchive(archives, archive.monthId);
+              const archiveIncomeDelta = previous ? archive.income - previous.income : 0;
+              const archiveSpendingDelta = previous ? archive.spending - previous.spending : 0;
+              const archiveAccountDelta = previous ? archive.accountTotal - previous.accountTotal : 0;
+              const archiveNetWorthDelta = previous ? archive.netWorth - previous.netWorth : 0;
+              return (
+                <tr className={archive.monthId === selectedMonth ? "selected-row" : ""} key={archive.id}>
+                  <td>
+                    <button className="row-select-button" type="button" onClick={() => onSelectMonth(archive.monthId)}>
+                      {archive.label}
+                    </button>
+                  </td>
+                  <td>{formatSnapshotTime(archive.savedAt)}</td>
+                  <td className="calculated-cell">{money(archive.income)}</td>
+                  <td className="calculated-cell">{money(archive.spending)}</td>
+                  <td className="calculated-cell">{money(archive.allocation)}</td>
+                  <td className={changeClassName(archive.surplus)}>{money(archive.surplus)}</td>
+                  <td className="calculated-cell">{money(archive.accountTotal)}</td>
+                  <td className="calculated-cell">{money(archive.netWorth)}</td>
+                  <td>
+                    {previous ? (
+                      <div className="archive-change-stack">
+                        <span className={changeClassName(archiveIncomeDelta)}>收入 {signedMoney(archiveIncomeDelta)}</span>
+                        <span>支出 {signedMoney(archiveSpendingDelta)}</span>
+                        <span className={changeClassName(archiveAccountDelta)}>账户 {signedMoney(archiveAccountDelta)}</span>
+                        <span className={changeClassName(archiveNetWorthDelta)}>净资产 {signedMoney(archiveNetWorthDelta)}</span>
+                      </div>
+                    ) : (
+                      <span className="pill">首月基准</span>
+                    )}
+                  </td>
+                  <td>
+                    <button className="danger-button compact" type="button" onClick={() => deleteMonthlyArchive(archive.id)}>
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function AccountArchiveChangeTable({
+  currentArchive,
+  previousArchive,
+}: {
+  currentArchive: MonthlyArchive;
+  previousArchive?: MonthlyArchive;
+}) {
+  const currentAccounts = new Map(currentArchive.accounts.map((account) => [account.id, account]));
+  const previousAccounts = new Map((previousArchive?.accounts ?? []).map((account) => [account.id, account]));
+  const accountIds = Array.from(new Set([...currentAccounts.keys(), ...previousAccounts.keys()]));
+  const rows = accountIds
+    .map((id) => {
+      const current = currentAccounts.get(id);
+      const previous = previousAccounts.get(id);
+      const currentBalance = current?.balance ?? 0;
+      const previousBalance = previous?.balance ?? 0;
+      return {
+        id,
+        name: current?.name ?? previous?.name ?? "未命名账户",
+        type: current?.type ?? previous?.type ?? "账户",
+        purpose: current?.purpose ?? previous?.purpose ?? "",
+        currentBalance,
+        previousBalance,
+        delta: currentBalance - previousBalance,
+        status: current && !previous ? "新增" : !current && previous ? "已移除" : currentBalance === previousBalance ? "持平" : "变化",
+      };
+    })
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta) || b.currentBalance - a.currentBalance);
+
+  return (
+    <>
+      <TableToolbar
+        title="账户余额变化"
+        meta={previousArchive ? `${previousArchive.label} → ${currentArchive.label}` : "保存至少两个不同月份后显示账户环比"}
+      />
+      <div className="table-wrap spreadsheet-wrap">
+        <table className="spreadsheet-table account-change-table">
+          <thead>
+            <tr>
+              <th>账户</th>
+              <th>用途</th>
+              <th>上次月报</th>
+              <th>当前月报</th>
+              <th>变化</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            {!previousArchive && (
+              <tr>
+                <td className="calculated-cell" colSpan={6}>暂无上一个月份的月报。保存两个不同月份后，这里会显示每个账户的增减。</td>
+              </tr>
+            )}
+            {previousArchive &&
+              rows.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <strong>{row.name}</strong>
+                    <span className="table-subtext">{row.type}</span>
+                  </td>
+                  <td>{row.purpose || "未填写"}</td>
+                  <td className="calculated-cell">{money(row.previousBalance)}</td>
+                  <td className="calculated-cell">{money(row.currentBalance)}</td>
+                  <td className={changeClassName(row.delta)}>{signedMoney(row.delta)}</td>
+                  <td><span className={row.status === "持平" ? "pill" : "pill good"}>{row.status}</span></td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

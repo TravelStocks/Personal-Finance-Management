@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "node ./node_modules/vinext/dist/cli.js dev",
     "build": "node ./node_modules/vinext/dist/cli.js build",
+    "build:docs": "vite build --config vite.docs.config.ts",
     "start": "node ./node_modules/vinext/dist/cli.js start",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
