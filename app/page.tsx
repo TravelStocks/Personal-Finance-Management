@@ -211,6 +211,7 @@ type CloudSyncSettings = {
   gistId: string;
   token: string;
   autoSync: boolean;
+  rememberPassphrase: boolean;
   lastPushedAt?: string;
   lastPulledAt?: string;
 };
@@ -462,6 +463,7 @@ const financeStorageKey = "personal-finance-management-data-v2";
 const financeSnapshotsKey = "personal-finance-management-snapshots-v1";
 const financeMonthlyArchiveKey = "personal-finance-management-monthly-archives-v1";
 const financeCloudSyncKey = "personal-finance-management-cloud-sync-v1";
+const financeCloudPassphraseKey = "personal-finance-management-cloud-passphrase-v1";
 const cloudSyncFileName = "personal-finance-management-sync.json";
 const maxSnapshots = 20;
 const maxMonthlyArchives = 48;
@@ -787,12 +789,15 @@ function normalizeMonthlyArchives(value: unknown) {
 }
 
 function normalizeCloudSyncSettings(value: unknown): CloudSyncSettings {
-  if (!value || typeof value !== "object") return { gistId: "", token: "", autoSync: false };
+  if (!value || typeof value !== "object") {
+    return { gistId: "", token: "", autoSync: false, rememberPassphrase: false };
+  }
   const raw = value as Partial<CloudSyncSettings>;
   return {
     gistId: typeof raw.gistId === "string" ? raw.gistId : "",
     token: typeof raw.token === "string" ? raw.token : "",
     autoSync: Boolean(raw.autoSync),
+    rememberPassphrase: Boolean(raw.rememberPassphrase),
     lastPushedAt: typeof raw.lastPushedAt === "string" ? raw.lastPushedAt : undefined,
     lastPulledAt: typeof raw.lastPulledAt === "string" ? raw.lastPulledAt : undefined,
   };
@@ -1044,6 +1049,7 @@ export default function FinanceDashboard() {
     gistId: "",
     token: "",
     autoSync: false,
+    rememberPassphrase: false,
   });
   const [cloudPassphrase, setCloudPassphrase] = useState("");
   const [cloudStatus, setCloudStatus] = useState("未连接云同步");
@@ -1083,19 +1089,28 @@ export default function FinanceDashboard() {
     };
   }
 
-  function getCloudSyncBackup(): CloudSyncBackup {
+  function persistLocalFinanceData(data: PersistedFinanceData = getPersistedFinanceData()) {
+    window.localStorage.setItem(financeStorageKey, JSON.stringify(data));
+  }
+
+  function getCloudSyncBackup(overrides: Partial<Pick<CloudSyncBackup, "data" | "snapshots" | "monthlyArchives">> = {}): CloudSyncBackup {
     return {
       version: 1,
       exportedAt: new Date().toISOString(),
-      data: getPersistedFinanceData(),
-      snapshots,
-      monthlyArchives,
+      data: overrides.data ?? getPersistedFinanceData(),
+      snapshots: overrides.snapshots ?? snapshots,
+      monthlyArchives: overrides.monthlyArchives ?? monthlyArchives,
     };
   }
 
-  function persistCloudSyncSettings(nextSettings: CloudSyncSettings) {
+  function persistCloudSyncSettings(nextSettings: CloudSyncSettings, passphrase = cloudPassphrase) {
     setCloudSyncSettings(nextSettings);
     window.localStorage.setItem(financeCloudSyncKey, JSON.stringify(nextSettings));
+    if (!nextSettings.rememberPassphrase) {
+      window.localStorage.removeItem(financeCloudPassphraseKey);
+    } else if (passphrase.trim()) {
+      window.localStorage.setItem(financeCloudPassphraseKey, passphrase);
+    }
   }
 
   function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
@@ -1139,43 +1154,91 @@ export default function FinanceDashboard() {
     if (Array.isArray(saved.cashflowCustomItems)) setCashflowCustomItems(saved.cashflowCustomItems);
   }
 
+  // Runs before autosave starts so a fresh browser cannot upload default data over the cloud backup.
   useEffect(() => {
+    let cancelled = false;
     const loadSavedData = window.setTimeout(() => {
-      try {
-        const raw = window.localStorage.getItem(financeStorageKey);
-        const rawSnapshots = window.localStorage.getItem(financeSnapshotsKey);
-        const rawMonthlyArchives = window.localStorage.getItem(financeMonthlyArchiveKey);
-        const rawCloudSync = window.localStorage.getItem(financeCloudSyncKey);
-        if (raw) {
-          const saved = JSON.parse(raw) as Partial<PersistedFinanceData>;
-          applyPersistedFinanceData(saved);
+      void (async () => {
+        let hasLocalData = false;
+        let savedCloudSync = normalizeCloudSyncSettings(null);
+        let rememberedPassphrase = "";
+
+        try {
+          const raw = window.localStorage.getItem(financeStorageKey);
+          const rawSnapshots = window.localStorage.getItem(financeSnapshotsKey);
+          const rawMonthlyArchives = window.localStorage.getItem(financeMonthlyArchiveKey);
+          const rawCloudSync = window.localStorage.getItem(financeCloudSyncKey);
+          rememberedPassphrase = window.localStorage.getItem(financeCloudPassphraseKey) ?? "";
+          if (raw) {
+            const saved = JSON.parse(raw) as Partial<PersistedFinanceData>;
+            applyPersistedFinanceData(saved);
+            hasLocalData = true;
+          }
+          if (rawSnapshots) {
+            const savedSnapshots = JSON.parse(rawSnapshots) as FinanceSnapshot[];
+            if (Array.isArray(savedSnapshots)) setSnapshots(savedSnapshots.slice(0, maxSnapshots));
+          }
+          if (rawMonthlyArchives) setMonthlyArchives(normalizeMonthlyArchives(JSON.parse(rawMonthlyArchives)));
+          if (rawCloudSync) {
+            savedCloudSync = normalizeCloudSyncSettings(JSON.parse(rawCloudSync));
+            setCloudSyncSettings(savedCloudSync);
+            if (savedCloudSync.rememberPassphrase && rememberedPassphrase) setCloudPassphrase(rememberedPassphrase);
+            setCloudStatus(savedCloudSync.gistId ? "已读取云同步配置，准备连接云端" : "未连接云同步");
+          }
+        } catch {
+          window.localStorage.removeItem(financeStorageKey);
+          setSaveStatus("本地数据读取失败，已使用默认数据");
         }
-        if (rawSnapshots) {
-          const savedSnapshots = JSON.parse(rawSnapshots) as FinanceSnapshot[];
-          if (Array.isArray(savedSnapshots)) setSnapshots(savedSnapshots.slice(0, maxSnapshots));
+
+        const canAutoPullCloud =
+          savedCloudSync.gistId.trim() &&
+          savedCloudSync.token.trim() &&
+          savedCloudSync.rememberPassphrase &&
+          Boolean(rememberedPassphrase.trim());
+
+        if (canAutoPullCloud) {
+          setCloudSyncing(true);
+          setCloudStatus("正在打开时自动拉取云端数据…");
+          try {
+            const backup = await pullCloudSyncBackup(
+              savedCloudSync.gistId,
+              savedCloudSync.token,
+              rememberedPassphrase,
+            );
+            if (cancelled) return;
+            applyCloudSyncBackup(backup);
+            const pulledAt = new Date().toISOString();
+            persistCloudSyncSettings({ ...savedCloudSync, lastPulledAt: pulledAt }, rememberedPassphrase);
+            setSaveStatus("已从云端自动恢复最新数据");
+            setCloudStatus(`云端数据已自动拉取 · ${formatSnapshotTime(pulledAt)}`);
+          } catch {
+            if (!cancelled) {
+              setSaveStatus(hasLocalData ? "已恢复本机数据，云端自动拉取失败" : "已启用自动保存，云端自动拉取失败");
+              setCloudStatus("打开时自动拉取失败，请检查同步密码、Token 和 Gist ID。");
+            }
+          } finally {
+            if (!cancelled) setCloudSyncing(false);
+          }
+        } else {
+          setSaveStatus(hasLocalData ? "已恢复上次保存的数据" : "已启用自动保存");
         }
-        if (rawMonthlyArchives) setMonthlyArchives(normalizeMonthlyArchives(JSON.parse(rawMonthlyArchives)));
-        if (rawCloudSync) {
-          const savedCloudSync = normalizeCloudSyncSettings(JSON.parse(rawCloudSync));
-          setCloudSyncSettings(savedCloudSync);
-          setCloudStatus(savedCloudSync.gistId ? "已读取云同步配置，请输入同步密码" : "未连接云同步");
-        }
-        setSaveStatus(raw ? "已恢复上次保存的数据" : "已启用自动保存");
-      } catch {
-        window.localStorage.removeItem(financeStorageKey);
-        setSaveStatus("本地数据读取失败，已使用默认数据");
-      } finally {
-        setSavedDataReady(true);
-      }
+
+        if (!cancelled) setSavedDataReady(true);
+      })();
     }, 0);
-    return () => window.clearTimeout(loadSavedData);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(loadSavedData);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Autosave follows the persisted values; helper identities intentionally stay out of this effect.
   useEffect(() => {
     if (!savedDataReady) return;
     const timer = window.setTimeout(() => {
       try {
-        window.localStorage.setItem(financeStorageKey, JSON.stringify(getPersistedFinanceData()));
+        persistLocalFinanceData();
         setSaveStatus(`已自动保存 · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`);
         if (
           cloudSyncSettings.autoSync &&
@@ -1197,6 +1260,7 @@ export default function FinanceDashboard() {
       window.clearTimeout(timer);
       if (cloudAutoSyncTimerRef.current) window.clearTimeout(cloudAutoSyncTimerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     savedDataReady,
     period,
@@ -1229,7 +1293,7 @@ export default function FinanceDashboard() {
     cloudSyncing,
   ]);
 
-  function saveSnapshot() {
+  async function saveSnapshot() {
     const snapshot: FinanceSnapshot = {
       id: `${Date.now()}`,
       createdAt: new Date().toISOString(),
@@ -1238,13 +1302,17 @@ export default function FinanceDashboard() {
     const nextSnapshots = [snapshot, ...snapshots].slice(0, maxSnapshots);
     setSnapshots(nextSnapshots);
     window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(nextSnapshots));
+    persistLocalFinanceData(snapshot.data);
     setHistoryOpen(true);
-    setSaveStatus("历史版本已保存");
+    setSaveStatus("历史版本已保存，正在同步云端…");
+    const uploaded = await uploadCloudSync(false, getCloudSyncBackup({ data: snapshot.data, snapshots: nextSnapshots }));
+    setSaveStatus(uploaded ? "完整版本已保存并上传云端" : "完整版本已保存到本机，云端未更新");
   }
 
   function restoreSnapshot(snapshot: FinanceSnapshot) {
     if (!window.confirm(`确定恢复 ${formatSnapshotTime(snapshot.createdAt)} 的版本吗？当前数据会被该版本覆盖。`)) return;
     applyPersistedFinanceData(snapshot.data);
+    persistLocalFinanceData(snapshot.data);
     setSaveStatus("历史版本已恢复并自动保存");
   }
 
@@ -1277,6 +1345,7 @@ export default function FinanceDashboard() {
         throw new Error("invalid backup");
       }
       applyPersistedFinanceData(backup.data);
+      persistLocalFinanceData(backup.data as PersistedFinanceData);
       if (Array.isArray(backup.snapshots)) {
         const importedSnapshots = backup.snapshots.slice(0, maxSnapshots);
         setSnapshots(importedSnapshots);
@@ -1299,8 +1368,18 @@ export default function FinanceDashboard() {
     persistCloudSyncSettings({ ...cloudSyncSettings, ...patch });
   }
 
+  function updateCloudPassphrase(value: string) {
+    setCloudPassphrase(value);
+    if (!cloudSyncSettings.rememberPassphrase) return;
+    if (value.trim()) {
+      window.localStorage.setItem(financeCloudPassphraseKey, value);
+    } else {
+      window.localStorage.removeItem(financeCloudPassphraseKey);
+    }
+  }
+
   function clearCloudSyncSettings() {
-    const nextSettings = { gistId: "", token: "", autoSync: false };
+    const nextSettings = { gistId: "", token: "", autoSync: false, rememberPassphrase: false };
     persistCloudSyncSettings(nextSettings);
     setCloudPassphrase("");
     setCloudStatus("已断开云同步配置");
@@ -1312,25 +1391,32 @@ export default function FinanceDashboard() {
     const importedMonthlyArchives = normalizeMonthlyArchives(backup.monthlyArchives);
     setSnapshots(importedSnapshots);
     setMonthlyArchives(importedMonthlyArchives);
+    persistLocalFinanceData(backup.data);
     window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(importedSnapshots));
     window.localStorage.setItem(financeMonthlyArchiveKey, JSON.stringify(importedMonthlyArchives));
   }
 
-  async function uploadCloudSync(silent = false) {
+  async function uploadCloudSync(silent = false, backup: CloudSyncBackup = getCloudSyncBackup()) {
     if (!cloudSyncSettings.token.trim()) {
-      if (!silent) window.alert("请先填写 GitHub Token。");
-      return;
+      if (!silent) {
+        setActiveModules((items) => (items.includes("cloudSync") ? items : [...items, "cloudSync"]));
+        window.alert("请先填写 GitHub Token。");
+      }
+      return false;
     }
     if (!cloudPassphrase.trim()) {
-      if (!silent) window.alert("请先填写同步密码。这个密码用于加密云端数据。");
-      return;
+      if (!silent) {
+        setActiveModules((items) => (items.includes("cloudSync") ? items : [...items, "cloudSync"]));
+        window.alert("请先填写同步密码。这个密码用于加密云端数据。");
+      }
+      return false;
     }
 
     setCloudSyncing(true);
     if (!silent) setCloudStatus("正在加密并上传到 GitHub Gist…");
     try {
       const gist = await pushCloudSyncBackup({
-        backup: getCloudSyncBackup(),
+        backup,
         gistId: cloudSyncSettings.gistId,
         passphrase: cloudPassphrase,
         token: cloudSyncSettings.token,
@@ -1343,9 +1429,11 @@ export default function FinanceDashboard() {
       };
       persistCloudSyncSettings(nextSettings);
       setCloudStatus(`${silent ? "已自动云同步" : "云端保存完成"} · ${formatSnapshotTime(pushedAt)}`);
+      return true;
     } catch (error) {
       setCloudStatus("云端保存失败，请检查 Token、Gist ID 和网络。");
       if (!silent) window.alert(error instanceof Error ? error.message : "云端保存失败");
+      return false;
     } finally {
       setCloudSyncing(false);
     }
@@ -1567,7 +1655,7 @@ export default function FinanceDashboard() {
     };
   }
 
-  function saveMonthlyArchive() {
+  async function saveMonthlyArchive() {
     const savedAt = new Date().toISOString();
     const archive = createMonthlyArchive(savedAt, `${selectedMonth}-${savedAt}`);
     const nextArchives = normalizeMonthlyArchives([
@@ -1577,7 +1665,10 @@ export default function FinanceDashboard() {
     setMonthlyArchives(nextArchives);
     window.localStorage.setItem(financeMonthlyArchiveKey, JSON.stringify(nextArchives));
     setActiveModules((items) => (items.includes("monthlyArchive") ? items : [...items, "monthlyArchive"]));
-    setSaveStatus(`${activeMonth.label} 月报已保存`);
+    persistLocalFinanceData();
+    setSaveStatus(`${activeMonth.label} 月报已保存，正在同步云端…`);
+    const uploaded = await uploadCloudSync(false, getCloudSyncBackup({ monthlyArchives: nextArchives }));
+    setSaveStatus(uploaded ? `${activeMonth.label} 月报已保存并上传云端` : `${activeMonth.label} 月报已保存到本机，云端未更新`);
   }
 
   function deleteMonthlyArchive(id: string) {
@@ -2786,12 +2877,12 @@ export default function FinanceDashboard() {
             <span className={savedDataReady ? "save-dot ready" : "save-dot"} />
             <div>
               <strong>{saveStatus}</strong>
-              <small>这是本机浏览器保存；跨电脑实时同步请打开云同步。{cloudStatus ? `云端：${cloudStatus}` : ""}</small>
+              <small>本机会自动保存；跨电脑请用“保存完整版本”或云同步里的“保存到云端”。{cloudStatus ? `云端：${cloudStatus}` : ""}</small>
             </div>
           </div>
           <div className="data-actions">
-            <button className="primary-button" type="button" onClick={saveMonthlyArchive}>保存本月月报</button>
-            <button className="secondary-button" type="button" onClick={saveSnapshot}>保存完整版本</button>
+            <button className="primary-button" disabled={cloudSyncing} type="button" onClick={() => void saveMonthlyArchive()}>保存本月月报</button>
+            <button className="secondary-button" disabled={cloudSyncing} type="button" onClick={() => void saveSnapshot()}>保存完整版本</button>
             <button className="secondary-button" type="button" onClick={() => setActiveModules((items) => (items.includes("cloudSync") ? items : [...items, "cloudSync"]))}>
               打开云同步
             </button>
@@ -3507,7 +3598,7 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "cloudSync" && (
-                  <Module title="云同步" desc="本机自动保存只在当前浏览器生效；这里用于跨电脑加密同步。">
+                  <Module title="云同步" desc="点击保存会把加密数据写入 GitHub Gist；另一台电脑可从这里恢复同一份数据。">
                     <DataChartLayout
                       data={
                         <CloudSyncPanel
@@ -3517,7 +3608,7 @@ export default function FinanceDashboard() {
                           clearCloudSyncSettings={clearCloudSyncSettings}
                           downloadCloudSync={downloadCloudSync}
                           settings={cloudSyncSettings}
-                          setCloudPassphrase={setCloudPassphrase}
+                          setCloudPassphrase={updateCloudPassphrase}
                           updateCloudSyncSettings={updateCloudSyncSettings}
                           uploadCloudSync={() => void uploadCloudSync(false)}
                         />
@@ -3533,6 +3624,10 @@ export default function FinanceDashboard() {
                               <div>
                                 <span>自动同步</span>
                                 <strong>{cloudSyncSettings.autoSync ? "开启" : "关闭"}</strong>
+                              </div>
+                              <div>
+                                <span>打开自动恢复</span>
+                                <strong>{cloudSyncSettings.rememberPassphrase ? "开启" : "关闭"}</strong>
                               </div>
                               <div>
                                 <span>上次上传</span>
@@ -4011,7 +4106,7 @@ function CloudSyncPanel({
             <span>同步密码</span>
             <input
               autoComplete="new-password"
-              placeholder="本机不保存"
+              placeholder={settings.rememberPassphrase ? "已选择本机保存" : "默认不保存"}
               type="password"
               value={cloudPassphrase}
               onChange={(event) => setCloudPassphrase(event.target.value)}
@@ -4028,13 +4123,24 @@ function CloudSyncPanel({
               <em>{settings.autoSync ? "已开启" : "已关闭"}</em>
             </span>
           </label>
+          <label className="field cloud-switch-field">
+            <span>打开时自动恢复</span>
+            <span className="cloud-switch-row">
+              <input
+                checked={settings.rememberPassphrase}
+                type="checkbox"
+                onChange={(event) => updateCloudSyncSettings({ rememberPassphrase: event.target.checked })}
+              />
+              <em>{settings.rememberPassphrase ? "本机记住密码" : "需手动输入密码"}</em>
+            </span>
+          </label>
         </div>
         <div className="cloud-sync-actions">
           <button className="primary-button" disabled={cloudSyncing} type="button" onClick={uploadCloudSync}>
-            上传云端
+            保存到云端
           </button>
           <button className="secondary-button" disabled={cloudSyncing} type="button" onClick={downloadCloudSync}>
-            从云端拉取
+            恢复云端数据
           </button>
           <button className="danger-button" disabled={cloudSyncing && !settings.gistId} type="button" onClick={clearCloudSyncSettings}>
             断开本机配置
@@ -4042,7 +4148,7 @@ function CloudSyncPanel({
         </div>
         <div className="cloud-sync-status">
           <strong>{cloudSyncing ? "同步中…" : cloudStatus}</strong>
-          <span>云端内容使用同步密码加密；GitHub Token 只保存在当前浏览器。</span>
+          <span>云端内容使用同步密码加密；Token 和可选保存的同步密码只保存在当前浏览器。</span>
         </div>
       </div>
     </>
@@ -4060,7 +4166,7 @@ function MonthlyArchiveTable({
   archives: MonthlyArchive[];
   currentArchive: MonthlyArchive;
   selectedMonth: string;
-  saveMonthlyArchive: () => void;
+  saveMonthlyArchive: () => void | Promise<void>;
   deleteMonthlyArchive: (id: string) => void;
   onSelectMonth: (monthId: string) => void;
 }) {
@@ -4077,7 +4183,7 @@ function MonthlyArchiveTable({
       <TableToolbar
         title="月度存档底表"
         meta={`${archives.length} 条月报 / 当前 ${currentArchive.label}${selectedSavedArchive ? " 已保存" : " 未保存"}`}
-        action={<button className="primary-button" type="button" onClick={saveMonthlyArchive}>保存当前月报</button>}
+        action={<button className="primary-button" type="button" onClick={() => void saveMonthlyArchive()}>保存当前月报</button>}
       />
       <div className="archive-current-grid" aria-label="当前月报预览">
         <div className="archive-current-metric">
