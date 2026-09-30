@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import MonthlyCashPlanner, { calculateMonthlyCashPlan, initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
+import { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
+import AnnualBudgetPlanner from "./annual-budget-plan";
+import { calculateAnnualBudgetPlan, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
 
 type Period = "周" | "月" | "季" | "年";
 type Tone = "blue" | "green" | "amber" | "red" | "violet";
@@ -154,6 +156,7 @@ type ReportRow = {
 };
 
 type PersistedFinanceData = {
+  annualBudgetPlan?: AnnualBudgetPlan;
   monthlyCashPlan?: MonthlyCashPlan;
   period?: Period;
   selectedMonth?: string;
@@ -1021,6 +1024,7 @@ function EditableNumber({
 }
 
 export default function FinanceDashboard() {
+  const [annualBudgetPlan, setAnnualBudgetPlan] = useState<AnnualBudgetPlan>(initialAnnualBudgetPlan);
   const [monthlyCashPlan, setMonthlyCashPlan] = useState<MonthlyCashPlan>(initialMonthlyCashPlan);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [activeModules, setActiveModules] = useState<ModuleId[]>([]);
@@ -1067,6 +1071,7 @@ export default function FinanceDashboard() {
 
   function getPersistedFinanceData(): PersistedFinanceData {
     return {
+      annualBudgetPlan,
       monthlyCashPlan,
       period,
       selectedMonth,
@@ -1119,6 +1124,7 @@ export default function FinanceDashboard() {
   }
 
   function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
+    setAnnualBudgetPlan(normalizeAnnualBudgetPlan(saved.annualBudgetPlan));
     setMonthlyCashPlan(normalizeMonthlyCashPlan(saved.monthlyCashPlan));
     if (saved.period) setPeriod(saved.period);
     if (saved.selectedMonth) setSelectedMonth(saved.selectedMonth);
@@ -1269,6 +1275,7 @@ export default function FinanceDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     savedDataReady,
+    annualBudgetPlan,
     monthlyCashPlan,
     period,
     selectedMonth,
@@ -1484,7 +1491,9 @@ export default function FinanceDashboard() {
   const otherIncome = activeMonth.otherIncome;
   const budgets = activeMonth.budgets;
   const actualIncome = salary + Math.max(stockIncome, 0) + otherIncome;
-  const cashPlanTotals = calculateMonthlyCashPlan(monthlyCashPlan);
+  const annualPlanTotals = calculateAnnualBudgetPlan(annualBudgetPlan);
+  const cashPlanTotals = annualPlanTotals[annualBudgetPlan.mode];
+  const budgetModeName = annualBudgetPlan.mode === "normal" ? "普通月" : "出差月";
 
   const totals = (() => {
     const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
@@ -2085,12 +2094,7 @@ export default function FinanceDashboard() {
     : "暂无负债";
 
   const monthlyAssetAllocationSummary = [
-    `旅游 ${money(monthlyCashPlan.travel)}`,
-    `学习 ${money(monthlyCashPlan.learning)}`,
-    `父母家用 ${money(monthlyCashPlan.parents)}`,
-    `伴侣基金 ${money(monthlyCashPlan.partner)}`,
-    `应急 ${money(monthlyCashPlan.emergency)}`,
-    `投资基金 ${money(monthlyCashPlan.investment)}`,
+    ...annualPlanTotals.rows.filter(row => row.kind !== "consumption").map(row => `${row.name} ${money(row[annualBudgetPlan.mode])}`),
   ].join(" / ");
   const specialSavingsDetail = [
     `旅游 ${money(totals.travelSavings)}`,
@@ -2208,31 +2212,31 @@ export default function FinanceDashboard() {
   }> = [
     {
       id: "monthly-overview-income",
-      title: "本月工资计划",
-      value: money(monthlyCashPlan.income),
-      detail: "与上方月度计划同步 / 不预支投资收益",
+      title: `${budgetModeName}可分配资金`,
+      value: money(cashPlanTotals.income),
+      detail: `工资 ${money(annualBudgetPlan.salary)} + 出差净结余 ${money(cashPlanTotals.tripNet)} / ${annualBudgetPlan.mode === "trip" ? "出差结余按全年平均分摊" : "不预支出差结余"}`,
       tone: "blue" as Tone,
     },
     {
       id: "monthly-overview-living",
-      title: "本月房租与生活预算",
-      value: money(cashPlanTotals.livingAndRentOutflow),
-      detail: `房租 ${money(monthlyCashPlan.rent)} / 基本生活费 ${money(monthlyCashPlan.living)} / 父母家用列入下一项`,
+      title: `${budgetModeName}生活与消费预留`,
+      value: money(cashPlanTotals.consumption),
+      detail: "含房租、家用、学习、旅游与伴侣预留 / 完整明细见上方预算表",
       tone: "green" as Tone,
     },
     {
       id: "monthly-overview-allocation",
-      title: "本月基金与家用安排",
-      value: money(cashPlanTotals.fundAndFamilyOutflow),
+      title: `${budgetModeName}投资与应急储备`,
+      value: money(cashPlanTotals.saving),
       detail: monthlyAssetAllocationSummary,
       tone: "violet" as Tone,
     },
     {
       id: "monthly-overview-surplus",
-      title: "本月预算现金余量",
+      title: `${budgetModeName}预算现金余量`,
       value: money(cashPlanTotals.surplus),
-      detail: `工资 ${money(monthlyCashPlan.income)} - 房租生活 ${money(cashPlanTotals.livingAndRentOutflow)} - 基金家用 ${money(cashPlanTotals.fundAndFamilyOutflow)} - 公司还款 ${money(cashPlanTotals.actualRepayment)}`,
-      tone: cashPlanTotals.surplus < 0 ? ("red" as Tone) : cashPlanTotals.surplus < monthlyCashPlan.income * 0.1 ? ("amber" as Tone) : ("green" as Tone),
+      detail: `可分配 ${money(cashPlanTotals.income)} - 生活消费 ${money(cashPlanTotals.consumption)} - 投资应急 ${money(cashPlanTotals.saving)}`,
+      tone: cashPlanTotals.surplus < 0 ? ("red" as Tone) : cashPlanTotals.surplus < cashPlanTotals.income * 0.1 ? ("amber" as Tone) : ("green" as Tone),
     },
     {
       title: "当前账户余额",
@@ -2516,23 +2520,20 @@ export default function FinanceDashboard() {
     },
   ];
   const cashPlanWaterfall: WaterfallDatum[] = [
-    {label: "工资", value: monthlyCashPlan.income, kind: "positive", color: palette[0]},
-    {label: "房租生活", value: -cashPlanTotals.livingAndRentOutflow, kind: "negative", color: palette[4]},
-    {label: "基金家用", value: -cashPlanTotals.fundAndFamilyOutflow, kind: "negative", color: palette[2]},
-    {label: "公司还款", value: -cashPlanTotals.actualRepayment, kind: "negative", color: palette[3]},
+    {label: "工资", value: annualBudgetPlan.salary, kind: "positive", color: palette[0]},
+    {label: "出差净结余", value: cashPlanTotals.tripNet, kind: cashPlanTotals.tripNet < 0 ? "negative" : "positive", color: palette[1]},
+    {label: "生活消费", value: -cashPlanTotals.consumption, kind: "negative", color: palette[4]},
+    {label: "投资应急", value: -cashPlanTotals.saving, kind: "negative", color: palette[2]},
     {label: "现金余量", value: cashPlanTotals.surplus, kind: "end", color: cashPlanTotals.surplus < 0 ? palette[4] : palette[1]},
   ];
-  const cashPlanFlow = [
-    {label: "房租", value: monthlyCashPlan.rent},
-    {label: "基本生活费", value: monthlyCashPlan.living},
-    {label: "父母家用", value: monthlyCashPlan.parents},
-    {label: "旅游基金", value: monthlyCashPlan.travel},
-    {label: "学习基金", value: monthlyCashPlan.learning},
-    {label: "伴侣基金", value: monthlyCashPlan.partner},
-    {label: "应急基金", value: monthlyCashPlan.emergency},
-    {label: "投资基金", value: monthlyCashPlan.investment},
-    {label: "公司还款", value: cashPlanTotals.actualRepayment},
-  ].filter(item => item.value > 0).map((item, index) => ({...item, color: palette[index % palette.length]}));
+  const cashPlanFlow = annualPlanTotals.rows.map(row => ({label: row.name, value: row[annualBudgetPlan.mode]}))
+    .filter(item => item.value > 0).map((item, index) => ({...item, color: palette[index % palette.length]}));
+  const annualPlanDistribution = [
+    {label: "生活与消费预留", value: annualPlanTotals.annualConsumption, color: palette[0]},
+    {label: "投资本金", value: annualPlanTotals.annualInvestment, color: palette[1]},
+    {label: "新增应急现金", value: annualPlanTotals.annualEmergency, color: palette[2]},
+    {label: "额外现金余量", value: Math.max(0, annualPlanTotals.annualSurplus), color: palette[3]},
+  ];
   const netWorthTrend = forecast.map((item) => ({
     label: item.month,
     value:
@@ -2872,7 +2873,7 @@ export default function FinanceDashboard() {
           <span className="brand-mark">PF</span>
           <div>
             <strong>个人财务系统</strong>
-            <small>月度计划 / 财务账本</small>
+            <small>年度预算 / 财务账本</small>
           </div>
         </div>
         <button className={activeModules.length === 0 ? "active" : ""} onClick={() => setActiveModules([])}>
@@ -2893,7 +2894,7 @@ export default function FinanceDashboard() {
         <header className="topbar">
           <div>
             <h1>长期个人财务管理系统</h1>
-            <p>先核对每月现金安排，再查看账本、账户与资产。</p>
+            <p>先核对全年安排与月份周转，再查看账本、账户与资产。</p>
           </div>
           <div className="period-tabs" aria-label="时间视图">
             {(["周", "月", "季", "年"] as Period[]).map((item) => (
@@ -2966,15 +2967,15 @@ export default function FinanceDashboard() {
           </section>
         )}
 
-        <MonthlyCashPlanner plan={monthlyCashPlan} onChange={setMonthlyCashPlan} />
+        <AnnualBudgetPlanner plan={annualBudgetPlan} onChange={setAnnualBudgetPlan} />
         <details className="finance-ledger" open={ledgerOpen} onToggle={event => setLedgerOpen(event.currentTarget.open)}>
           <summary>查看账本、资产与历史记录 <span>按已保存的月份查看实际数据</span></summary>
-          <p className="ledger-context">预算汇总与上方月度计划实时同步。账户余额、资产和历史收支按已录入数据计算；核算当前净资产前，请更新公司借款及各账户余额。</p>
+          <p className="ledger-context">预算汇总与上方年度方案和所选月份类型同步。账户余额、资产和历史收支按已录入数据计算；核算当前净资产前，请更新公司借款及各账户余额。</p>
         <section className="overview">
           <div className="section-title">
             <div>
               <h2>账户与预算总览</h2>
-              <p>前四项是当前月度预算；账户与资产按实际余额统计，历史收支可在对应模块查看。</p>
+              <p>前四项是{budgetModeName}预算；账户与资产按实际余额统计，历史收支可在对应模块查看。</p>
             </div>
             <span className="pill good">公开页已脱敏</span>
           </div>
@@ -3027,15 +3028,15 @@ export default function FinanceDashboard() {
             <div className="section-title compact">
               <div>
                 <h2>图表分析区</h2>
-                <p>预算趋势、现金瀑布和资金流向使用当前月度计划；账本图表注明所选月份。</p>
+                <p>年度资金分布、现金瀑布和资金流向使用同一份年度方案；账本图表注明所选月份。</p>
               </div>
             </div>
             <div className="chart-grid four">
               <ChartPanel title="资产结构" summary={`总资产 ${money(totals.totalAssets)}`}>
                 <DonutChart data={assetStructureData} centerLabel="总资产" centerValue={money(totals.totalAssets)} />
               </ChartPanel>
-              <ChartPanel title="预算现金余量趋势" summary="6个月累计余量，从0开始">
-                <LineChart data={cashPlanTotals.projection.map(item => ({label: `第${item.month}个月`, value: item.cumulative}))} valueFormatter={money} />
+              <ChartPanel title="年度资金分布" summary={`全年全部安排 ${money(annualPlanTotals.annualOutflow)}`}>
+                <DonutChart data={annualPlanDistribution} centerLabel={annualPlanTotals.annualSurplus >= 0 ? "可分配资金" : "年度安排"} centerValue={money(annualPlanTotals.annualSurplus >= 0 ? annualPlanTotals.annualIncome : annualPlanTotals.annualOutflow)} />
               </ChartPanel>
               <ChartPanel title="账本支出最高项" summary={`${activeMonth.label} / 已花 ${money(totals.spendingActual)}`} className="spending-top-panel">
                 <HorizontalBarChart data={topSpendingData} valueFormatter={money} />
@@ -3043,7 +3044,7 @@ export default function FinanceDashboard() {
               <ChartPanel title="账本健康维度" summary={`${activeMonth.label} / 综合 ${totals.score} 分`}>
                 <HorizontalBarChart data={healthDimensions} valueFormatter={(value) => `${value.toFixed(0)}分`} percentMode />
               </ChartPanel>
-              <ChartPanel title="本月预算现金瀑布" summary={`全部安排 ${money(cashPlanTotals.totalOutflow)}`}>
+              <ChartPanel title={`${budgetModeName}预算现金瀑布`} summary={`全部安排 ${money(cashPlanTotals.totalOutflow)}`}>
                 <WaterfallChart data={cashPlanWaterfall} />
               </ChartPanel>
               <ChartPanel title="账本现金流日历" summary={`${activeMonth.label}账本及提醒记录`}>
@@ -3052,7 +3053,7 @@ export default function FinanceDashboard() {
               <ChartPanel title="账本风险矩阵" summary={`${activeMonth.label}账本模型`} className="wide risk-panel">
                 <RiskMatrix data={riskMatrixData} />
               </ChartPanel>
-              <ChartPanel title="本月预算流向" summary={`全部安排 ${money(cashPlanTotals.totalOutflow)}`}>
+              <ChartPanel title={`${budgetModeName}预算流向`} summary={`全部安排 ${money(cashPlanTotals.totalOutflow)}`}>
                 <FlowMap data={cashPlanFlow} source="工资账户" valueFormatter={money} />
               </ChartPanel>
             </div>
