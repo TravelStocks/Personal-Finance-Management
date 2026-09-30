@@ -16,15 +16,20 @@ export type MonthlyCashPlan = {
   deadlineMonths: number;
 };
 
-export const initialMonthlyCashPlan: MonthlyCashPlan = {
+export const originalMonthlyCashPlan: MonthlyCashPlan = {
   income: 12500, rent: 2750, living: 2500, parents: 2000, partner: 1000,
   investment: 3750, travel: 2000, learning: 500, emergency: 500,
   repayment: 0, debt: 20000, deadlineMonths: 0,
 };
 
+export const initialMonthlyCashPlan: MonthlyCashPlan = {
+  ...originalMonthlyCashPlan,
+  income: 13000, living: 3500, investment: 2750, travel: 1000,
+};
+
 const rows = [
   {key: "rent", name: "房租", kind: "生活", note: "你承担的房租"},
-  {key: "living", name: "基本生活费", kind: "生活", note: "吃饭、交通、水电、话费等；暂估"},
+  {key: "living", name: "基本生活费", kind: "生活", note: "吃饭、交通、水电、话费等"},
   {key: "parents", name: "父母家用", kind: "家用", note: "家庭支持"},
   {key: "repayment", name: "公司借款还款", kind: "还债", note: "无息本金，按公司约定安排"},
   {key: "emergency", name: "应急基金", kind: "储备", note: "保留可随时使用的应急现金"},
@@ -50,7 +55,7 @@ export function normalizeMonthlyCashPlan(value: unknown): MonthlyCashPlan {
 
 export function calculateMonthlyCashPlan(plan: MonthlyCashPlan) {
   const originalAllocations = rows.filter(r => r.key !== "living" && r.key !== "repayment")
-    .reduce((sum, row) => sum + amount(initialMonthlyCashPlan[row.key]), 0) / 100;
+    .reduce((sum, row) => sum + amount(originalMonthlyCashPlan[row.key]), 0) / 100;
   const regularOutflow = rows.filter(r => r.key !== "repayment")
     .reduce((sum, row) => sum + amount(plan[row.key]), 0) / 100;
   const actualRepayment = Math.min(plan.repayment, plan.debt);
@@ -72,7 +77,7 @@ export function calculateMonthlyCashPlan(plan: MonthlyCashPlan) {
 }
 
 export function monthlyCashPreset(plan: MonthlyCashPlan, kind: "original" | "balanced" | "repay"): MonthlyCashPlan {
-  if (kind === "original") return {...plan, ...Object.fromEntries(rows.filter(r => r.key !== "living").map(r => [r.key, initialMonthlyCashPlan[r.key]]))};
+  if (kind === "original") return {...plan, ...Object.fromEntries(rows.filter(r => r.key !== "living").map(r => [r.key, originalMonthlyCashPlan[r.key]]))};
   return {...plan, investment: kind === "repay" ? 0 : 1000, travel: 0, learning: 500,
     emergency: 500, parents: 2000, partner: 500, rent: 2750, repayment: kind === "repay" ? 3500 : 2000};
 }
@@ -95,7 +100,7 @@ export default function MonthlyCashPlanner({plan, onChange}: {
   ];
   const baseInputs = [
     {key: "income", label: "每月到手工资（元）", note: "按稳定工资规划，不预支投资收益"},
-    {key: "debt", label: "公司借款剩余本金（元）", note: "近2万元，暂按20,000元估算；利息为0"},
+    {key: "debt", label: "公司借款剩余本金（元）", note: "无息借款；本金沿用先前估算，调拨还款后按实际剩余欠款更新"},
     {key: "deadlineMonths", label: "要求几个月还清", note: "未约定留0，先核对公司要求"},
   ] as const;
   return (
@@ -106,8 +111,8 @@ export default function MonthlyCashPlanner({plan, onChange}: {
         <span className={`cash-plan-status ${feasible ? "positive" : "negative"}`} role="status">{feasible ? "当前方案有余量" : "当前方案超出工资"}</span>
       </div>
       <div className="cash-plan-diagnosis">
-        <strong>你原来的7项安排合计 {money(totals.originalAllocations)}，恰好分完12,500元工资。</strong>
-        <span>再加暂估生活费2,500元，每月就缺2,500元，还没有安排还款。基金拨款会占用现金，但不等于最终消费。</span>
+        <strong>当前到手工资 {money(plan.income)}，本月全部安排 {money(totals.totalOutflow)}。</strong>
+        <span>已包含生活费{money(plan.living)}。{totals.actualRepayment > 0 ? `本月拟还公司借款${money(totals.actualRepayment)}。` : "尚未安排公司借款月还款。"}基金拨款会占用现金，但不等于最终消费。</span>
       </div>
       <div className="cash-plan-inputs">
         {baseInputs.map(field => <label key={field.key}><span>{field.label}</span>
@@ -133,7 +138,7 @@ export default function MonthlyCashPlanner({plan, onChange}: {
       <div className="cash-plan-table-wrap"><table className="cash-plan-table">
         <thead><tr><th>资金用途</th><th>原安排</th><th>准备执行 / 月</th></tr></thead>
         <tbody>{rows.map(row => <tr key={row.key}><td><strong>{row.name}</strong><small>{row.kind} · {row.note}</small></td>
-          <td>{row.key === "living" ? "未列入" : row.key === "repayment" ? "未安排" : money(initialMonthlyCashPlan[row.key])}</td>
+          <td>{row.key === "living" ? "未列入" : row.key === "repayment" ? "未安排" : money(originalMonthlyCashPlan[row.key])}</td>
           <td><label><span className="sr-only">{row.name}月预算</span><input aria-label={`${row.name}月预算`} type="number" min="0" max="100000000" step="50" value={plan[row.key]} onChange={e => update(row.key, e.target.value)}/></label>{row.key === "repayment" && plan.repayment > plan.debt && <small>本月实际还 {money(totals.actualRepayment)}</small>}</td></tr>)}</tbody>
         <tfoot><tr><th>合计</th><td>{money(totals.originalAllocations)}<small>不含生活费和还款</small></td><td>{money(totals.totalOutflow)}</td></tr></tfoot>
       </table></div>

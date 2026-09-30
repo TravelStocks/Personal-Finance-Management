@@ -11,7 +11,18 @@ const compiled = ts.transpileModule(fs.readFileSync(source, 'utf8'), {
 const requireSource = createRequire(source);
 const exported = {};
 new Function('exports', 'require', compiled)(exported, name => name.endsWith('.css') ? {} : requireSource(name));
-const {initialMonthlyCashPlan: original, calculateMonthlyCashPlan: calculate, monthlyCashPreset: preset, normalizeMonthlyCashPlan: normalize} = exported;
+const {initialMonthlyCashPlan: latest, originalMonthlyCashPlan: original, calculateMonthlyCashPlan: calculate, monthlyCashPreset: preset, normalizeMonthlyCashPlan: normalize} = exported;
+
+const updated = calculate(latest);
+assert.equal(latest.income, 13000);
+assert.equal(latest.living, 3500);
+assert.equal(latest.investment, 2750);
+assert.equal(latest.travel, 1000);
+assert.equal(latest.emergency, 500);
+assert.equal(updated.totalOutflow, 14000);
+assert.equal(updated.surplus, -1000);
+assert.equal(updated.originalAllocations, 12500, 'Updating the current plan must preserve the original comparison');
+assert.equal(latest.debt, 20000, 'Being able to repay does not confirm that repayment has occurred');
 
 const current = calculate(original);
 assert.equal(current.originalAllocations, 12500, 'The user\'s seven original allocations consume exactly the salary');
@@ -47,13 +58,13 @@ assert.equal(calculate({...balancedPlan, debt: 0}).months, 0);
 assert.equal(calculate({...balancedPlan, living: 3500}).months, null, 'An unaffordable repayment must not display a payoff promise');
 assert.equal(calculate({...balancedPlan, repayment: 0}).months, null);
 assert.equal(calculate({...balancedPlan, income: 0}).affordableRepayment, 0);
-assert.deepEqual(normalize(undefined), original, 'Old backups receive the new plan without losing existing records');
-assert.equal(normalize({living: -1}).living, 2500);
-assert.equal(normalize({living: Infinity}).living, 2500);
+assert.deepEqual(normalize(undefined), latest, 'Old backups receive the latest plan without losing existing records');
+assert.equal(normalize({living: -1}).living, 3500);
+assert.equal(normalize({living: Infinity}).living, 3500);
 assert.equal(normalize({living: 2500.555}).living, 2500.56);
 assert.equal(normalize({deadlineMonths: 3.8}).deadlineMonths, 3);
 
-for (const scenario of [original, balancedPlan, preset(original, 'repay'), {...balancedPlan, debt: 500}]) {
+for (const scenario of [latest, original, balancedPlan, preset(original, 'repay'), {...balancedPlan, debt: 500}]) {
   const result = calculate(scenario);
   for (const month of result.projection) {
     assert.equal(Math.round((result.regularOutflow + month.repayment + month.surplus) * 100), Math.round(scenario.income * 100));
