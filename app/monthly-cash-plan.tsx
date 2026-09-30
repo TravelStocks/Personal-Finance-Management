@@ -58,6 +58,9 @@ export function calculateMonthlyCashPlan(plan: MonthlyCashPlan) {
     .reduce((sum, row) => sum + amount(originalMonthlyCashPlan[row.key]), 0) / 100;
   const regularOutflow = rows.filter(r => r.key !== "repayment")
     .reduce((sum, row) => sum + amount(plan[row.key]), 0) / 100;
+  const livingAndRentOutflow = (amount(plan.living) + amount(plan.rent)) / 100;
+  const fundAndFamilyOutflow = rows.filter(r => r.key !== "living" && r.key !== "rent" && r.key !== "repayment")
+    .reduce((sum, row) => sum + amount(plan[row.key]), 0) / 100;
   const actualRepayment = Math.min(plan.repayment, plan.debt);
   const totalOutflow = (amount(regularOutflow) + amount(actualRepayment)) / 100;
   const surplus = (amount(plan.income) - amount(totalOutflow)) / 100;
@@ -73,7 +76,7 @@ export function calculateMonthlyCashPlan(plan: MonthlyCashPlan) {
     cumulative += remaining;
     return {month: index + 1, repayment: repayment / 100, debt: debt / 100, surplus: remaining / 100, cumulative: cumulative / 100};
   });
-  return {originalAllocations, regularOutflow, actualRepayment, totalOutflow, surplus, affordableRepayment, months, projection};
+  return {originalAllocations, regularOutflow, livingAndRentOutflow, fundAndFamilyOutflow, actualRepayment, totalOutflow, surplus, affordableRepayment, months, projection};
 }
 
 export function monthlyCashPreset(plan: MonthlyCashPlan, kind: "original" | "balanced" | "repay"): MonthlyCashPlan {

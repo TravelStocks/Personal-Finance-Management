@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import MonthlyCashPlanner, { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
+import MonthlyCashPlanner, { calculateMonthlyCashPlan, initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
 
 type Period = "周" | "月" | "季" | "年";
 type Tone = "blue" | "green" | "amber" | "red" | "violet";
@@ -1484,6 +1484,7 @@ export default function FinanceDashboard() {
   const otherIncome = activeMonth.otherIncome;
   const budgets = activeMonth.budgets;
   const actualIncome = salary + Math.max(stockIncome, 0) + otherIncome;
+  const cashPlanTotals = calculateMonthlyCashPlan(monthlyCashPlan);
 
   const totals = (() => {
     const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
@@ -2084,12 +2085,12 @@ export default function FinanceDashboard() {
     : "暂无负债";
 
   const monthlyAssetAllocationSummary = [
-    `旅游 ${money(totals.travelAllocation)}`,
-    `学习 ${money(totals.learningAllocation)}`,
-    `父母储蓄 ${money(totals.parentAllocation)}`,
-    `伴侣基金 ${money(totals.partnerAllocation)}`,
-    `应急 ${money(totals.emergencyAllocation)}`,
-    `投资储蓄 ${money(totals.investmentSavingAllocation)}`,
+    `旅游 ${money(monthlyCashPlan.travel)}`,
+    `学习 ${money(monthlyCashPlan.learning)}`,
+    `父母家用 ${money(monthlyCashPlan.parents)}`,
+    `伴侣基金 ${money(monthlyCashPlan.partner)}`,
+    `应急 ${money(monthlyCashPlan.emergency)}`,
+    `投资基金 ${money(monthlyCashPlan.investment)}`,
   ].join(" / ");
   const specialSavingsDetail = [
     `旅游 ${money(totals.travelSavings)}`,
@@ -2198,6 +2199,7 @@ export default function FinanceDashboard() {
     }));
 
   const overviewCards: Array<{
+    id?: string;
     title: string;
     value: string;
     detail: string;
@@ -2205,31 +2207,35 @@ export default function FinanceDashboard() {
     items?: Array<{ label: string; value: string; note: string }>;
   }> = [
     {
-      title: "本月实际收入",
-      value: money(actualIncome),
-      detail: `${activeMonth.label} / 工资 ${money(salary)} / 炒股 ${money(Math.max(stockIncome, 0))}`,
+      id: "monthly-overview-income",
+      title: "本月工资计划",
+      value: money(monthlyCashPlan.income),
+      detail: "与上方月度计划同步 / 不预支投资收益",
       tone: "blue" as Tone,
     },
     {
-      title: "本月实际支出",
-      value: money(totals.spendingActual),
-      detail: `${activeMonth.label} / 预算 ${money(totals.spendingPlan)} / 固定支出率 ${percent(totals.fixedRatio)}`,
-      tone: totals.fixedRatio > 0.5 ? ("red" as Tone) : totals.fixedRatio >= 0.35 ? ("amber" as Tone) : ("green" as Tone),
+      id: "monthly-overview-living",
+      title: "本月房租与生活预算",
+      value: money(cashPlanTotals.livingAndRentOutflow),
+      detail: `房租 ${money(monthlyCashPlan.rent)} / 基本生活费 ${money(monthlyCashPlan.living)} / 父母家用列入下一项`,
+      tone: "green" as Tone,
     },
     {
-      title: "本月实际资产分配",
-      value: money(totals.assetOutflow),
-      detail: `${monthlyAssetAllocationSummary}${totals.customOutflow > 0 ? ` / 其他 ${money(totals.customOutflow)}` : ""}`,
+      id: "monthly-overview-allocation",
+      title: "本月基金与家用安排",
+      value: money(cashPlanTotals.fundAndFamilyOutflow),
+      detail: monthlyAssetAllocationSummary,
       tone: "violet" as Tone,
     },
     {
-      title: "当月余额",
-      value: money(totals.monthlySurplus),
-      detail: `收入 ${money(actualIncome)} - 支出 ${money(totals.spendingActual)} - 分配 ${money(totals.assetOutflow)}`,
-      tone: totals.monthlySurplus < 0 ? ("red" as Tone) : totals.monthlySurplus < actualIncome * 0.1 ? ("amber" as Tone) : ("green" as Tone),
+      id: "monthly-overview-surplus",
+      title: "本月预算现金余量",
+      value: money(cashPlanTotals.surplus),
+      detail: `工资 ${money(monthlyCashPlan.income)} - 房租生活 ${money(cashPlanTotals.livingAndRentOutflow)} - 基金家用 ${money(cashPlanTotals.fundAndFamilyOutflow)} - 公司还款 ${money(cashPlanTotals.actualRepayment)}`,
+      tone: cashPlanTotals.surplus < 0 ? ("red" as Tone) : cashPlanTotals.surplus < monthlyCashPlan.income * 0.1 ? ("amber" as Tone) : ("green" as Tone),
     },
     {
-      title: "当前现金流",
+      title: "当前账户余额",
       value: money(totals.accountTotal),
       detail: `${currentCashflowItems.length} 个非零账户 / 合计 ${money(totals.accountTotal)} / 可动用 ${money(totals.liquidAccountTotal)}`,
       tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? ("red" as Tone) : ("green" as Tone),
@@ -2509,6 +2515,24 @@ export default function FinanceDashboard() {
       color: palette[3],
     },
   ];
+  const cashPlanWaterfall: WaterfallDatum[] = [
+    {label: "工资", value: monthlyCashPlan.income, kind: "positive", color: palette[0]},
+    {label: "房租生活", value: -cashPlanTotals.livingAndRentOutflow, kind: "negative", color: palette[4]},
+    {label: "基金家用", value: -cashPlanTotals.fundAndFamilyOutflow, kind: "negative", color: palette[2]},
+    {label: "公司还款", value: -cashPlanTotals.actualRepayment, kind: "negative", color: palette[3]},
+    {label: "现金余量", value: cashPlanTotals.surplus, kind: "end", color: cashPlanTotals.surplus < 0 ? palette[4] : palette[1]},
+  ];
+  const cashPlanFlow = [
+    {label: "房租", value: monthlyCashPlan.rent},
+    {label: "基本生活费", value: monthlyCashPlan.living},
+    {label: "父母家用", value: monthlyCashPlan.parents},
+    {label: "旅游基金", value: monthlyCashPlan.travel},
+    {label: "学习基金", value: monthlyCashPlan.learning},
+    {label: "伴侣基金", value: monthlyCashPlan.partner},
+    {label: "应急基金", value: monthlyCashPlan.emergency},
+    {label: "投资基金", value: monthlyCashPlan.investment},
+    {label: "公司还款", value: cashPlanTotals.actualRepayment},
+  ].filter(item => item.value > 0).map((item, index) => ({...item, color: palette[index % palette.length]}));
   const netWorthTrend = forecast.map((item) => ({
     label: item.month,
     value:
@@ -2945,12 +2969,12 @@ export default function FinanceDashboard() {
         <MonthlyCashPlanner plan={monthlyCashPlan} onChange={setMonthlyCashPlan} />
         <details className="finance-ledger" open={ledgerOpen} onToggle={event => setLedgerOpen(event.currentTarget.open)}>
           <summary>查看账本、资产与历史记录 <span>按已保存的月份查看实际数据</span></summary>
-          <p className="ledger-context">上方月度计划单独保存，不会覆盖历史收支或账户余额。以下金额来自原有账本；核算当前净资产前，请在资产负债表更新公司借款及各账户余额。</p>
+          <p className="ledger-context">预算汇总与上方月度计划实时同步。账户余额、资产和历史收支按已录入数据计算；核算当前净资产前，请更新公司借款及各账户余额。</p>
         <section className="overview">
           <div className="section-title">
             <div>
-              <h2>账本总览</h2>
-              <p>关键指标给结论；下面的图表区用同一份数据做结构、趋势和风险判断。</p>
+              <h2>账户与预算总览</h2>
+              <p>前四项是当前月度预算；账户与资产按实际余额统计，历史收支可在对应模块查看。</p>
             </div>
             <span className="pill good">公开页已脱敏</span>
           </div>
@@ -2976,7 +3000,7 @@ export default function FinanceDashboard() {
           </article>
           <div className="overview-grid">
             {overviewCards.map((item) => (
-              <article className={`overview-card ${item.tone} ${item.items ? "with-line-items" : ""}`.trim()} key={item.title}>
+              <article data-testid={item.id} className={`overview-card ${item.tone} ${item.items ? "with-line-items" : ""}`.trim()} key={item.title}>
                 <span>{item.title}</span>
                 <strong>{item.value}</strong>
                 {item.items ? (
@@ -3003,33 +3027,33 @@ export default function FinanceDashboard() {
             <div className="section-title compact">
               <div>
                 <h2>图表分析区</h2>
-                <p>资产、支出、现金流、健康评分分开看，避免所有数字挤在同一屏。</p>
+                <p>预算趋势、现金瀑布和资金流向使用当前月度计划；账本图表注明所选月份。</p>
               </div>
             </div>
             <div className="chart-grid four">
               <ChartPanel title="资产结构" summary={`总资产 ${money(totals.totalAssets)}`}>
                 <DonutChart data={assetStructureData} centerLabel="总资产" centerValue={money(totals.totalAssets)} />
               </ChartPanel>
-              <ChartPanel title="未来现金流趋势" summary="6 个月余额曲线">
-                <LineChart data={cashflowLine} valueFormatter={money} />
+              <ChartPanel title="预算现金余量趋势" summary="6个月累计余量，从0开始">
+                <LineChart data={cashPlanTotals.projection.map(item => ({label: `第${item.month}个月`, value: item.cumulative}))} valueFormatter={money} />
               </ChartPanel>
-              <ChartPanel title="支出最高项" summary={`已花 ${money(totals.spendingActual)}`} className="spending-top-panel">
+              <ChartPanel title="账本支出最高项" summary={`${activeMonth.label} / 已花 ${money(totals.spendingActual)}`} className="spending-top-panel">
                 <HorizontalBarChart data={topSpendingData} valueFormatter={money} />
               </ChartPanel>
-              <ChartPanel title="健康维度" summary={`综合 ${totals.score} 分`}>
+              <ChartPanel title="账本健康维度" summary={`${activeMonth.label} / 综合 ${totals.score} 分`}>
                 <HorizontalBarChart data={healthDimensions} valueFormatter={(value) => `${value.toFixed(0)}分`} percentMode />
               </ChartPanel>
-              <ChartPanel title="本月现金瀑布" summary="期初到月末">
-                <WaterfallChart data={waterfallData} />
+              <ChartPanel title="本月预算现金瀑布" summary={`全部安排 ${money(cashPlanTotals.totalOutflow)}`}>
+                <WaterfallChart data={cashPlanWaterfall} />
               </ChartPanel>
-              <ChartPanel title="未来现金流日历" summary="关键流入流出">
+              <ChartPanel title="账本现金流日历" summary={`${activeMonth.label}账本及提醒记录`}>
                 <CashflowCalendar events={cashflowEvents} />
               </ChartPanel>
-              <ChartPanel title="风险矩阵" summary="影响 × 紧迫" className="wide risk-panel">
+              <ChartPanel title="账本风险矩阵" summary={`${activeMonth.label}账本模型`} className="wide risk-panel">
                 <RiskMatrix data={riskMatrixData} />
               </ChartPanel>
-              <ChartPanel title="资金分配流向" summary={`分配 ${money(totals.assetOutflow)}`}>
-                <FlowMap data={outflowData} source="工资账户" valueFormatter={money} />
+              <ChartPanel title="本月预算流向" summary={`全部安排 ${money(cashPlanTotals.totalOutflow)}`}>
+                <FlowMap data={cashPlanFlow} source="工资账户" valueFormatter={money} />
               </ChartPanel>
             </div>
           </section>
@@ -5433,8 +5457,8 @@ function LineChart({ data, valueFormatter }: { data: LinePoint[]; valueFormatter
         ))}
       </svg>
       <div className="chart-caption">
-        <span>最低 {valueFormatter(min)}</span>
-        <span>最高 {valueFormatter(max)}</span>
+        <span>最低 {valueFormatter(values.length ? Math.min(...values) : 0)}</span>
+        <span>最高 {valueFormatter(values.length ? Math.max(...values) : 0)}</span>
       </div>
     </div>
   );
@@ -5556,7 +5580,7 @@ function WaterfallChart({ data }: { data: WaterfallDatum[] }) {
       </svg>
       <div className="chart-caption">
         <span>流入 {money(data.filter((item) => item.value > 0 && item.kind !== "start" && item.kind !== "end").reduce((sum, item) => sum + item.value, 0))}</span>
-        <span>流出 {money(Math.abs(data.filter((item) => item.value < 0).reduce((sum, item) => sum + item.value, 0)))}</span>
+        <span>流出 {money(Math.abs(data.filter((item) => item.value < 0 && item.kind !== "start" && item.kind !== "end").reduce((sum, item) => sum + item.value, 0)))}</span>
       </div>
     </div>
   );

@@ -21,6 +21,12 @@ assert.equal(latest.travel, 1000);
 assert.equal(latest.emergency, 500);
 assert.equal(updated.totalOutflow, 14000);
 assert.equal(updated.surplus, -1000);
+assert.equal(updated.livingAndRentOutflow, 6250);
+assert.equal(updated.fundAndFamilyOutflow, 7750);
+assert.equal(updated.livingAndRentOutflow + updated.fundAndFamilyOutflow + updated.actualRepayment, updated.totalOutflow, 'Overview buckets must reconcile with the monthly plan');
+const changedInvestment = calculate({...latest, investment: 1750});
+assert.equal(changedInvestment.fundAndFamilyOutflow, 6750);
+assert.equal(changedInvestment.surplus, 0, 'Editing the plan updates both allocation and cash summaries');
 assert.equal(updated.originalAllocations, 12500, 'Updating the current plan must preserve the original comparison');
 assert.equal(latest.debt, 20000, 'Being able to repay does not confirm that repayment has occurred');
 
