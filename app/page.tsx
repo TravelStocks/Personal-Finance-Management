@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import MonthlyCashPlanner, { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
 
 type Period = "周" | "月" | "季" | "年";
 type Tone = "blue" | "green" | "amber" | "red" | "violet";
@@ -153,6 +154,7 @@ type ReportRow = {
 };
 
 type PersistedFinanceData = {
+  monthlyCashPlan?: MonthlyCashPlan;
   period?: Period;
   selectedMonth?: string;
   monthlyRecords: MonthRecord[];
@@ -1019,6 +1021,8 @@ function EditableNumber({
 }
 
 export default function FinanceDashboard() {
+  const [monthlyCashPlan, setMonthlyCashPlan] = useState<MonthlyCashPlan>(initialMonthlyCashPlan);
+  const [ledgerOpen, setLedgerOpen] = useState(false);
   const [activeModules, setActiveModules] = useState<ModuleId[]>([]);
   const [period, setPeriod] = useState<Period>("月");
   const [selectedMonth, setSelectedMonth] = useState("2026-06");
@@ -1063,6 +1067,7 @@ export default function FinanceDashboard() {
 
   function getPersistedFinanceData(): PersistedFinanceData {
     return {
+      monthlyCashPlan,
       period,
       selectedMonth,
       monthlyRecords,
@@ -1114,6 +1119,7 @@ export default function FinanceDashboard() {
   }
 
   function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
+    setMonthlyCashPlan(normalizeMonthlyCashPlan(saved.monthlyCashPlan));
     if (saved.period) setPeriod(saved.period);
     if (saved.selectedMonth) setSelectedMonth(saved.selectedMonth);
     if (Array.isArray(saved.monthlyRecords)) setMonthlyRecords(saved.monthlyRecords);
@@ -1263,6 +1269,7 @@ export default function FinanceDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     savedDataReady,
+    monthlyCashPlan,
     period,
     selectedMonth,
     monthlyRecords,
@@ -2061,6 +2068,7 @@ export default function FinanceDashboard() {
   }
 
   function toggleModule(id: ModuleId) {
+    setLedgerOpen(true);
     setActiveModules((items) => (items.includes(id) ? items.filter((item) => item !== id) : [...items, id]));
   }
 
@@ -2840,7 +2848,7 @@ export default function FinanceDashboard() {
           <span className="brand-mark">PF</span>
           <div>
             <strong>个人财务系统</strong>
-            <small>Sites 版 / 公开脱敏</small>
+            <small>月度计划 / 财务账本</small>
           </div>
         </div>
         <button className={activeModules.length === 0 ? "active" : ""} onClick={() => setActiveModules([])}>
@@ -2861,7 +2869,7 @@ export default function FinanceDashboard() {
         <header className="topbar">
           <div>
             <h1>长期个人财务管理系统</h1>
-            <p>数据录入和图表分析分离；先看总览，再多选模块并排复盘。</p>
+            <p>先核对每月现金安排，再查看账本、账户与资产。</p>
           </div>
           <div className="period-tabs" aria-label="时间视图">
             {(["周", "月", "季", "年"] as Period[]).map((item) => (
@@ -2934,10 +2942,14 @@ export default function FinanceDashboard() {
           </section>
         )}
 
+        <MonthlyCashPlanner plan={monthlyCashPlan} onChange={setMonthlyCashPlan} />
+        <details className="finance-ledger" open={ledgerOpen} onToggle={event => setLedgerOpen(event.currentTarget.open)}>
+          <summary>查看账本、资产与历史记录 <span>按已保存的月份查看实际数据</span></summary>
+          <p className="ledger-context">上方月度计划单独保存，不会覆盖历史收支或账户余额。以下金额来自原有账本；核算当前净资产前，请在资产负债表更新公司借款及各账户余额。</p>
         <section className="overview">
           <div className="section-title">
             <div>
-              <h2>总览 Dashboard</h2>
+              <h2>账本总览</h2>
               <p>关键指标给结论；下面的图表区用同一份数据做结构、趋势和风险判断。</p>
             </div>
             <span className="pill good">公开页已脱敏</span>
@@ -3723,6 +3735,7 @@ export default function FinanceDashboard() {
             ))}
           </section>
         )}
+        </details>
       </section>
     </main>
   );
