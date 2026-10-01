@@ -1,16 +1,44 @@
 "use client";
+import {useState} from "react";
 import {calculateAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan, type BudgetMonthMode} from "./annual-budget-model";
 import "./annual-budget-plan.css";
 
 const money = (value: number) => `¥${value.toLocaleString("zh-CN", {maximumFractionDigits: 2})}`;
 type NumericKey = Exclude<keyof AnnualBudgetPlan, "mode" | "rows">;
 
+export function AnnualBudgetAllocationTable({plan, onChange, titleId}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void; titleId: string}) {
+  const [editing, setEditing] = useState(false);
+  const totals = calculateAnnualBudgetPlan(plan);
+  const editAmount = (id: string, mode: BudgetMonthMode, value: string) => onChange(normalizeAnnualBudgetPlan({...plan,
+    rows: plan.rows.map(row => row.id === id ? {...row, [mode]: Number(value)} : row)}));
+  const renderRow = (row: typeof totals.rows[number]) => <tr key={row.id} data-budget-row={row.id}>
+    <th scope="row">{row.name}</th>
+    {(["normal", "trip"] as const).map(mode => <td key={mode} className={plan.mode === mode ? "selected-column" : ""}>
+      {editing ? <input type="number" min="0" step="50" aria-label={`${row.name}${mode === "normal" ? "不出差月份" : "出差月份"}预算`}
+        value={row[mode]} onChange={event => editAmount(row.id, mode, event.target.value)}/> : money(row[mode])}</td>)}
+    <td>{money(row.annual)}</td>
+  </tr>;
+  return <section className="annual-allocation" aria-labelledby={titleId}>
+    <div className="annual-subheading annual-table-heading"><div><h3 id={titleId}>完整月度与年度分配表</h3>
+      <p>全年预算 = 不出差月份金额 × {totals.normalMonths} + 出差月份金额 × {plan.awayMonths}。<span className="annual-mobile-hint">左右滑动表格查看金额列。</span></p></div>
+      <button type="button" aria-pressed={editing} onClick={() => setEditing(value => !value)}>{editing ? "完成编辑" : "编辑分配金额"}</button></div>
+    <div className="annual-table-scroll" tabIndex={0} role="region" aria-label="完整分配表横向滚动区域"><table className="annual-budget-table" aria-labelledby={titleId}>
+      <thead><tr><th scope="col">项目</th><th scope="col">不出差月份</th><th scope="col">出差月份</th><th scope="col">全年预算</th></tr></thead>
+      <tbody>
+        {totals.rows.filter(row => row.kind === "consumption").map(renderRow)}
+        <tr className="annual-subtotal"><th scope="row">生活支出及未来消费预留小计</th><td>{money(totals.normal.consumption)}</td><td>{money(totals.trip.consumption)}</td><td>{money(totals.annualConsumption)}</td></tr>
+        {totals.rows.filter(row => row.kind !== "consumption").map(renderRow)}
+      </tbody>
+      <tfoot><tr><th scope="row">全部资金分配</th><td>{money(totals.normal.totalOutflow)}</td><td>{money(totals.trip.totalOutflow)}</td><td>{money(totals.annualOutflow)}</td></tr></tfoot>
+    </table></div>
+    <p className="annual-budget-note">出差月份本地餐饮{money(totals.rows.find(row => row.id === "food")?.trip ?? 0)}、交通{money(totals.rows.find(row => row.id === "transport")?.trip ?? 0)}；其余项目保留12个月。学习含订阅、书籍和其他会员；运动含装备。旅游与伴侣基金用于未来消费，投资与应急基金合计全年{money(totals.annualSaving)}。</p>
+  </section>;
+}
+
 export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void}) {
   const totals = calculateAnnualBudgetPlan(plan);
   const covered = totals.annualSurplus >= 0 && !totals.assumptionsConflict;
   const update = (key: NumericKey, value: string) => onChange(normalizeAnnualBudgetPlan({...plan, [key]: Number(value)}));
-  const editAmount = (id: string, mode: BudgetMonthMode, value: string) => onChange(normalizeAnnualBudgetPlan({...plan,
-    rows: plan.rows.map(row => row.id === id ? {...row, [mode]: Number(value)} : row)}));
   const selectMode = (mode: BudgetMonthMode) => onChange({...plan, mode});
   const inputFields: Array<{key: NumericKey; label: string; unit: string; step: string}> = [
     {key: "salary", label: "每月到手工资", unit: "元 / 月", step: "100"},
@@ -24,13 +52,6 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
     {key: "basicMeals", label: "应急测算基本餐饮", unit: "元 / 月，目标下限口径", step: "100"},
     {key: "bufferMonths", label: "连续普通月周转测算", unit: "个月", step: "1"},
   ];
-  const renderRow = (row: typeof totals.rows[number]) => <tr key={row.id}>
-    <th scope="row"><strong>{row.name}</strong><small>{row.note}</small></th>
-    {(["normal", "trip"] as const).map(mode => <td key={mode} className={plan.mode === mode ? "selected-column" : ""}>
-      <input type="number" min="0" step="50" aria-label={`${row.name}${mode === "normal" ? "普通月" : "出差月"}预算`}
-        value={row[mode]} onChange={event => editAmount(row.id, mode, event.target.value)}/></td>)}
-    <td>{money(row.annual)}</td>
-  </tr>;
   const annualSlices = [
     {label: "生活与消费预留", amount: totals.annualConsumption, className: "consumption"},
     {label: "投资本金", amount: totals.annualInvestment, className: "investment"},
@@ -40,7 +61,8 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
   return <section className="annual-budget" aria-labelledby="annual-budget-title">
     <header className="annual-budget-heading">
       <div><span className="annual-budget-kicker">全年预算参考 · 12个月</span><h2 id="annual-budget-title">把出差结余，留给普通月份</h2>
-        <p>{totals.normalMonths}个普通月 + {plan.awayMonths}个出差月；全年{plan.paidDays}个领补贴日，出差期间工资照常发放。</p></div>
+        <p>{totals.normalMonths}个普通月 + {plan.awayMonths}个出差月；全年{plan.paidDays}个领补贴日，出差期间工资照常发放。</p>
+        <a className="annual-table-link" href="#annual-allocation-title">查看完整分配表 ↓</a></div>
       <span className={`annual-budget-status ${covered ? "positive" : "negative"}`} role="status">
         {totals.assumptionsConflict ? "出差条件需校正" : covered ? "全年可覆盖，需留周转金" : "全年存在资金缺口"}</span>
     </header>
@@ -62,6 +84,8 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
       <div className="annual-budget-legend">{annualSlices.map(slice => <span key={slice.label}><i className={slice.className}/>{slice.label}<b>{money(slice.amount)}</b></span>)}</div>
     </div>
 
+    <AnnualBudgetAllocationTable plan={plan} onChange={onChange} titleId="annual-allocation-title"/>
+
     <section className="annual-months" aria-label="月份类型现金流对比">
       <div className="annual-subheading"><h3>同一套安排，两种月份现金流</h3><p>点击月份类型，下方总览卡片和预算图表同步切换。</p></div>
       <div className="annual-month-grid">
@@ -75,19 +99,19 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
         </button>
       </div>
       <p className="annual-budget-formula">出差每天净留：${plan.allowanceUsd} − ${plan.dailySpendUsd} = ${totals.netUsd}；全年：{plan.paidDays}天 × ${totals.netUsd} × {plan.budgetFx.toFixed(2)} = {money(totals.annualTripNet)}。</p>
+      <div className="annual-table-scroll annual-cashflow-summary"><table className="annual-budget-table" aria-label="按分配表重新计算的现金流">
+        <thead><tr><th scope="col">现金流核对</th><th scope="col">不出差月份</th><th scope="col">出差月份平均</th><th scope="col">全年</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">到手工资</th><td>{money(plan.salary)}</td><td>{money(plan.salary)}</td><td>{money(totals.annualSalary)}</td></tr>
+          <tr><th scope="row">出差净结余</th><td>{money(0)}</td><td>{money(totals.trip.tripNet)}</td><td>{money(totals.annualTripNet)}</td></tr>
+          <tr className="annual-subtotal"><th scope="row">可分配资金合计</th><td>{money(totals.normal.income)}</td><td>{money(totals.trip.income)}</td><td>{money(totals.annualIncome)}</td></tr>
+          <tr><th scope="row">生活支出及未来消费预留</th><td>{money(totals.normal.consumption)}</td><td>{money(totals.trip.consumption)}</td><td>{money(totals.annualConsumption)}</td></tr>
+          <tr><th scope="row">投资基金 + 应急基金</th><td>{money(totals.normal.saving)}</td><td>{money(totals.trip.saving)}</td><td>{money(totals.annualSaving)}</td></tr>
+          <tr><th scope="row">全部资金分配</th><td>{money(totals.normal.totalOutflow)}</td><td>{money(totals.trip.totalOutflow)}</td><td>{money(totals.annualOutflow)}</td></tr>
+        </tbody>
+        <tfoot><tr><th scope="row">分配后的现金余量</th><td className={totals.normal.surplus < 0 ? "negative" : "positive"}>{money(totals.normal.surplus)}</td><td className={totals.trip.surplus < 0 ? "negative" : "positive"}>{money(totals.trip.surplus)}</td><td className={totals.annualSurplus < 0 ? "negative" : "positive"}>{money(totals.annualSurplus)}</td></tr></tfoot>
+      </table></div>
     </section>
-
-    <div className="annual-subheading"><h3>月度与年度完整分配</h3><p>金额可直接修改。只有本地餐饮与交通在出差月归零，其他项目全年保留。</p></div>
-    <div className="annual-table-scroll"><table className="annual-budget-table" aria-label="月度与年度分配表">
-      <thead><tr><th scope="col">资金用途</th><th scope="col">普通月 / 元</th><th scope="col">出差月 / 元</th><th scope="col">全年 / 元</th></tr></thead>
-      <tbody>
-        {totals.rows.filter(row => row.kind === "consumption").map(renderRow)}
-        <tr className="annual-subtotal"><th scope="row">生活支出与未来消费预留</th><td>{money(totals.normal.consumption)}</td><td>{money(totals.trip.consumption)}</td><td data-testid="annual-consumption">{money(totals.annualConsumption)}</td></tr>
-        {totals.rows.filter(row => row.kind !== "consumption").map(renderRow)}
-      </tbody>
-      <tfoot><tr><th scope="row">全部资金分配</th><td data-testid="normal-month-outflow">{money(totals.normal.totalOutflow)}</td><td data-testid="trip-month-outflow">{money(totals.trip.totalOutflow)}</td><td>{money(totals.annualOutflow)}</td></tr></tfoot>
-    </table></div>
-    <p className="annual-budget-note">学习每月{money(totals.rows.find(row => row.id === "learning")?.normal ?? 0)}已替代原学习基金500元；运动装备包含在运动预算内。旅游和伴侣基金是消费预留，实际开销从中支付，不再重复新增。</p>
 
     <section className="annual-reference" aria-label="执行参考数据">
       <div className="annual-subheading"><h3>执行时，先看这几个数</h3></div>
@@ -95,7 +119,7 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
         <article><span>连续{plan.bufferMonths}个普通月的周转金</span><strong data-testid="ordinary-month-buffer">{money(totals.buffer)}</strong>
           <small>每月缺口{money(totals.normalDeficit)} × {plan.bufferMonths}个月；已包含在年度预算中，独立于应急金。</small></article>
         <article><span>全年普通月需要补足</span><strong>{money(totals.normalDeficit * totals.normalMonths)}</strong>
-          <small>出差月份合计余量{money(totals.trip.surplus * plan.awayMonths)}，先留给后续普通月。</small></article>
+          <small>出差月份合计余量{money(totals.annualTripSurplus)}，先留给后续普通月。</small></article>
         <article><span>投资与应急占可分配资金</span><strong>{(totals.savingRate * 100).toFixed(1)}%</strong>
           <small>全年投入{money(totals.annualSaving)}；旅游、伴侣基金不计入这项储蓄。</small></article>
         <article><span>全年月均可分配资金</span><strong>{money(totals.averageIncome)}</strong>
@@ -118,7 +142,7 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
     <details className="annual-budget-settings"><summary>查看和修改计算条件</summary>
       <div className="annual-budget-inputs">{inputFields.map(field => <label key={field.key}><span>{field.label}</span>
         <input aria-label={field.label} type="number" min="0" step={field.step} value={plan[field.key]} onChange={event => update(field.key, event.target.value)}/><small>{field.unit}</small></label>)}</div>
-      <p>预算汇率仅用于测算。每天出差开销已从补贴中扣除，不再加进人民币支出。餐饮2,880元与交通670元为暂估；公司旧借款还款未计入此年度方案，实际欠款与账户余额仍在账本记录。</p>
+      <p>预算汇率仅用于测算。每天出差开销已从补贴中扣除，不再加进人民币支出。本地餐饮与交通按分配表预留；公司旧借款还款未计入此年度方案，实际欠款与账户余额仍在账本记录。</p>
     </details>
   </section>;
 }

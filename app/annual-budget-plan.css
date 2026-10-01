@@ -26,6 +26,11 @@
 .annual-subheading {margin:28px 0 14px;}
 .annual-subheading h3 {font-size:19px; font-weight:600; margin:0 0 6px;}
 .annual-subheading p {font-size:14px;}
+.annual-table-link {display:inline-block; margin-top:10px; color:var(--annual-ink); font-size:14px; text-underline-offset:4px;}
+.annual-allocation h3 {scroll-margin-top:110px;}
+.annual-table-heading {display:flex; align-items:flex-start; justify-content:space-between; gap:16px;}
+.annual-table-heading button {flex-shrink:0; padding:8px 12px; border:1px solid #93b1a3; background:#f1f7f3; color:#143932; font-size:14px; border-radius:3px;}
+.annual-table-heading button:focus-visible {outline:2px solid #1f5fbf; outline-offset:3px;}
 .annual-month-grid {display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px;}
 .annual-month-grid button {display:grid; gap:6px; align-content:start; text-align:left; padding:18px 20px; color:var(--ink); background:#f7faf8; border:1px solid #c4d4cc; border-radius:3px; min-width:0;}
 .annual-month-grid button[aria-pressed="true"] {border:2px solid var(--annual-ink); padding:17px 19px; background:#edf4f0;}
@@ -36,9 +41,12 @@
 .annual-month-grid em {font-style:normal; font-size:12px; color:var(--muted);}
 .annual-budget-formula {font-size:14px; background:#f5f7fa; padding:12px 16px; margin:14px 0 0; line-height:1.7;}
 .annual-table-scroll {overflow-x:auto; width:100%;}
+.annual-table-scroll:focus-visible {outline:2px solid #1f5fbf; outline-offset:2px;}
+.annual-mobile-hint {display:none;}
 .annual-budget-table {width:100%; min-width:650px; border-collapse:collapse; font-size:14px;}
-.annual-budget-table th,.annual-budget-table td {text-align:right; border-bottom:1px solid var(--line); padding:12px 10px;}
+.annual-budget-table th,.annual-budget-table td {text-align:right; border-bottom:1px solid var(--line); padding:10px;}
 .annual-budget-table th:first-child {text-align:left; width:43%;}
+.annual-budget-table tbody th {font-weight:400;}
 .annual-budget-table th strong {font-weight:500; display:block;}
 .annual-budget-table th small {display:block; font-weight:400;}
 .annual-budget-table thead th {background:#f5f8f6; color:var(--muted); font-weight:500; white-space:nowrap;}
@@ -48,6 +56,10 @@
 .annual-budget-table .selected-column {background:#f1f7f3;}
 .annual-budget-table .annual-subtotal th,.annual-budget-table .annual-subtotal td {font-weight:600; background:#f6f8fa;}
 .annual-budget-table tfoot th,.annual-budget-table tfoot td {font-weight:600; color:var(--annual-ink); border-top:2px solid #93b1a3; background:#edf4f0;}
+.annual-cashflow-summary {margin-top:18px;}
+.annual-budget-table tfoot td.negative {color:var(--red);}
+.annual-budget-table tfoot td.positive {color:var(--green);}
+.annual-allocation {--annual-ink:#143932; min-width:0; width:100%;}
 .annual-budget-note {font-size:13px; color:var(--muted); margin:12px 0; line-height:1.7;}
 .annual-reference-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border-top:1px solid var(--line);}
 .annual-reference-grid article {display:grid; align-content:start; gap:6px; padding:18px 16px 18px 0; border-bottom:1px solid var(--line); min-width:0;}
@@ -63,4 +75,6 @@
 .annual-budget-inputs input {width:100%; font-size:16px; background:#fafcfb;}
 @media(max-width:1050px) {.annual-budget-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}.annual-budget-metrics article:nth-child(2){border-right:0;}.annual-budget-metrics article:nth-child(3){padding-left:0;}.annual-budget-metrics article:nth-child(-n+2){border-bottom:1px solid var(--line);}}
 @media(max-width:760px) {.annual-budget{padding:22px 18px;}.annual-budget-heading{flex-wrap:wrap;gap:12px;}.annual-budget-metrics strong{font-size:25px;}.annual-reference-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.annual-budget-inputs{grid-template-columns:repeat(2,minmax(0,1fr));}.annual-month-grid{grid-template-columns:1fr;}}
+@media(max-width:760px) {.annual-table-heading{flex-wrap:wrap;gap:10px;}}
+@media(max-width:760px) {.annual-mobile-hint{display:block;margin-top:4px;}}
 @media(max-width:440px) {.annual-budget{padding:20px 14px;}.annual-budget-metrics article{padding:16px 8px;}.annual-budget-metrics strong{font-size:23px;}.annual-budget-metrics small{font-size:11px;}.annual-budget-legend{gap:9px 16px;font-size:12px;}.annual-reference-grid,.annual-budget-inputs{grid-template-columns:1fr;}.annual-reference-grid article{padding:15px 0;}.annual-budget-status{font-size:12px;}.annual-budget-table{min-width:630px;}.annual-budget-table input{font-size:16px;}}

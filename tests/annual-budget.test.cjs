@@ -31,6 +31,9 @@ assert.equal(result.trip.totalOutflow, 12700);
 assert.equal(result.normal.surplus, -3250);
 assert.equal(result.trip.income, 23050);
 assert.equal(result.trip.surplus, 10350);
+assert.equal(result.annualNormalSurplus, -29250);
+assert.equal(result.annualTripSurplus, 31050);
+assert.equal(result.annualNormalSurplus + result.annualTripSurplus, result.annualSurplus);
 assert.equal(result.normal.surplus * 9 + result.trip.surplus * 3, result.annualSurplus);
 assert.equal(result.buffer, 9750, 'The timing reserve is not an additional annual expense');
 assert.equal(result.basicNeed, 6550);
@@ -45,6 +48,15 @@ for (const row of result.rows) {
 }
 assert.equal(result.rows.find(row => row.id === 'learning').annual, 12000, 'No extra learning fund of 500 per month');
 assert.equal(result.rows.find(row => row.id === 'partner').annual, 12000, 'Partner and travel spending is paid from the existing reservation');
+const suppliedAllocationTable = [
+  ['rent',2750,2750,33000],['parents',2000,2000,24000],['food',2880,0,25920],['transport',670,0,6030],
+  ['learning',1000,1000,12000],['sports',400,400,4800],['clothes',300,300,3600],['digital',300,300,3600],
+  ['medical',300,300,3600],['gifts',100,100,1200],['dates',300,300,3600],['partner',1000,1000,12000],
+  ['travel',1000,1000,12000],['emergency',500,500,6000],['investment',2750,2750,33000]
+];
+assert.deepEqual(result.rows.map(row=>[row.id,row.normal,row.trip,row.annual]),suppliedAllocationTable,'Every row must match the complete table supplied by the user');
+const fractionalTrip = calculate({...baseline, budgetFx:6.71, paidDays:89});
+assert.equal(fractionalTrip.annualNormalSurplus + fractionalTrip.annualTripSurplus, fractionalTrip.annualSurplus,'Annual comparison uses exact totals instead of multiplying rounded monthly averages');
 
 assert.equal(calculate({...baseline, paidDays: 84}).annualSurplus, -210);
 assert.equal(calculate({...baseline, paidDays: 85}).annualSurplus, 125);

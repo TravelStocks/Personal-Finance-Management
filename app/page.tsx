@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
-import AnnualBudgetPlanner from "./annual-budget-plan";
+import AnnualBudgetPlanner, {AnnualBudgetAllocationTable} from "./annual-budget-plan";
 import { calculateAnnualBudgetPlan, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
 
 type Period = "周" | "月" | "季" | "年";
@@ -476,9 +476,9 @@ const maxMonthlyArchives = 48;
 const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "income", title: "收入", desc: "税后工资、实际到账、炒股月结算记录" },
   { id: "spending", title: "支出", desc: "实际花费、必要支出、可取消支出" },
-  { id: "cashflow", title: "现金流预测", desc: "未来 6 个月流入流出和预计余额" },
+  { id: "cashflow", title: "现金流预测", desc: "按已保存账本推演6个月资金变化" },
   { id: "accounts", title: "账户管理", desc: "银行卡、支付宝、微信、现金余额可编辑" },
-  { id: "budget", title: "预算管理", desc: "分类预算和固定支出率" },
+  { id: "budget", title: "预算管理", desc: "完整月度与年度分配、月份现金流" },
   { id: "investment", title: "投资管理", desc: "A股、美股、港股市值和投入计划" },
   { id: "balance", title: "资产负债表", desc: "总资产、负债项可增删编辑" },
   { id: "emergency", title: "应急金", desc: "目标月数、当前金额、覆盖月数" },
@@ -2327,10 +2327,6 @@ export default function FinanceDashboard() {
     color: item.color,
     detail: `${percent(item.value / Math.max(totals.spendingActual, 1))} / ${money(item.value)}`,
   }));
-  const fixedFlexData = [
-    { label: "固定支出", value: totals.fixedSpending, color: palette[2] },
-    { label: "弹性支出", value: Math.max(totals.spendingPlan - totals.fixedSpending, 0), color: palette[0] },
-  ];
   const requiredData = [
     { label: "必须支出", value: totals.requiredSpending, color: palette[1] },
     { label: "可取消支出", value: Math.max(totals.spendingPlan - totals.requiredSpending, 0), color: palette[2] },
@@ -2757,15 +2753,6 @@ export default function FinanceDashboard() {
     { label: "资产分配", value: totals.assetOutflow, color: palette[1] },
     { label: "月结余", value: Math.max(totals.monthlySurplus, 0), color: palette[3] },
   ];
-  const budgetHeatData = budgets.map((item, index) => {
-    const used = item.plan ? item.actual / item.plan : 0;
-    return {
-      label: item.name,
-      value: used * 100,
-      color: used > 1 ? palette[4] : used > 0.8 ? palette[2] : palette[index % palette.length],
-      detail: `${Math.round(used * 100)}%`,
-    };
-  });
   const investmentScatter = holdings.map((item, index) => {
     const valueCny = toCny(item.value, item.currency, fxUsd, fxHkd);
     const costCny = toCny(item.cost, item.currency, fxUsd, fxHkd);
@@ -3161,7 +3148,7 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "cashflow" && (
-                  <Module title="现金流预测" desc="未来 6 个月预测；资产分配作为现金流出，股票收入不计入预测。">
+                  <Module title="账本现金流预测" desc="按所选月份的账本记录推演6个月；出差月份与补贴到账尚未确定，当前方案的现金流请参考上方两类月份核对表。">
                     <DataChartLayout
                       data={
                         <>
@@ -3241,30 +3228,39 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "budget" && (
-                  <Module title="预算管理" desc="预算模块保留周/月/季/年视图，固定支出率阈值为 35% 和 50%。">
+                  <Module title="预算管理" desc="与首页完整分配表同步，按不出差月份、出差月份及全年预算计算。">
                     <DataChartLayout
                       data={
                         <>
-                          <MonthSelector records={monthlyRecords} selectedMonth={selectedMonth} onChange={setSelectedMonth} />
-                          <div className="stat-strip">
-                            <Stat label="当前视图" value={`${period} / ${shortMonth(activeMonth.label)}`} />
-                            <Stat label="预算总额" value={money(totals.spendingPlan)} />
-                            <Stat label="固定支出率" value={percent(totals.fixedRatio)} />
-                            <Stat label="预算剩余" value={money(totals.spendingPlan - totals.spendingActual)} />
+                          <div className="button-row">
+                            <button type="button" className="ghost-button" aria-pressed={annualBudgetPlan.mode === "normal"} onClick={() => setAnnualBudgetPlan({...annualBudgetPlan, mode:"normal"})}>不出差月份</button>
+                            <button type="button" className="ghost-button" aria-pressed={annualBudgetPlan.mode === "trip"} disabled={annualBudgetPlan.awayMonths === 0} onClick={() => setAnnualBudgetPlan({...annualBudgetPlan, mode:"trip"})}>出差月份</button>
                           </div>
-                          <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} updateBudget={updateBudget} />
+                          <div className="stat-strip">
+                            <Stat label={`${budgetModeName}可分配资金`} value={money(cashPlanTotals.income)} />
+                            <Stat label={`${budgetModeName}全部分配`} value={money(cashPlanTotals.totalOutflow)} />
+                            <Stat label={`${budgetModeName}现金余量`} value={money(cashPlanTotals.surplus)} />
+                            <Stat label="全年全部分配" value={money(annualPlanTotals.annualOutflow)} />
+                          </div>
+                          <AnnualBudgetAllocationTable plan={annualBudgetPlan} onChange={setAnnualBudgetPlan} titleId="module-annual-allocation-title"/>
+                          <details>
+                            <summary>查看历史月份预算与实际支出</summary>
+                            <p className="ledger-context">以下是已保存月份的账本数据，年度分配表用于当前计划；历史预算金额可在这里单独维护。</p>
+                            <MonthSelector records={monthlyRecords} selectedMonth={selectedMonth} onChange={setSelectedMonth} />
+                            <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} updateBudget={updateBudget} />
+                          </details>
                         </>
                       }
                       charts={
                         <div className="chart-grid two">
-                          <ChartPanel title="固定 / 弹性支出" summary={fixedRatioLabel(totals.fixedRatio)}>
-                            <DonutChart data={fixedFlexData} centerLabel="固定率" centerValue={percent(totals.fixedRatio)} />
+                          <ChartPanel title="年度资金分布" summary={`可分配 ${money(annualPlanTotals.annualIncome)} / 全部分配 ${money(annualPlanTotals.annualOutflow)}`}>
+                            <DonutChart data={annualPlanDistribution} centerLabel={annualPlanTotals.annualSurplus >= 0 ? "可分配资金" : "年度安排"} centerValue={money(annualPlanTotals.annualSurplus >= 0 ? annualPlanTotals.annualIncome : annualPlanTotals.annualOutflow)} />
                           </ChartPanel>
-                          <ChartPanel title="分类预算排行" summary="看哪里最容易超 / 按实际金额降序">
-                            <HorizontalBarChart data={spendingChartData} valueFormatter={money} />
+                          <ChartPanel title={`${budgetModeName}分类分配`} summary={`合计 ${money(cashPlanTotals.totalOutflow)}`}>
+                            <HorizontalBarChart data={cashPlanFlow} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="预算使用热力" summary="实际 / 预算">
-                            <HeatmapGrid data={budgetHeatData} />
+                          <ChartPanel title={`${budgetModeName}现金流核对`} summary={`余量 ${money(cashPlanTotals.surplus)}`}>
+                            <WaterfallChart data={cashPlanWaterfall} />
                           </ChartPanel>
                         </div>
                       }
