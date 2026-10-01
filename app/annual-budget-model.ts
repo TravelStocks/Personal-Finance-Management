@@ -18,6 +18,7 @@ export type AnnualBudgetPlan = {
   emergencyTargetMonths: number;
   basicMeals: number;
   bufferMonths: number;
+  bonusAfterTax: number | null;
   mode: BudgetMonthMode;
   rows: AnnualBudgetRow[];
 };
@@ -25,7 +26,7 @@ export type AnnualBudgetPlan = {
 export const initialAnnualBudgetPlan: AnnualBudgetPlan = {
   salary: 13000, awayMonths: 3, paidDays: 90, allowanceUsd: 110, dailySpendUsd: 60,
   budgetFx: 6.7, emergencyCurrent: 2000, emergencyTargetMonths: 6, basicMeals: 1800,
-  bufferMonths: 3, mode: "normal",
+  bufferMonths: 3, bonusAfterTax: null, mode: "normal",
   rows: [
     {id: "rent", name: "房租，个人承担", kind: "consumption", normal: 2750, trip: 2750, note: "全年保留"},
     {id: "parents", name: "父母家用", kind: "consumption", normal: 2000, trip: 2000, note: "家用支出，不计为个人储蓄"},
@@ -62,6 +63,9 @@ export function normalizeAnnualBudgetPlan(value: unknown): AnnualBudgetPlan {
   result.bufferMonths = Math.min(12, Math.floor(result.bufferMonths));
   result.emergencyTargetMonths = Math.min(24, Math.floor(result.emergencyTargetMonths));
   result.mode = saved.mode === "trip" ? "trip" : "normal";
+  if (typeof saved.bonusAfterTax === "number" && Number.isFinite(saved.bonusAfterTax) && saved.bonusAfterTax >= 0) {
+    result.bonusAfterTax = round(Math.min(saved.bonusAfterTax, 100000000));
+  }
   if (Array.isArray(saved.rows)) result.rows = result.rows.map(row => {
     const input = saved.rows?.find(item => item && item.id === row.id);
     for (const mode of ["normal", "trip"] as const) {
@@ -71,6 +75,17 @@ export function normalizeAnnualBudgetPlan(value: unknown): AnnualBudgetPlan {
     return row;
   });
   return result;
+}
+
+export function calculateAnnualAccumulation(plan: AnnualBudgetPlan, bonusAfterTax = plan.bonusAfterTax ?? 0) {
+  const totals = calculateAnnualBudgetPlan(plan);
+  const bonus = round(bonusAfterTax);
+  const incomeWithBonus = round(totals.annualIncome + bonus);
+  const fixedTarget = round(totals.annualSaving + bonus);
+  const projectedCash = round(totals.annualEmergency + totals.annualSurplus + bonus);
+  const projectedAccumulation = round(totals.annualRetained + bonus);
+  return {bonus, incomeWithBonus, fixedTarget, projectedCash, projectedAccumulation,
+    accumulationRate: incomeWithBonus > 0 ? projectedAccumulation / incomeWithBonus : null};
 }
 
 export function calculateAnnualBudgetPlan(plan: AnnualBudgetPlan) {

@@ -6,7 +6,7 @@ const source = path.resolve(__dirname, '../app/annual-budget-model.ts');
 const compiled = ts.transpileModule(fs.readFileSync(source, 'utf8'), {compilerOptions: {module: ts.ModuleKind.CommonJS}}).outputText;
 const exported = {};
 new Function('exports', compiled)(exported);
-const {initialAnnualBudgetPlan: baseline, calculateAnnualBudgetPlan: calculate, normalizeAnnualBudgetPlan: normalize} = exported;
+const {initialAnnualBudgetPlan: baseline, calculateAnnualBudgetPlan: calculate, calculateAnnualAccumulation: accumulate, normalizeAnnualBudgetPlan: normalize} = exported;
 const result = calculate(baseline);
 
 assert.equal(result.normalMonths, 9);
@@ -80,4 +80,25 @@ assert.equal(normalize({rows: [{id: 'learning', normal: 0, trip: 0}]}).rows.find
 const firstCopy = normalize(undefined);
 firstCopy.rows[0].normal = 0;
 assert.equal(normalize(undefined).rows[0].normal, 2750, 'Normalization must not mutate the default or other saved plans');
+assert.equal(normalize({salary:13000}).bonusAfterTax, null, 'Old backups keep the bonus unknown');
+assert.equal(normalize({bonusAfterTax:0}).bonusAfterTax, 0, 'Explicit zero differs from an unknown bonus');
+assert.equal(normalize({bonusAfterTax:-1}).bonusAfterTax, null);
+assert.equal(normalize({bonusAfterTax:Infinity}).bonusAfterTax, null);
+assert.equal(normalize({bonusAfterTax:20000.555}).bonusAfterTax, 20000.56);
+for (const [bonus,cash,total,rate] of [[10000,17800,50800,'25.9'],[20000,27800,60800,'29.5'],[30000,37800,70800,'32.8']]) {
+  const scenario=accumulate(baseline,bonus);
+  assert.equal(scenario.projectedCash,cash);
+  assert.equal(scenario.projectedAccumulation,total);
+  assert.equal(scenario.fixedTarget,39000+bonus);
+  assert.equal(scenario.incomeWithBonus,186150+bonus,'The accumulation percentage includes this scenario bonus in the denominator');
+  assert.equal((scenario.accumulationRate*100).toFixed(1),rate);
+  assert.equal(scenario.projectedCash+result.annualInvestment,scenario.projectedAccumulation,'Emergency and surplus cash must not be counted twice');
+}
+const bonusPlan=normalize({...baseline,bonusAfterTax:20000});
+assert.equal(accumulate(bonusPlan).projectedAccumulation,60800);
+assert.equal(calculate(bonusPlan).annualIncome,186150,'Scenario bonus is not treated as an actual base-budget income');
+const increasedInvestment=normalize({...bonusPlan,rows:bonusPlan.rows.map(row=>row.id==='investment'?{...row,normal:3000,trip:3000}:row)});
+assert.equal(accumulate(increasedInvestment).projectedAccumulation,60800,'Moving cash to investment changes the composition, never the total accumulation');
+assert.equal(accumulate(increasedInvestment).projectedCash,24800);
+assert.equal(accumulate({...baseline,paidDays:0},10000).projectedCash,-12350,'A funding deficit is shown instead of falsely promising cash savings');
 console.log('Annual budget: screenshot totals, month modes, no duplicate expenses, timing reserve, emergency lower bound, sensitivity and backup defaults passed.');

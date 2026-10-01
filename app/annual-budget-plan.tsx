@@ -1,10 +1,58 @@
 "use client";
 import {useState} from "react";
-import {calculateAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan, type BudgetMonthMode} from "./annual-budget-model";
+import {calculateAnnualAccumulation, calculateAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan, type BudgetMonthMode} from "./annual-budget-model";
 import "./annual-budget-plan.css";
 
 const money = (value: number) => `¥${value.toLocaleString("zh-CN", {maximumFractionDigits: 2})}`;
-type NumericKey = Exclude<keyof AnnualBudgetPlan, "mode" | "rows">;
+type NumericKey = Exclude<keyof AnnualBudgetPlan, "mode" | "rows" | "bonusAfterTax">;
+
+function AnnualAccumulation({plan, onChange}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void}) {
+  const totals = calculateAnnualBudgetPlan(plan);
+  const selected = calculateAnnualAccumulation(plan);
+  const knownBonus = plan.bonusAfterTax !== null;
+  const scenarios = [10000, 20000, 30000].map(bonus => calculateAnnualAccumulation(plan, bonus));
+  const percentage = (rate: number | null) => rate === null ? "—" : `${(rate * 100).toFixed(1)}%`;
+  const investment = totals.rows.find(row => row.kind === "investment");
+  const emergency = totals.rows.find(row => row.kind === "emergency");
+  const contribution = (row: typeof investment) => row?.normal === row?.trip ? `每月${money(row?.normal ?? 0)}` : `不出差月份${money(row?.normal ?? 0)}、出差月份${money(row?.trip ?? 0)}`;
+  return <section className="annual-accumulation" aria-labelledby="annual-accumulation-title">
+    <div className="annual-subheading"><h3 id="annual-accumulation-title">更新后的年度积累</h3>
+      <p>沿用上方分配表；年终奖与额外绩效奖金合计记为税后奖金 B，按全部存下测算。</p></div>
+    <label className="annual-bonus-input"><span>全年税后额外奖金 B（可选测算）</span>
+      <input type="number" min="0" step="1000" value={plan.bonusAfterTax ?? ""} placeholder="未确定时留空，以 B 表示"
+        onChange={event => onChange(normalizeAnnualBudgetPlan({...plan, bonusAfterTax:event.target.value === "" ? null : Number(event.target.value)}))}/>
+      <small>输入金额只用于测算；基础预算及已录入账户余额按原口径显示。</small></label>
+    <div className="annual-table-scroll" tabIndex={0} role="region" aria-label="年度积累明细横向滚动区域">
+      <table className="annual-budget-table annual-accumulation-table" aria-label="更新后的年度积累">
+        <thead><tr><th scope="col">积累项目</th><th scope="col">全年金额</th><th scope="col">计算口径</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">固定投资</th><td>{money(totals.annualInvestment)}</td><td>{contribution(investment)}，属于投入本金</td></tr>
+          <tr><th scope="row">固定应急储蓄</th><td>{money(totals.annualEmergency)}</td><td>{contribution(emergency)}，属于新增现金储备</td></tr>
+          <tr><th scope="row">基础预算剩余</th><td>{money(totals.annualSurplus)}</td><td>年末确实未花掉，才算实际积蓄</td></tr>
+          <tr><th scope="row">年终奖 + 额外绩效奖金</th><td>{knownBonus ? money(selected.bonus) : "记为 B（待确认）"}</td><td>税后金额全部存下</td></tr>
+          <tr className="annual-subtotal"><th scope="row">全年固定储蓄投资目标</th><td data-testid="annual-fixed-accumulation">{knownBonus ? money(selected.fixedTarget) : `${money(totals.annualSaving)} + B`}</td><td>投资 + 应急储蓄 + B；不依赖基础预算剩余</td></tr>
+        </tbody>
+        <tfoot><tr><th scope="row">按预算预计可积累总额</th><td data-testid="annual-projected-accumulation">{knownBonus ? money(selected.projectedAccumulation) : `${money(totals.annualRetained)} + B`}</td><td>包含预计余量，不计投资涨跌</td></tr></tfoot>
+      </table>
+    </div>
+    <p className="annual-budget-note">这是全年新增投入与留存金额，不含已有应急金或账户余额。投资本金投入不等于资产一定增值，预计余量需等年末核实。</p>
+    {knownBonus && <div className="annual-bonus-result" aria-live="polite">
+      <span>按 B = {money(selected.bonus)} 测算</span>
+      <strong>{selected.projectedCash >= 0 ? `预计新增现金积蓄 ${money(selected.projectedCash)}` : `预计现金缺口 ${money(-selected.projectedCash)}`}</strong>
+      <span>加上投资本金 {money(totals.annualInvestment)}，预计全年积累 {money(selected.projectedAccumulation)}，占全年可分配资金 {percentage(selected.accumulationRate)}。</span>
+    </div>}
+    <div className="annual-subheading"><h3>奖金会怎样改变全年储蓄水平？</h3><p>以下仅为不同奖金金额的情景测算，不预测实际奖金金额。</p></div>
+    <div className="annual-table-scroll" tabIndex={0} role="region" aria-label="奖金情景横向滚动区域">
+      <table className="annual-budget-table annual-bonus-scenarios" aria-label="税后奖金对全年积累的情景测算">
+        <thead><tr><th scope="col">全年税后额外奖金</th><th scope="col">预计新增现金积蓄</th><th scope="col">加上投资本金后的全年积累</th><th scope="col">占全年可分配资金</th></tr></thead>
+        <tbody>{scenarios.map(scenario => <tr key={scenario.bonus}>
+          <th scope="row">{money(scenario.bonus)}</th><td>{money(scenario.projectedCash)}</td><td><strong>{money(scenario.projectedAccumulation)}</strong></td><td><strong>{percentage(scenario.accumulationRate)}</strong></td>
+        </tr>)}</tbody>
+      </table>
+    </div>
+    <p className="annual-budget-note">新增现金积蓄 = 应急新增{money(totals.annualEmergency)} + 基础预算余量{money(totals.annualSurplus)} + B；比例的分母 = 工资 + 出差净结余 + 该情景的税后奖金。所有金额随上方预算联动。</p>
+  </section>;
+}
 
 export function AnnualBudgetAllocationTable({plan, onChange, titleId}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void; titleId: string}) {
   const [editing, setEditing] = useState(false);
@@ -62,7 +110,8 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
     <header className="annual-budget-heading">
       <div><span className="annual-budget-kicker">全年预算参考 · 12个月</span><h2 id="annual-budget-title">把出差结余，留给普通月份</h2>
         <p>{totals.normalMonths}个普通月 + {plan.awayMonths}个出差月；全年{plan.paidDays}个领补贴日，出差期间工资照常发放。</p>
-        <a className="annual-table-link" href="#annual-allocation-title">查看完整分配表 ↓</a></div>
+        <div className="annual-budget-jump-links"><a className="annual-table-link" href="#annual-allocation-title">查看完整分配表 ↓</a>
+          <a className="annual-table-link" href="#annual-accumulation-title">查看年度积累与奖金 ↓</a></div></div>
       <span className={`annual-budget-status ${covered ? "positive" : "negative"}`} role="status">
         {totals.assumptionsConflict ? "出差条件需校正" : covered ? "全年可覆盖，需留周转金" : "全年存在资金缺口"}</span>
     </header>
@@ -77,6 +126,7 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
       <article className={totals.annualSurplus < 0 ? "negative" : "positive"}><span>完成以上安排后的余量</span>
         <strong data-testid="annual-surplus">{money(totals.annualSurplus)}</strong><small>平均每月 {money(totals.averageSurplus)}，尚未计收益或额外还款</small></article>
     </div>
+    <p className="annual-budget-note">以上为基础预算，年终奖与额外绩效奖金另见下方年度积累。</p>
 
     <div className="annual-budget-distribution" aria-label="全年资金分布">
       <div className="annual-budget-bar" aria-hidden="true">{annualSlices.filter(slice => slice.amount > 0).map(slice =>
@@ -112,6 +162,8 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
         <tfoot><tr><th scope="row">分配后的现金余量</th><td className={totals.normal.surplus < 0 ? "negative" : "positive"}>{money(totals.normal.surplus)}</td><td className={totals.trip.surplus < 0 ? "negative" : "positive"}>{money(totals.trip.surplus)}</td><td className={totals.annualSurplus < 0 ? "negative" : "positive"}>{money(totals.annualSurplus)}</td></tr></tfoot>
       </table></div>
     </section>
+
+    <AnnualAccumulation plan={plan} onChange={onChange}/>
 
     <section className="annual-reference" aria-label="执行参考数据">
       <div className="annual-subheading"><h3>执行时，先看这几个数</h3></div>

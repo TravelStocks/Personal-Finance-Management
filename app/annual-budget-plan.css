@@ -27,6 +27,7 @@
 .annual-subheading h3 {font-size:19px; font-weight:600; margin:0 0 6px;}
 .annual-subheading p {font-size:14px;}
 .annual-table-link {display:inline-block; margin-top:10px; color:var(--annual-ink); font-size:14px; text-underline-offset:4px;}
+.annual-budget-jump-links {display:flex; flex-wrap:wrap; gap:0 20px;}
 .annual-allocation h3 {scroll-margin-top:110px;}
 .annual-table-heading {display:flex; align-items:flex-start; justify-content:space-between; gap:16px;}
 .annual-table-heading button {flex-shrink:0; padding:8px 12px; border:1px solid #93b1a3; background:#f1f7f3; color:#143932; font-size:14px; border-radius:3px;}
@@ -60,6 +61,16 @@
 .annual-budget-table tfoot td.negative {color:var(--red);}
 .annual-budget-table tfoot td.positive {color:var(--green);}
 .annual-allocation {--annual-ink:#143932; min-width:0; width:100%;}
+.annual-accumulation {margin-top:30px; border-top:1px solid var(--line); min-width:0;}
+.annual-accumulation h3 {scroll-margin-top:110px;}
+.annual-bonus-input {display:grid; gap:7px; max-width:440px; margin:16px 0; font-size:14px;}
+.annual-bonus-input input {width:100%; background:#fafcfb; font-size:16px;}
+.annual-accumulation-table th:first-child {width:32%;}
+.annual-accumulation-table td:last-child {text-align:left; white-space:normal; width:44%;}
+.annual-bonus-scenarios thead th {white-space:normal;}
+.annual-bonus-scenarios th:first-child {width:22%;}
+.annual-bonus-result {display:grid; gap:7px; padding:16px; margin-top:14px; border-left:3px solid #93b1a3; background:#f1f7f3; font-size:14px;}
+.annual-bonus-result strong {color:var(--annual-ink);}
 .annual-budget-note {font-size:13px; color:var(--muted); margin:12px 0; line-height:1.7;}
 .annual-reference-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border-top:1px solid var(--line);}
 .annual-reference-grid article {display:grid; align-content:start; gap:6px; padding:18px 16px 18px 0; border-bottom:1px solid var(--line); min-width:0;}
