@@ -17,30 +17,30 @@ assert.equal(result.annualTripNet, 30150, 'Use net subsidy after overseas spendi
 assert.equal(result.annualIncome, 186150);
 assert.equal(result.annualConsumption, 116100);
 assert.equal(result.annualInvestment, 33000);
-assert.equal(result.annualEmergency, 6000);
-assert.equal(result.annualSaving, 39000, 'Travel, partner, parent and learning payments are not included in investment/emergency savings');
-assert.equal(result.annualOutflow, 155100);
-assert.equal(result.annualSurplus, 31050);
+assert.equal(result.annualEmergency, 12000);
+assert.equal(result.annualSaving, 45000, 'Travel, partner, parent and learning payments are not included in investment/emergency savings');
+assert.equal(result.annualOutflow, 161100);
+assert.equal(result.annualSurplus, 25050);
 assert.equal(result.annualRetained, 70050);
 assert.equal(result.averageIncome, 15512.5);
-assert.equal(result.averageSurplus, 2587.5);
+assert.equal(result.averageSurplus, 2087.5);
 assert.equal(result.normal.consumption, 9750);
 assert.equal(result.trip.consumption, 9450);
-assert.equal(result.normal.totalOutflow, 13000);
-assert.equal(result.trip.totalOutflow, 12700);
-assert.equal(result.normal.surplus, 0);
+assert.equal(result.normal.totalOutflow, 13500);
+assert.equal(result.trip.totalOutflow, 13200);
+assert.equal(result.normal.surplus, -500);
 assert.equal(result.trip.income, 23050);
-assert.equal(result.trip.surplus, 10350);
-assert.equal(result.annualNormalSurplus, 0);
-assert.equal(result.annualTripSurplus, 31050);
+assert.equal(result.trip.surplus, 9850);
+assert.equal(result.annualNormalSurplus, -4500);
+assert.equal(result.annualTripSurplus, 29550);
 assert.equal(result.annualNormalSurplus + result.annualTripSurplus, result.annualSurplus);
 assert.equal(result.normal.surplus * 9 + result.trip.surplus * 3, result.annualSurplus);
-assert.equal(result.buffer, 0, 'No budget shortfall does not imply no payment timing reserve is needed');
+assert.equal(result.buffer, 1500, 'The increased emergency contribution is funded explicitly, not by a hidden cut to daily use');
 assert.equal(result.basicNeed, 6550);
 assert.equal(result.emergencyTarget, 39300);
-assert.equal(result.emergencyYearEnd, 8000);
-assert.equal(result.emergencyGap, 31300);
-assert.equal(result.requiredTripDays, 0);
+assert.equal(result.emergencyYearEnd, 14000);
+assert.equal(result.emergencyGap, 25300);
+assert.equal(result.requiredTripDays, 16);
 assert.equal(result.assumptionsConflict, false);
 for (const row of result.rows) {
   assert.equal(row.annual, row.normal * 9 + row.trip * 3);
@@ -50,26 +50,26 @@ assert.equal(result.rows.find(row => row.id === 'learning').annual, 12000, 'No e
 assert.equal(result.rows.find(row => row.id === 'partner').annual, 12000, 'Partner and travel spending is paid from the existing reservation');
 const suppliedAllocationTable = [
   ['rent',2750,2750,33000],['parents',2000,2000,24000],['investment',2750,2750,33000],
-  ['emergency',500,500,6000],['learning',1000,1000,12000],['travel',1000,1000,12000],
+  ['emergency',1000,1000,12000],['learning',1000,1000,12000],['travel',1000,1000,12000],
   ['partner',1000,1000,12000],['small',1000,0,9000],['daily',1000,1700,14100]
 ];
 assert.deepEqual(result.rows.map(row=>[row.id,row.normal,row.trip,row.annual]),suppliedAllocationTable,'Every row must match the complete table supplied by the user');
 const fractionalTrip = calculate({...baseline, budgetFx:6.71, paidDays:89});
 assert.equal(fractionalTrip.annualNormalSurplus + fractionalTrip.annualTripSurplus, fractionalTrip.annualSurplus,'Annual comparison uses exact totals instead of multiplying rounded monthly averages');
 
-assert.equal(calculate({...baseline, paidDays: 84}).annualSurplus, 29040);
-assert.equal(calculate({...baseline, paidDays: 85}).annualSurplus, 29375);
-assert.equal(calculate({...baseline, budgetFx: 6.3}).annualSurplus, 29250);
+assert.equal(calculate({...baseline, paidDays: 84}).annualSurplus, 23040);
+assert.equal(calculate({...baseline, paidDays: 85}).annualSurplus, 23375);
+assert.equal(calculate({...baseline, budgetFx: 6.3}).annualSurplus, 23250);
 assert.equal(calculate({...baseline, dailySpendUsd: 120}).annualTripNet, -6030, 'Overseas overspending is a deficit, not a clamped saving');
 assert.equal(calculate({...baseline, dailySpendUsd: 110}).requiredTripDays, null);
-assert.equal(calculate({...baseline, paidDays: 0, awayMonths: 0}).annualOutflow, 156000);
+assert.equal(calculate({...baseline, paidDays: 0, awayMonths: 0}).annualOutflow, 162000);
 assert.equal(calculate({...baseline, awayMonths: 0}).assumptionsConflict, true);
 assert.equal(calculate({...baseline, awayMonths: 2}).assumptionsConflict, true);
 assert.equal(calculate({...baseline, mode: 'trip'}).annualIncome, result.annualIncome, 'Changing the displayed month type does not alter annual totals');
 const edited = normalize({...baseline, rows: baseline.rows.map(row => row.id === 'travel' ? {...row, normal: 1500, trip: 1500} : row)});
-assert.equal(calculate(edited).annualOutflow, 161100);
-assert.equal(calculate(edited).annualSurplus, 25050);
-assert.equal(calculate(edited).annualSaving, 39000, 'Changing a future consumption bucket must not increase genuine savings');
+assert.equal(calculate(edited).annualOutflow, 167100);
+assert.equal(calculate(edited).annualSurplus, 19050);
+assert.equal(calculate(edited).annualSaving, 45000, 'Changing a future consumption bucket must not increase genuine savings');
 assert.deepEqual(normalize(undefined), baseline, 'Existing backups without the new model use the source-confirmed annual plan');
 assert.equal(normalize({salary: -1, awayMonths: 20, paidDays: 900, budgetFx: Infinity}).salary, 13000);
 assert.equal(normalize({awayMonths: 20}).awayMonths, 12);
@@ -88,7 +88,7 @@ for (const [bonus,cash,total,rate] of [[10000,47050,80050,'40.8'],[20000,57050,9
   const scenario=accumulate(baseline,bonus);
   assert.equal(scenario.projectedCash,cash);
   assert.equal(scenario.projectedAccumulation,total);
-  assert.equal(scenario.fixedTarget,39000+bonus);
+  assert.equal(scenario.fixedTarget,45000+bonus);
   assert.equal(scenario.incomeWithBonus,186150+bonus,'The accumulation percentage includes this scenario bonus in the denominator');
   assert.equal((scenario.accumulationRate*100).toFixed(1),rate);
   assert.equal(scenario.projectedCash+result.annualInvestment,scenario.projectedAccumulation,'Emergency and surplus cash must not be counted twice');
@@ -102,16 +102,26 @@ assert.equal(accumulate(increasedInvestment).projectedCash,54050);
 assert.equal(accumulate({...baseline,paidDays:0, salary:11000},10000).projectedCash,-7100,'A funding deficit is shown instead of falsely promising cash savings');
 
 const oldDaily = [['food',2880,0],['transport',670,0],['sports',400,400],['clothes',300,300],['digital',300,300],['medical',300,300],['gifts',100,100],['dates',300,300]];
-const legacy = {...baseline, rows:[...baseline.rows.filter(row=>!['small','daily'].includes(row.id)), ...oldDaily.map(([id,normal,trip])=>({id,normal,trip}))]};
+const legacy = {...baseline, allocationVersion:undefined, rows:[...baseline.rows.filter(row=>!['small','daily'].includes(row.id)).map(row=>row.id==='emergency'?{...row,normal:500,trip:500}:row), ...oldDaily.map(([id,normal,trip])=>({id,normal,trip}))]};
 const original = structuredClone(legacy);
 assert.deepEqual(normalize(legacy), baseline, 'Unchanged prior budget migrates to the user-approved balanced plan');
 assert.deepEqual(legacy, original, 'Migration does not mutate the backup');
 const custom = normalize({...legacy,rows:legacy.rows.map(row=>row.id==='food'?{...row,normal:3000}:row)});
 assert.equal(custom.rows.find(row=>row.id==='daily').normal,4370,'Customized historical allocation is preserved, not silently compressed');
-assert.equal(calculate(custom).normal.totalOutflow,16370);
+assert.equal(calculate(custom).normal.totalOutflow,16870);
 assert.deepEqual(normalize(custom),custom,'Migration is idempotent');
 const zeroLegacy = normalize({...legacy,rows:legacy.rows.map(row=>oldDaily.some(([id])=>id===row.id)?{...row,normal:0,trip:0}:row)});
 assert.equal(zeroLegacy.rows.find(row=>row.id==='small').normal,0);
 assert.equal(zeroLegacy.rows.find(row=>row.id==='daily').normal,0);
 assert.deepEqual(normalize({...baseline,rows:baseline.rows.map(row=>row.id==='daily'?{...row,normal:4250}:row)}).rows.find(row=>row.id==='daily').normal,4250,'Explicit new-schema edits remain editable');
+assert.equal(result.allocationRows.length,8);
+const merged=result.allocationRows.find(row=>row.id==='emergencyLearning');
+assert.equal(merged.normal,2000);
+assert.equal(merged.trip,2000);
+assert.equal(merged.annual,24000);
+assert.equal(result.allocationRows.reduce((sum,row)=>sum+row.annual,0),result.annualOutflow,'Coarse display reconciles without changing expense/saving accounting');
+const previousNine={...baseline,allocationVersion:undefined,rows:baseline.rows.map(row=>row.id==='emergency'?{...row,normal:500,trip:500}:row)};
+assert.deepEqual(normalize(previousNine),baseline,'Old nine-row plan upgrades the confirmed emergency contribution');
+assert.deepEqual(normalize(normalize(previousNine)),baseline);
+assert.equal(normalize({...baseline,rows:previousNine.rows}).rows.find(row=>row.id==='emergency').normal,500,'A deliberate edit after migration is not reverted');
 console.log('Annual budget: screenshot totals, month modes, no duplicate expenses, timing reserve, emergency lower bound, sensitivity and backup defaults passed.');

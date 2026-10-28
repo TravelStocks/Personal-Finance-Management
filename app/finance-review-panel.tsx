@@ -115,9 +115,9 @@ export default function FinanceReviewPanel({records, plan, onChange}: {records: 
         <thead><tr><th>项目</th><th>本期金额</th><th>发生事项／变化原因（可选）</th></tr></thead>
         <tbody>{reviewCategories.map(row => <tr key={row.id}><th scope="row">{row.name}<small>{row.id === "investment" ? "净划入，取回填负数" : row.id === "emergency" ? "净转入，取用填负数" : "实际净支出，扣除退款"}</small></th>
           <td><input type="number" step="0.01" required aria-label={`${row.name}本期金额`} value={draft.amounts[row.id] ?? ""} onChange={event => setDraft({...draft, amounts:{...draft.amounts,[row.id]:numeric(event.target.value)}})}/></td>
-          <td><input type="text" aria-label={`${row.name}本期事项`} value={draft.notes[row.id] ?? ""} onChange={event => setDraft({...draft, notes:{...draft.notes,[row.id]:event.target.value}})}/></td></tr>)}</tbody>
+          <td><input type="text" aria-label={`${row.name}本期事项`} placeholder={row.id === "learning" ? "课程、书籍、工具名称及用途" : undefined} value={draft.notes[row.id] ?? ""} onChange={event => setDraft({...draft, notes:{...draft.notes,[row.id]:event.target.value}})}/></td></tr>)}</tbody>
       </table></div>
-      <p className="review-caption">投资、应急划拨不计消费。微信充值、自有账户互转、学习／旅游／伴侣基金预留不记支出；实际付款只记一次。小额支付含早餐、地铁、小零食，其余归日常使用。</p>
+      <p className="review-caption">应急&学习金在预算中合并，在复盘中分开：应急填净转入，学习填实际支出与用途。微信充值、自有账户互转、基金预留不记消费；实际付款只记一次。</p>
       <h3>期末个人资产与负债</h3>
       <div className="review-fields balances">{Object.entries(balanceLabels).map(([key,label]) => <label className="field" key={key}><span>{label}</span><input type="number" min="0" step="0.01" required aria-label={label} value={draft.balances[key as keyof typeof draft.balances] ?? ""} onChange={event => setDraft({...draft,balances:{...draft.balances,[key]:numeric(event.target.value)}})}/></label>)}</div>
       <p className="review-caption">现金及存款含微信、应急与本人持有的专项现金；证券账户总资产含其中现金和持仓，两边不重复。已交给家人的钱不计个人资产。</p>

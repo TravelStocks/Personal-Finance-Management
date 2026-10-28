@@ -2,8 +2,8 @@ export const reviewCategories = [
   {id: "rent", name: "房租", flow: "expense"},
   {id: "parents", name: "家用", flow: "expense"},
   {id: "investment", name: "投资基金", flow: "transfer"},
-  {id: "emergency", name: "应急基金", flow: "transfer"},
-  {id: "learning", name: "学习基金", flow: "expense"},
+  {id: "emergency", name: "应急储备", flow: "transfer"},
+  {id: "learning", name: "学习支出", flow: "expense"},
   {id: "travel", name: "旅游基金", flow: "expense"},
   {id: "partner", name: "伴侣基金", flow: "expense"},
   {id: "small", name: "小额支付", flow: "expense"},
@@ -130,6 +130,7 @@ export function analyzeFinanceReview(current: FinanceReview, records: FinanceRev
   // A missing interval cannot be reconciled using just the current period's income and spending.
   const unexplained = contiguous && netWorthDelta !== null ? sum([netWorthDelta, -totals.surplus]) : null;
   const notices = ["投资基金填净投入，应急基金填净转入；二者不计消费。其他七项填实际净支出，不填充值或预算预留。"];
+  notices.push("预算中的应急&学习金合并展示；复盘仍区分应急净转入与学习实际消费，学习用途据备注判断。");
   if (!previous) notices.push("本期是首次基准，暂无上期变化；不会把缺失的上期当成 0。");
   else {
     if (!contiguous) notices.push("与上期之间有未覆盖日期；余额差值不等于本期变化，暂不做收支对账。");
@@ -165,6 +166,7 @@ export function financeReviewReport(current: FinanceReview, records: FinanceRevi
     "| 期末余额 | 本期 | 上期 | 变化 |", "|---|---:|---:|---:|",
     ...Object.entries(balanceLabels).map(([key, label]) => {const field = key as keyof ReviewBalances; return `| ${label} | ${reviewMoney(current.balances[field])} | ${previous ? reviewMoney(previous.balances[field]) : "无基准"} | ${signed(previous ? sum([current.balances[field], -previous.balances[field]]) : null)} |`;}), "",
     ...(current.summary ? [`本期补充：${cell(current.summary)}`, ""] : []),
+    "## 学习用途", `本期学习净支出 ${reviewMoney(current.amounts.learning)}；${cell(current.notes.learning || "未填写学习事项，暂不能判断学了什么。")}`, "",
     "## 下期动作", ...analysis.actions.map(action => `- ${action}`), "",
     "## 数据口径", ...analysis.notices.map(note => `- ${note}`), "",
   ].join("\n");

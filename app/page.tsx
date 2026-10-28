@@ -5,7 +5,8 @@ import { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan 
 import AnnualBudgetPlanner, {AnnualBudgetAllocationTable} from "./annual-budget-plan";
 import { calculateAnnualBudgetPlan, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
 import FinanceReviewPanel from "./finance-review-panel";
-import {parseFinanceReviews, type FinanceReview} from "./finance-review-model";
+import {parseFinanceReviews, reviewMoney, type FinanceReview} from "./finance-review-model";
+import {addSpendingDetailPresets, getSpendingGroup, nextMonthSpendingRows, spendingGroups, summarizeLearning, type SpendingBudget as Budget} from "./spending-detail-model";
 
 type Period = "周" | "月" | "季" | "年";
 type Tone = "blue" | "green" | "amber" | "red" | "violet";
@@ -35,15 +36,6 @@ type Account = {
   balance: number;
   purpose: string;
   liquid: boolean;
-};
-
-type Budget = {
-  id: string;
-  name: string;
-  plan: number;
-  actual: number;
-  required: boolean;
-  fixed: boolean;
 };
 
 type MonthRecord = {
@@ -485,7 +477,7 @@ const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "budget", title: "预算管理", desc: "完整月度与年度分配、月份现金流" },
   { id: "investment", title: "投资管理", desc: "A股、美股、港股市值和投入计划" },
   { id: "balance", title: "资产负债表", desc: "总资产、负债项可增删编辑" },
-  { id: "emergency", title: "应急金", desc: "目标月数、当前金额、覆盖月数" },
+  { id: "emergency", title: "应急&学习金", desc: "应急储备覆盖与每月学习用途分开核算" },
   { id: "reminders", title: "账单与提醒", desc: "提前 7 天提醒账单和到期事项" },
   { id: "goals", title: "目标管理", desc: "旅游、学习、父母储蓄、伴侣基金和大额支出目标" },
   { id: "fundBuckets", title: "大花费项目", desc: "旅行、搬家、分期、应急金和待投资金隔离" },
@@ -1827,7 +1819,7 @@ export default function FinanceDashboard() {
         payday: lastRecord.payday,
         stockIncome: 0,
         otherIncome: 0,
-        budgets: templateBudgets.map((item) => ({ ...item, actual: 0 })),
+        budgets: nextMonthSpendingRows(templateBudgets),
       };
 
       setSelectedMonth(id);
@@ -1919,6 +1911,10 @@ export default function FinanceDashboard() {
           : record,
       ),
     );
+  }
+
+  function addDetailedBudgets() {
+    setMonthlyRecords(records => records.map(record => record.id === selectedMonth ? {...record, budgets: addSpendingDetailPresets(record.budgets)} : record));
   }
 
   function updateHolding(id: string, patch: Partial<Holding>) {
@@ -2560,7 +2556,7 @@ export default function FinanceDashboard() {
     {label: "投资应急", value: -cashPlanTotals.saving, kind: "negative", color: palette[2]},
     {label: "现金余量", value: cashPlanTotals.surplus, kind: "end", color: cashPlanTotals.surplus < 0 ? palette[4] : palette[1]},
   ];
-  const cashPlanFlow = annualPlanTotals.rows.map(row => ({label: row.name, value: row[annualBudgetPlan.mode]}))
+  const cashPlanFlow = annualPlanTotals.allocationRows.map(row => ({label: row.name, value: row[annualBudgetPlan.mode]}))
     .filter(item => item.value > 0).map((item, index) => ({...item, color: palette[index % palette.length]}));
   const annualPlanDistribution = [
     {label: "生活与消费预留", value: annualPlanTotals.annualConsumption, color: palette[0]},
@@ -2740,6 +2736,7 @@ export default function FinanceDashboard() {
           : "应急金继续向 3 个月推进，手机分期按期结束即可。",
     },
   ];
+  const monthlyLearning = summarizeLearning(budgets);
   const monthlyAnalysisReportText = [
     `${activeMonth.label}财务分析报告`,
     "",
@@ -2749,6 +2746,7 @@ export default function FinanceDashboard() {
     `4. 大花费项目：目标 ${money(fundBucketTargetTotal)}，已准备 ${money(fundBucketPreparedTotal)}，缺口 ${money(fundBucketGapTotal)}，其中两个月内缺口 ${money(urgentFundBucketGap)}。`,
     `5. 投资：投资市值 ${money(totals.investmentValue)}，待投资金 ${money(totals.investmentReserve)}，计划覆盖 ${investmentReserveCoverage.toFixed(1)} 个月，浮动盈亏 ${money(totals.investmentPnL)}。`,
     `6. 应急与负债：应急覆盖 ${totals.emergencyCoverage.toFixed(1)} 个月，总负债 ${money(totals.totalDebt)}，负债率 ${percent(totals.debtRatio)}。`,
+    `7. 学习用途：已归类学习净支出 ${reviewMoney(monthlyLearning.total)}；${monthlyLearning.rows.length ? monthlyLearning.rows.map(row => `${row.name} ${reviewMoney(row.actual)}（${row.note?.trim() || "用途待补"}）`).join("；") : "暂无已归类明细，不能据此判断没有学习支出"}。${monthlyLearning.unassigned !== 0 ? `另有 ${reviewMoney(monthlyLearning.unassigned)} 支出待归类。` : ""}`,
     "",
     "行动建议：",
     ...monthlyAnalysisSections.map((section, index) => `${index + 1}. ${section.title}：${section.action}`),
@@ -3152,7 +3150,7 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "spending" && (
-                  <Module title="支出" desc="支出与收入分开管理；预算、实际金额、必要性都能直接编辑。">
+                  <Module title="支出" desc="细项支出按大类归属；学习单列用途，日常使用可按咔皮记账报告核对。">
                     <DataChartLayout
                       data={
                         <>
@@ -3163,7 +3161,8 @@ export default function FinanceDashboard() {
                             onChange={setSelectedMonth}
                             onDeleteSelectedMonth={() => deleteMonthRecord(selectedMonth)}
                           />
-                          <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} updateBudget={updateBudget} />
+                          <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} addDetailedBudgets={addDetailedBudgets} updateBudget={updateBudget} />
+                          <LearningUsage budgets={budgets} monthLabel={activeMonth.label} allowance={annualBudgetPlan.rows.find(row => row.id === "learning")?.[annualBudgetPlan.mode] ?? 0}/>
                         </>
                       }
                       charts={
@@ -3292,7 +3291,7 @@ export default function FinanceDashboard() {
                             <summary>查看历史月份预算与实际支出</summary>
                             <p className="ledger-context">以下是已保存月份的账本数据，年度分配表用于当前计划；历史预算金额可在这里单独维护。</p>
                             <MonthSelector records={monthlyRecords} selectedMonth={selectedMonth} onChange={setSelectedMonth} />
-                            <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} updateBudget={updateBudget} />
+                            <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} addDetailedBudgets={addDetailedBudgets} updateBudget={updateBudget} />
                           </details>
                         </>
                       }
@@ -3399,7 +3398,11 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "emergency" && (
-                  <Module title="应急金" desc="当前金额与目标管理的应急储备自动同步。">
+                  <Module title="应急&学习金" desc="预算合并显示，应急储备与学习实际支出分开核算；学习额度不计为应急余额。">
+                    <div className="stat-strip">
+                      <Stat label="每月应急划拨预算" value={money(annualBudgetPlan.rows.find(row => row.id === "emergency")?.[annualBudgetPlan.mode] ?? 0)} />
+                      <Stat label="每月学习消费预算" value={money(annualBudgetPlan.rows.find(row => row.id === "learning")?.[annualBudgetPlan.mode] ?? 0)} />
+                    </div>
                     <DataChartLayout
                       data={
                         <>
@@ -3417,6 +3420,8 @@ export default function FinanceDashboard() {
                             <Stat label="缺口" value={money(Math.max(0, totals.emergencyTarget - totals.currentEmergencyFund))} />
                             <Stat label="当前进度" value={percent(totals.emergencyCoverage / Math.max(emergencyMonths, 1))} />
                           </div>
+                          <label className="field"><span>学习统计月份</span><select aria-label="学习统计月份" value={selectedMonth} onChange={event => setSelectedMonth(event.target.value)}>{monthlyRecords.map(record => <option key={record.id} value={record.id}>{record.label}</option>)}</select></label>
+                          <LearningUsage budgets={budgets} monthLabel={activeMonth.label} allowance={annualBudgetPlan.rows.find(row => row.id === "learning")?.[annualBudgetPlan.mode] ?? 0}/>
                         </>
                       }
                       charts={
@@ -5742,29 +5747,36 @@ function EditableBudgetTable({
   updateBudget,
   addBudget,
   deleteBudget,
+  addDetailedBudgets,
 }: {
   budgets: Budget[];
   updateBudget: (id: string, patch: Partial<Budget>) => void;
   addBudget: () => void;
   deleteBudget: (id: string) => void;
+  addDetailedBudgets: () => void;
 }) {
+  const [showReference, setShowReference] = useState(false);
   const plan = budgets.reduce((sum, item) => sum + item.plan, 0);
   const actual = budgets.reduce((sum, item) => sum + item.actual, 0);
   return (
     <>
       <TableToolbar
-        title="预算支出底表"
-        meta={`预算 ${money(plan)} / 实际 ${money(actual)} / 剩余 ${money(plan - actual)}`}
-        action={<button className="secondary-button" type="button" onClick={addBudget}>新增分类</button>}
+        title="支出细项底表"
+        meta={showReference ? `细项参考 ${reviewMoney(plan)} / 已记实际 ${reviewMoney(actual)} / 参考差额 ${reviewMoney(plan - actual)}` : `已记实际 ${reviewMoney(actual)} / ${budgets.length} 个细项`}
+        action={<div className="data-actions"><button className="secondary-button" type="button" onClick={addDetailedBudgets}>补充常用细项</button><button className="secondary-button" type="button" onClick={addBudget}>新增分类</button></div>}
       />
+      <label className="spending-reference-toggle"><input type="checkbox" checked={showReference} onChange={event => setShowReference(event.target.checked)}/>细项参考额度</label>
+      <p className="spending-detail-note">日常使用账户单笔超过 10 元以咔皮记录核对；小额支付另做汇总。旧汇总与新细项不重复录入，未覆盖的小额支出不自动视为 0。学习填写课程、书籍、工具或会员名称。</p>
       <div className="table-wrap spreadsheet-wrap">
-        <table className="spreadsheet-table">
+        <table className={`spreadsheet-table spending-detail-table${showReference ? " with-reference" : ""}`}>
           <thead>
             <tr>
-              <th>分类</th>
-              <th>预算</th>
+              <th>支出细项</th>
+              <th>所属大类</th>
+              {showReference && <th>细项参考</th>}
               <th>实际</th>
-              <th>剩余</th>
+              {showReference && <th>参考差额</th>}
+              <th>具体用途 / 咔皮备注</th>
               <th>必须</th>
               <th>固定</th>
               <th>操作</th>
@@ -5776,13 +5788,15 @@ function EditableBudgetTable({
                 <td>
                   <TableTextInput ariaLabel={`${item.name} 分类`} value={item.name} onChange={(value) => updateBudget(item.id, { name: value })} />
                 </td>
-                <td>
+                <td><select className="table-input" aria-label={`${item.name} 所属大类`} value={getSpendingGroup(item)} onChange={event => updateBudget(item.id, {group: event.target.value as Budget["group"]})}><option value="unassigned">待归类</option>{spendingGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select></td>
+                {showReference && <td>
                   <TableNumberInput ariaLabel={`${item.name} 预算`} value={item.plan} onChange={(value) => updateBudget(item.id, { plan: value })} />
-                </td>
+                </td>}
                 <td>
-                  <TableNumberInput ariaLabel={`${item.name} 实际`} value={item.actual} onChange={(value) => updateBudget(item.id, { actual: value })} />
+                  <TableNumberInput ariaLabel={`${item.name} 实际`} step={0.01} min={-100000000} value={item.actual} onChange={(value) => updateBudget(item.id, { actual: value })} />
                 </td>
-                <td className="calculated-cell">{money(item.plan - item.actual)}</td>
+                {showReference && <td className="calculated-cell">{reviewMoney(item.plan - item.actual)}</td>}
+                <td className="spending-purpose"><TableTextInput ariaLabel={`${item.name} 具体用途`} value={item.note ?? ""} onChange={value => updateBudget(item.id, {note: value})}/></td>
                 <td><TableCheckbox ariaLabel={`${item.name} 必须`} checked={item.required} onChange={(value) => updateBudget(item.id, { required: value })} /></td>
                 <td><TableCheckbox ariaLabel={`${item.name} 固定`} checked={item.fixed} onChange={(value) => updateBudget(item.id, { fixed: value })} /></td>
                 <td>
@@ -5797,4 +5811,14 @@ function EditableBudgetTable({
       </div>
     </>
   );
+}
+
+function LearningUsage({budgets, monthLabel, allowance}: {budgets: Budget[]; monthLabel: string; allowance: number}) {
+  const usage = summarizeLearning(budgets);
+  return <section className="learning-usage" aria-label={`${monthLabel}学习用途`}>
+    <h3>{monthLabel} · 学习用途</h3>
+    <p>当前方案学习额度 {reviewMoney(allowance)} / 已归类净支出 {reviewMoney(usage.total)} / 额度减已记支出 {reviewMoney(allowance - usage.total)}</p>
+    {usage.rows.length ? <div className="table-wrap"><table><thead><tr><th>学习项目</th><th>净支出</th><th>具体学了什么</th></tr></thead><tbody>{usage.rows.map(row => <tr key={row.id}><th scope="row">{row.name}</th><td>{reviewMoney(row.actual)}</td><td>{row.note?.trim() || "用途待补"}</td></tr>)}</tbody></table></div> : <p>暂无已归类的学习支出；未录入不代表本月没有花费。</p>}
+    {usage.unassigned !== 0 && <p className="spending-detail-note">另有 {reviewMoney(usage.unassigned)} 支出尚未归类，未纳入上述学习统计。</p>}
+  </section>;
 }

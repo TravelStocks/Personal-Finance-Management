@@ -8,6 +8,7 @@ export type AnnualBudgetRow = {
   note: string;
 };
 export type AnnualBudgetPlan = {
+  allocationVersion: 2;
   salary: number;
   awayMonths: number;
   paidDays: number;
@@ -24,6 +25,7 @@ export type AnnualBudgetPlan = {
 };
 
 export const initialAnnualBudgetPlan: AnnualBudgetPlan = {
+  allocationVersion: 2,
   salary: 13000, awayMonths: 3, paidDays: 90, allowanceUsd: 110, dailySpendUsd: 60,
   budgetFx: 6.7, emergencyCurrent: 2000, emergencyTargetMonths: 6, basicMeals: 1800,
   bufferMonths: 3, bonusAfterTax: null, mode: "normal",
@@ -31,12 +33,12 @@ export const initialAnnualBudgetPlan: AnnualBudgetPlan = {
     {id: "rent", name: "房租", kind: "consumption", normal: 2750, trip: 2750, note: "个人承担的房租"},
     {id: "parents", name: "家用", kind: "consumption", normal: 2000, trip: 2000, note: "给父母的家用，不计为个人资产"},
     {id: "investment", name: "投资基金", kind: "investment", normal: 2750, trip: 2750, note: "投入本金，不计投资收益或亏损"},
-    {id: "emergency", name: "应急基金", kind: "emergency", normal: 500, trip: 500, note: "新增现金储备，独立于日常周转金"},
+    {id: "emergency", name: "应急储备", kind: "emergency", normal: 1000, trip: 1000, note: "应急&学习金中的应急部分，不计学习消费"},
     {id: "learning", name: "学习基金", kind: "consumption", normal: 1000, trip: 1000, note: "订阅、书籍和其他会员"},
     {id: "travel", name: "旅游基金", kind: "consumption", normal: 1000, trip: 1000, note: "实际旅行从中支付，不重复拨款"},
     {id: "partner", name: "伴侣基金", kind: "consumption", normal: 1000, trip: 1000, note: "水电网、住房额外支出等"},
     {id: "small", name: "小额支付", kind: "consumption", normal: 1000, trip: 0, note: "早餐、地铁通勤、日常小零食"},
-    {id: "daily", name: "日常使用", kind: "consumption", normal: 1000, trip: 1700, note: "午晚餐及其余生活消费；普通月压缩至收支平衡"},
+    {id: "daily", name: "日常使用", kind: "consumption", normal: 1000, trip: 1700, note: "午晚餐及其余生活消费，不重复包含上列项目"},
   ],
 };
 
@@ -84,8 +86,14 @@ export function normalizeAnnualBudgetPlan(value: unknown): AnnualBudgetPlan {
     // Upgrade the unchanged previous reference plan; preserve any customized allocation.
     if (result.salary === 13000 && result.rows.every(row => {
       const baseline = initialAnnualBudgetPlan.rows.find(item => item.id === row.id)!;
-      return row.normal === (row.id === "daily" ? 4250 : baseline.normal) && row.trip === baseline.trip;
+      return row.normal === (row.id === "daily" ? 4250 : row.id === "emergency" ? 500 : baseline.normal) && row.trip === (row.id === "emergency" ? 500 : baseline.trip);
     })) result.rows.find(row => row.id === "daily")!.normal = 1000;
+  }
+  if (saved.allocationVersion !== 2) {
+    const emergency = result.rows.find(row => row.id === "emergency")!;
+    for (const mode of ["normal", "trip"] as const) {
+      if (emergency[mode] === 500) emergency[mode] = 1000;
+    }
   }
   return result;
 }
@@ -108,6 +116,13 @@ export function calculateAnnualBudgetPlan(plan: AnnualBudgetPlan) {
   const annualTripNet = round(plan.paidDays * netUsd * plan.budgetFx);
   const annualIncome = round(annualSalary + annualTripNet);
   const rows = plan.rows.map(row => ({...row, annual: (cents(row.normal) * normalMonths + cents(row.trip) * plan.awayMonths) / 100}));
+  const learning = rows.find(row => row.id === "learning");
+  // Coarse allocation display only; accounting keeps learning consumption separate from emergency saving.
+  const allocationRows = rows.filter(row => row.id !== "learning").map(row => row.id === "emergency" ? {
+    ...row, id: "emergencyLearning", name: "应急&学习金", note: "应急储备与学习消费分别核算",
+    normal: round(row.normal + (learning?.normal ?? 0)), trip: round(row.trip + (learning?.trip ?? 0)),
+    annual: round(row.annual + (learning?.annual ?? 0)),
+  } : row);
   const sumKind = (kind: AnnualBudgetRow["kind"]) => rows.filter(row => row.kind === kind).reduce((sum, row) => sum + cents(row.annual), 0) / 100;
   const annualConsumption = sumKind("consumption");
   const annualInvestment = sumKind("investment");
@@ -137,7 +152,7 @@ export function calculateAnnualBudgetPlan(plan: AnnualBudgetPlan) {
   const emergencyYearEnd = round(plan.emergencyCurrent + annualEmergency);
   const dailyNetCny = round(netUsd * plan.budgetFx);
   const requiredTripDays = dailyNetCny > 0 ? Math.ceil(Math.max(0, round(annualOutflow - annualSalary)) / dailyNetCny) : null;
-  return {rows, normalMonths, annualSalary, annualTripNet, annualIncome, annualConsumption, annualInvestment, annualEmergency,
+  return {rows, allocationRows, normalMonths, annualSalary, annualTripNet, annualIncome, annualConsumption, annualInvestment, annualEmergency,
     annualSaving, annualOutflow, annualSurplus, annualRetained, averageIncome: round(annualIncome / 12), averageSurplus: round(annualSurplus / 12),
     savingRate: annualIncome > 0 ? annualSaving / annualIncome : 0, netUsd, dailyNetCny, normal, trip, annualNormalSurplus, annualTripSurplus, normalDeficit, buffer,
     basicNeed, emergencyTarget, emergencyYearEnd, emergencyGap: Math.max(0, round(emergencyTarget - emergencyYearEnd)), requiredTripDays,

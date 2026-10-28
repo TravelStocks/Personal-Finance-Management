@@ -4,7 +4,7 @@ import {calculateAnnualAccumulation, calculateAnnualBudgetPlan, normalizeAnnualB
 import "./annual-budget-plan.css";
 
 const money = (value: number) => `¥${value.toLocaleString("zh-CN", {maximumFractionDigits: 2})}`;
-type NumericKey = Exclude<keyof AnnualBudgetPlan, "mode" | "rows" | "bonusAfterTax">;
+type NumericKey = Exclude<keyof AnnualBudgetPlan, "mode" | "rows" | "bonusAfterTax" | "allocationVersion">;
 
 function AnnualAccumulation({plan, onChange}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void}) {
   const totals = calculateAnnualBudgetPlan(plan);
@@ -60,9 +60,15 @@ export function AnnualBudgetAllocationTable({plan, onChange, titleId}: {plan: An
   const editAmount = (id: string, mode: BudgetMonthMode, value: string) => onChange(normalizeAnnualBudgetPlan({...plan,
     rows: plan.rows.map(row => row.id === id ? {...row, [mode]: Number(value)} : row)}));
   const renderRow = (row: typeof totals.rows[number]) => <tr key={row.id} data-budget-row={row.id}>
-    <th scope="row">{row.name}{(row.id === "small" || row.id === "daily") && <small>{row.note}</small>}</th>
+    <th scope="row">{row.name}{["small", "daily", "emergencyLearning"].includes(row.id) && <small>{row.note}</small>}</th>
     {(["normal", "trip"] as const).map(mode => <td key={mode} className={plan.mode === mode ? "selected-column" : ""}>
-      {editing ? <input type="number" min="0" step="50" aria-label={`${row.name}${mode === "normal" ? "不出差月份" : "出差月份"}预算`}
+      {row.id === "emergencyLearning" ? <>
+        <strong>{money(row[mode])}</strong>
+        {(["emergency", "learning"] as const).map(id => {
+          const part = totals.rows.find(item => item.id === id)!;
+          return editing ? <label className="annual-combined-edit" key={id}><span>{id === "emergency" ? "应急" : "学习"}</span><input type="number" min="0" step="50" aria-label={`${part.name}${mode === "normal" ? "不出差月份" : "出差月份"}预算`} value={part[mode]} onChange={event => editAmount(id, mode, event.target.value)}/></label> : <small className="annual-combined-part" key={id}>{id === "emergency" ? "应急" : "学习"} {money(part[mode])}</small>;
+        })}
+      </> : editing ? <input type="number" min="0" step="50" aria-label={`${row.name}${mode === "normal" ? "不出差月份" : "出差月份"}预算`}
         value={row[mode]} onChange={event => editAmount(row.id, mode, event.target.value)}/> : money(row[mode])}</td>)}
     <td>{money(row.annual)}</td>
   </tr>;
@@ -73,7 +79,7 @@ export function AnnualBudgetAllocationTable({plan, onChange, titleId}: {plan: An
     <div className="annual-table-scroll" tabIndex={0} role="region" aria-label="完整分配表横向滚动区域"><table className="annual-budget-table" aria-labelledby={titleId}>
       <thead><tr><th scope="col">项目</th><th scope="col">不出差月份</th><th scope="col">出差月份</th><th scope="col">全年预算</th></tr></thead>
       <tbody>
-        {totals.rows.map(renderRow)}
+        {totals.allocationRows.map(renderRow)}
       </tbody>
       <tfoot><tr><th scope="row">全部资金分配</th><td>{money(totals.normal.totalOutflow)}</td><td>{money(totals.trip.totalOutflow)}</td><td>{money(totals.annualOutflow)}</td></tr></tfoot>
     </table></div>

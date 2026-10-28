@@ -1430,6 +1430,23 @@ th {
   min-width: 760px;
 }
 
+#finance-spending .data-chart-layout {grid-template-columns:minmax(0,1fr);}
+.spending-detail-table {min-width:900px;}
+.spending-detail-table.with-reference {min-width:1120px;}
+.spending-detail-table td:first-child {min-width:170px;}
+.spending-detail-table td:nth-child(2) {min-width:180px;}
+.spending-detail-table .spending-purpose {min-width:240px;}
+.spending-detail-table td:last-child {min-width:70px;}
+.spending-detail-table .danger-button {min-width:54px;white-space:nowrap;}
+.spending-reference-toggle {display:flex;align-items:center;gap:8px;font-size:13px;width:fit-content;}
+.spending-reference-toggle input {width:16px;height:16px;}
+.spending-detail-note {font-size:13px;color:var(--muted);line-height:1.7;margin:12px 0;}
+.learning-usage {margin-top:24px;border-top:1px solid var(--line);padding-top:16px;min-width:0;}
+.learning-usage h3 {font-size:18px;margin:0 0 10px;}
+.learning-usage p {font-size:13px;line-height:1.7;}
+.learning-usage table {min-width:420px;width:100%;}
+.learning-usage td:last-child {white-space:normal;overflow-wrap:anywhere;}
+
 .spreadsheet-table th {
   background: #f7fbff;
   color: #425973;

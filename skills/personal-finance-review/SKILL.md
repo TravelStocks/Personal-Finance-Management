@@ -5,7 +5,7 @@ description: Update the user's personal-finance weekly, monthly or quarterly rev
 
 # Personal Finance Review
 
-Maintain the user's nine-category personal finance review for `TravelStocks/Personal-Finance-Management`. Keep data entry short and reports evidence-based. This skill is manually invoked; it does not schedule background work.
+Maintain the user's personal finance review for `TravelStocks/Personal-Finance-Management`: eight coarse budget groups, detailed actual spending and separate emergency/learning accounting. Keep reports evidence-based. This skill is manually invoked; it does not schedule background work.
 
 ## Locate The Workspace
 
@@ -28,17 +28,31 @@ For a monthly review use `--type month --mode normal` or `--mode trip`; for a qu
 
 ## Nine Categories And Accounting
 
-Use only: 房租、家用、投资基金、应急基金、学习基金、旅游基金、伴侣基金、小额支付、日常使用.
+The budget displays 房租、家用、投资基金、应急&学习金、旅游基金、伴侣基金、小额支付、日常使用. The combined group is 2,000 per month: emergency 1,000 plus learning 1,000. Review inputs retain nine fields because emergency net transfers and learning actual consumption must remain separate. Keep the JSON keys `emergency` and `learning` for compatibility.
 
 - Income means external income for the stated period, not transfers between personal accounts or withdrawals from a brokerage. Do not count unrealized or already-included investment gains as cash income.
 - Investment and emergency amounts are net transfers; withdrawals are negative. They are not consumption. The other seven categories are actual payments net of refunds, not budget reservations or wallet top-ups.
 - 小额支付 includes breakfast, subway and small snacks. The confirmed budget is normal month 1,000, trip month 0. A dedicated wallet can be reconciled from opening balance + net top-ups - closing balance, excluding other transfers and purchases already counted elsewhere. Ask about mixed use before using this shortcut.
-- 日常使用 includes lunch/dinner and all remaining living expenses. Latest confirmed normal-month cap is 1,000, reduced from 4,250 to balance a 13,000 salary; trip-month cap remains 1,700. This is a tight target, not proof of actual spending.
+- 日常使用 includes lunch/dinner and all remaining living expenses. Normal-month cap remains 1,000; trip-month cap remains 1,700. This is a tight target, not proof of actual spending. Do not silently reduce it to fund the emergency increase.
+- Learning actuals require a purpose breakdown: course or training, books or materials, learning tools or subscriptions. Ask what each payment bought when the report lacks this information; do not classify all subscriptions as learning. The website's 支出 module stores `group: "learning"` and `note` on each detailed row and shows monthly learning usage in 应急&学习金.
 - Family money already given away is no longer a personal asset. Own learning/travel/partner cash reserves remain assets until actually paid; avoid counting both reservations and spending.
 - Ending cash includes personal deposits, payment wallets and earmarked cash. Securities total includes brokerage cash and holdings, counted once. Use consistent cutoff-date CNY exchange rates for non-CNY assets.
 - Loan principal repayments reduce cash and debt, not consumption; interest and fees are expenses. Never infer that a liability is repaid without evidence.
 
-Use the current confirmed annual plan, not outdated chat numbers. The shipped nine-category plan is normal 13,000, trip 12,700, annual 155,100 under nine normal/three trip months. Salary and travel assumptions are editable and not promises. If the webpage plan has been customized, use its verified values for the monthly `budget` snapshot rather than the CLI template's repository defaults.
+Use the current confirmed annual plan, not outdated chat numbers. The shipped plan is normal 13,500, trip 13,200, annual 161,100 under nine normal/three trip months. With salary 13,000, the ordinary month has a 500 allocation gap; annual reference surplus is 25,050 under the existing travel assumptions. Emergency and investment total 45,000 per year; learning consumption is not emergency saving. If the webpage plan has been customized, use its verified values for the monthly `budget` snapshot rather than the CLI template's repository defaults.
+
+## Kapi Reports And Detailed Spending
+
+The user records individual payments **over CNY 10 from the daily-use account** in 咔皮记账 and will supply its reports. This is not authorization to access Kapi or to assume an export schema before seeing a real report.
+
+1. Inspect the supplied file or screenshot with the appropriate document/spreadsheet tools. Confirm its date range, accounts, included transaction types and whether it contains only >10 payments. Preserve the original privately.
+2. Reconcile reported totals with the extracted detail. Keep date, original category, merchant/item, net amount, payment account and source reference when available. Do not infer a purchase purpose from an account balance.
+3. Separate income, own-account transfers, card repayments and refunds. Purchases already counted must not be counted again as repayments. For cross-period refunds, retain the refund date and explain the effect.
+4. Map each confirmed expense to a coarse parent and a fine category. Typical daily details: lunch/dinner, social meals/takeout, goods/clothes, non-learning subscriptions/phone, sports/entertainment, health/personal care and gifts/other. Learning details: courses/training, books/materials and learning tools/subscriptions. Ambiguous old categories stay unassigned until clarified.
+5. The >10 report is not necessarily complete consumption. Payments of exactly 10 or less from the daily account may be missing and are not automatically covered by the small-payments wallet. Ask for a confirmed supplementary total or disclose the gap; do not manufacture a zero.
+6. Combine verified daily details with the separately reconciled small-payments total, excluding overlap. Keep transaction-level evidence privately, summarize amounts into the existing review JSON fields, and put the learning item/amount/purpose breakdown in `notes.learning`.
+
+Return a concise fine-category table and learning-purpose list with the periodic report. An expense report does not supply external income or ending balances automatically; request those separately. Updating period-review JSON does not update the detailed monthly ledger. When the user asks to populate the website's 支出 module, use verified rows in an authorized session or a supported backup workflow, preserve other records and report exactly which store changed.
 
 ## Save And Analyze
 
