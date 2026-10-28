@@ -51,6 +51,7 @@ function run(args) {
     if (fs.existsSync(path.join(directory, `${stem}.json`)) || fs.existsSync(path.join(directory, `${stem}.md`))) throw new Error('Template already exists; keep its inputs or use a separate private directory.');
     const previous = history.filter(row=>row.type===type && row.end<draft.start).sort((a,b)=>b.end.localeCompare(a.end))[0];
     if (command === 'template' && previous?.accounts) draft.accounts = previous.accounts.map(row=>({...row,balance:null,note:''}));
+    if (command === 'template' && previous?.focus) draft.focus = model.newReviewFocus(previous.focus);
     const template = [
       `# ${model.reviewTypeNames[type]}数据更新`, `期间：${draft.start} 至 ${draft.end}（人民币）`,
       previous ? `上期基准：${previous.start} 至 ${previous.end}；期末净资产 ${model.reviewMoney(model.reviewTotals(previous).netWorth)}` : '暂无同类上期，本次建立首次基准。', '',
@@ -60,6 +61,11 @@ function run(args) {
       ...(previous?.accounts ?? []).map(row=>`| ${row.id.replace(/[|\r\n]/g,' ')} / ${row.name.replace(/[|\r\n]/g,' ')} | | ${row.included?'是':'否'} | |`), '',
       '余额须重新核对；计入账户合计须等于现金及存款，证券账户和他人资金不能重复计入。', '',
       '## 期末余额', ...Object.values(model.balanceLabels).map(label=>`- ${label}：`), '',
+      '## 关键事项核对（无变化也请核对）',
+      '- 大花费项目：目标、已准备、截止日期；本期新增、完成、延期或取消事项：',
+      '- 账单与订阅：登记金额、提醒日期；新增、调价、续费、支付或取消事项：',
+      '- 资产负债：补录资产、负债余额、持仓参考市值及变化原因：',
+      '来源清单由网页模块或用户提供。上期带入值仅供参考，未确认不得勾选 focus.checks；旧日期提醒不直接视为欠款，移出清单不直接视为已付款或已取消。', '',
       '本期补充事项：', '',
       '没有发生填 0，未知留空待补。七类消费填实际付款减退款；投资和应急填净转入，不计消费。',
       '微信充值、自有账户转账、专项基金预留不记消费。自有证券账户转入转出不算收入。',

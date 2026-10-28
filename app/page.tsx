@@ -3588,7 +3588,13 @@ export default function FinanceDashboard() {
 
                 {moduleId === "periodReview" && (
                   <Module title="周期复盘" desc="本期实际发生额与上期同类周期比较；记录与账本明细分别保存。">
-                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} onChange={(records, updatedAccounts) => {
+                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts}
+                      focusSource={{
+                        projects:fundBuckets.map(({id,name,target,current,dueDate})=>({id,name,target,current,dueDate})),
+                        bills:reminders.map(({id,name,amount,date,kind})=>({id,name,amount,date,kind})),
+                        assets:balanceAssets.map(({id,name,amount})=>({id,name,amount})),
+                        debts:liabilities.map(({id,name,amount})=>({id,name,amount})), holdings:totals.investmentValue,
+                      }} onOpenModule={navigateToSection} onChange={(records, updatedAccounts) => {
                       const nextAccounts = updatedAccounts ? accounts.map(account => {
                         const updated = updatedAccounts.find(row => row.id === account.id);
                         return updated ? {...account, balance: updated.balance} : account;
@@ -4017,6 +4023,7 @@ function TableDateInput({
       className="table-input"
       type="date"
       value={value}
+      onInput={(event) => {if (event.currentTarget.validity.valid && event.currentTarget.value !== value) onChange(event.currentTarget.value);}}
       onChange={(event) => onChange(event.target.value)}
     />
   );

@@ -35,5 +35,24 @@
 .review-account-options {display:flex;gap:12px 24px;flex-wrap:wrap;margin-top:16px;}
 .review-account-options label {display:flex;align-items:center;gap:8px;font-size:14px;}
 .finance-review input[readonly] {background:var(--soft);color:var(--muted);}
+.review-focus-entry {border-top:1px solid var(--line);margin-top:24px;}
+.review-focus-entry h3 {margin:0;}
+.review-focus-check {display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:16px;border-top:1px solid var(--line);padding:14px 0;}
+.review-focus-check details {min-width:0;}
+.review-focus-check summary {cursor:pointer;line-height:1.6;}
+.review-focus-check summary span {display:block;color:var(--muted);font-size:13px;margin-top:4px;}
+.review-focus-check .data-actions {margin:12px 0;}
+.review-focus-confirm {display:flex;align-items:flex-start;gap:6px;font-size:13px;padding-top:4px;white-space:nowrap;}
+.review-focus-confirm input {width:18px;height:18px;margin:0;accent-color:var(--blue);}
+.review-highlight {border-top:1px solid var(--line);padding:14px 0;}
+.review-highlight summary {display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;cursor:pointer;line-height:1.65;font-size:14px;}
+.review-highlight-title {font-weight:600;}
+.review-highlight-title::before {content:"+";color:var(--blue);display:inline-block;width:16px;}
+.review-highlight[open] .review-highlight-title::before {content:"-";}
+.review-highlight-title small {display:block;margin-left:16px;color:var(--muted);font-weight:400;font-size:12px;}
+.review-highlight ul {font-size:14px;color:var(--muted);margin-bottom:0;}
+.review-highlights + h3 {margin-top:14px;}
+.finance-review .review-method {margin-top:16px;}
+@media(max-width:600px){.review-focus-check {grid-template-columns:minmax(0,1fr) 80px;gap:8px;}.review-highlight summary {grid-template-columns:1fr;gap:6px;}.review-highlight-title small {display:inline;margin-left:10px;}}
 @media(max-width:1000px){.review-metrics,.review-fields.balances {grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:600px){.review-fields {grid-template-columns:1fr;}.review-toolbar>.field {width:100%;}.review-metrics strong {font-size:20px;}}

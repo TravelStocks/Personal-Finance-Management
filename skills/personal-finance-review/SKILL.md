@@ -56,6 +56,10 @@ Return a concise fine-category table and learning-purpose list with the periodic
 
 ## Save And Analyze
 
+Include a concise four-part key-changes summary: income/spending, large projects, bills/subscriptions, and assets/liabilities. The optional `focus` snapshot contains `projects` (id, name, target, current, dueDate), `bills` (id, name, amount, date, kind), `assets` and `debts` (id, name, amount), plus `holdings` as reference CNY market value. `checks` has booleans for projects/bills/balance; `notes` holds each group's explanation. Only mark a group checked after the user verifies its cutoff-date data. Carry-forward templates reset checks and notes. No supplied snapshot means unknown, not an empty verified list.
+
+Compare verified same-type snapshots by stable IDs. Highlight project funding gaps and deadlines within 30 days of the review cutoff, and reminders within 7 days of that cutoff, not the computer's current date. Old dates require status clarification; a removed reminder is not proof of payment or cancellation. Subscription coverage is limited to the supplied reminder list. Project reservations and reminder amounts do not become actual consumption or extra assets. Keep brokerage totals separate from reference holding values, and flag disagreement between detailed debt and the stated debt total. Keep the main report to four summaries and at most three actions; place detailed changes below. The website's source-module updates require refreshing and rechecking the draft; saved historical snapshots stay unchanged. Aggregates take only the final context, never sum these balances.
+
 When individual account balances are supplied, retain an optional `accounts` snapshot with stable `id`, `name`, `type`, `purpose`, `balance`, `included` and `note` fields. The included balances must equal `balances.cash`; exclude brokerage totals counted in investments and money belonging to others. A carried-forward balance is a reference requiring confirmation, not a new actual. Compare accounts by ID; absent prior details mean no baseline, not zero. Monthly/quarterly rollups retain the final snapshot only. Balance changes alone do not establish spending or its cause.
 
 Convert the user's verified input into the generated JSON contract without inventing values. Preserve the original input privately. Run:
@@ -70,7 +74,7 @@ Read the generated report and check arithmetic. The concise response should cont
 
 1. Period and baseline, or “首次基准”.
 2. Income, actual consumption, surplus, ending net worth and its change.
-3. Nine-category changes, plus supplied event notes. Explain only causes supported by the user's notes. A balance difference alone does not reveal what was purchased.
+3. Key changes in income/spending, projects, bills/subscriptions and asset/debt balances, followed by optional nine-category and account detail. Explain only causes supported by the user's notes. A balance difference alone does not reveal what was purchased.
 4. Up to three prioritized next actions, distinguishing timing effects, confirmed overspending and unresolved data.
 
 Do not label unexplained net-worth movement as investment returns. The reconciliation residual may include market/FX changes, omitted accounts and recording errors. Missing intervals or unequal durations must be disclosed; compare daily spending where useful. Monthly budget figures are saved snapshots of whole-month allowances, not prorated actuals. Do not infer quarterly budget modes without the trip-month schedule.
