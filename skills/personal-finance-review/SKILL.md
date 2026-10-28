@@ -56,6 +56,8 @@ Return a concise fine-category table and learning-purpose list with the periodic
 
 ## Save And Analyze
 
+When individual account balances are supplied, retain an optional `accounts` snapshot with stable `id`, `name`, `type`, `purpose`, `balance`, `included` and `note` fields. The included balances must equal `balances.cash`; exclude brokerage totals counted in investments and money belonging to others. A carried-forward balance is a reference requiring confirmation, not a new actual. Compare accounts by ID; absent prior details mean no baseline, not zero. Monthly/quarterly rollups retain the final snapshot only. Balance changes alone do not establish spending or its cause.
+
 Convert the user's verified input into the generated JSON contract without inventing values. Preserve the original input privately. Run:
 
 ```powershell
@@ -84,6 +86,6 @@ Aggregation creates a draft, not a saved report. Check it with the user before `
 
 ## Website Handoff
 
-The website has a “周期复盘” sidebar destination. Import `website-import.json` there; this updates period reviews, not detailed transactions or individual-account balances. Full backups and encrypted cloud sync include reviews. For cross-computer use, save the complete version to the user's configured cloud and verify the success status. Use an authorized browser session only; never extract credentials or claim cloud synchronization without confirmation.
+The website has a “周期复盘” sidebar destination. Its form brings in account balances for verification and can save a snapshot plus update existing account balances only when the cutoff is today and the sync checkbox is selected. Historical edits do not change current accounts. Importing `website-import.json` updates period reviews and their snapshots, not detailed transactions or current account balances. Full backups and encrypted cloud sync include reviews. For cross-computer use, save the complete version to the user's configured cloud and verify the success status. Use an authorized browser session only; never extract credentials or claim cloud synchronization without confirmation.
 
 When browser access is unavailable, deliver clickable local report and import-file links and say the website has not yet been updated. On another computer, export the latest reviews from the website and reconcile that history before analyzing the next period. Do not publish private review data to the public repository as a synchronization workaround.

@@ -97,6 +97,42 @@ test('monthly budget snapshot survives later changes and flags everyday overspen
   assert.equal(m.parseFinanceReviews({records:[current,current]}).length,1);
   assert.throws(()=>m.parseFinanceReviews({records:[current,{}]}));
 });
+test('account snapshots reconcile cash, retain notes and do not mutate the live source',()=>{
+  const accounts = [{id:'bank',name:'测试工资卡',type:'银行卡',purpose:'工资',balance:100.10}, {id:'wallet',name:'测试零钱',type:'钱包',purpose:'小额支付',balance:20.20}];
+  const draft = m.withReviewAccounts(m.newReviewDraft('week','2026-10-28'),accounts);
+  assert.equal(draft.balances.cash,120.30);
+  draft.accounts[0].balance=90.10;
+  draft.accounts[0].note='餐费10元';
+  draft.accounts[1].included=false;
+  const next = m.withReviewAccounts(m.newReviewDraft('week','2026-11-04'),accounts,draft.accounts);
+  assert.equal(next.accounts[1].included,false);
+  assert.equal(next.accounts[0].balance,100.10);
+  assert.equal(next.accounts[0].note,'');
+  assert.equal(accounts[0].balance,100.10);
+  const cash = m.reviewAccountCash(draft.accounts);
+  assert.equal(cash,90.10);
+  const raw = {...record('2026-10-28'),accounts:draft.accounts,balances:{cash,investments:0,otherAssets:0,debt:0}};
+  const saved = m.parseFinanceReview(raw);
+  assert.equal(saved.accounts[0].note,'餐费10元');
+  assert.throws(()=>m.parseFinanceReview({...raw,balances:{...raw.balances,cash:91}}),/合计一致/);
+  assert.throws(()=>m.parseFinanceReview({...raw,accounts:[draft.accounts[0],draft.accounts[0]]}),/唯一编号/);
+  assert.equal(m.reviewAccountCash([{...draft.accounts[0],balance:null}]),null);
+  assert.throws(()=>m.parseFinanceReview({...raw,accounts:[{...draft.accounts[0],balance:-1}]}),/期末余额/);
+  assert.deepEqual(m.parseFinanceReviews({records:[saved]})[0].accounts,saved.accounts);
+});
+test('account comparisons use ids, preserve missing baselines and retain only final snapshot on rollup',()=>{
+  const account = {id:'bank',name:'测试工资卡',type:'银行卡',purpose:'工资',balance:100,included:true,note:''};
+  const prior = record('2026-10-18','week',{accounts:[account],balances:{cash:100,investments:0,otherAssets:0,debt:0}});
+  const current = record('2026-10-25','week',{accounts:[{...account,name:'重命名工资卡',balance:80,note:'实际付款20元'}],balances:{cash:80,investments:0,otherAssets:0,debt:0}});
+  assert.equal(m.analyzeFinanceReview(current,[prior]).accountRows[0].delta,-20);
+  assert.equal(m.compareReviewAccounts(current,record('2026-10-18'))[0].delta,null);
+  assert.equal(m.compareReviewAccounts(record('2026-10-25'),prior)[0].status,'本期未记录');
+  assert.match(m.financeReviewReport(current,[prior]),/实际付款20元/);
+  const months = ['2026-07-31','2026-08-31','2026-09-30'].map(end=>record(end,'month',{accounts:[account],balances:{cash:100,investments:0,otherAssets:0,debt:0}}));
+  const result = m.aggregateFinanceReviews(months,'quarter','2026-09-30');
+  assert.equal(result.accounts[0].balance,100);
+  assert.notEqual(result.accounts,months[2].accounts);
+});
 test('CLI template, validation, saved history, correction backups and private website interchange',()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'finance-review-test-'));
   const script=path.resolve(__dirname,'../scripts/finance-review.cjs');

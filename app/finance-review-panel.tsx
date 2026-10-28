@@ -2,7 +2,7 @@
 
 import {useEffect, useRef, useState} from "react";
 import type {AnnualBudgetPlan, BudgetMonthMode} from "./annual-budget-model";
-import {aggregateFinanceReviews, analyzeFinanceReview, balanceLabels, financeReviewReport, newReviewDraft, parseFinanceReview, parseFinanceReviews, reviewCategories, reviewMoney, reviewTypeNames, upsertFinanceReview, type FinanceReview, type ReviewDraft, type ReviewType} from "./finance-review-model";
+import {aggregateFinanceReviews, analyzeFinanceReview, balanceLabels, financeReviewReport, newReviewDraft, parseFinanceReview, parseFinanceReviews, reviewAccountCash, reviewCategories, reviewMoney, reviewToday, reviewTypeNames, upsertFinanceReview, withReviewAccounts, type FinanceReview, type ReviewAccount, type ReviewAccountDraft, type ReviewDraft, type ReviewType} from "./finance-review-model";
 import "./finance-review-panel.css";
 
 function download(name: string, content: string, type: string) {
@@ -16,8 +16,16 @@ function download(name: string, content: string, type: string) {
 const numeric = (value: string) => value.trim() === "" ? null : Number(value);
 const change = (value: number | null) => value === null ? "无基准" : `${value > 0 ? "+" : ""}${reviewMoney(value)}`;
 
-export default function FinanceReviewPanel({records, plan, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; onChange: (records: FinanceReview[]) => void}) {
-  const [draft, setDraft] = useState<ReviewDraft>(() => newReviewDraft());
+type AccountSource = Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance">;
+export default function FinanceReviewPanel({records, plan, accounts, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; onChange: (records: FinanceReview[], accounts?: ReviewAccount[]) => void}) {
+  function makeDraft(type?: ReviewType, end = reviewToday()) {
+    const previous = records.filter(record => record.accounts && record.end <= end).sort((a,b) => b.end.localeCompare(a.end))[0];
+    const blank = newReviewDraft(type, end);
+    return accounts.length ? withReviewAccounts(blank, accounts, previous?.accounts) : blank;
+  }
+  const [draft, setDraft] = useState<ReviewDraft>(() => makeDraft());
+  const [accountsConfirmed, setAccountsConfirmed] = useState(false);
+  const [syncAccounts, setSyncAccounts] = useState(true);
   const [view, setView] = useState<"entry" | "report">(records.length ? "report" : "entry");
   const [selectedId, setSelectedId] = useState(records[0]?.id ?? "");
   const [status, setStatus] = useState("");
@@ -27,6 +35,7 @@ export default function FinanceReviewPanel({records, plan, onChange}: {records: 
   const [confirmation, setConfirmation] = useState<{message: string; action: () => void} | null>(null);
   const selected = records.find(record => record.id === selectedId) ?? records[0];
   const analysis = selected ? analyzeFinanceReview(selected, records) : null;
+  const canSyncAccounts = draft.end === reviewToday();
   const hasDraft = draft.income !== null || Object.values(draft.amounts).some(value => value !== null) || Object.values(draft.balances).some(value => value !== null) || Boolean(draft.summary) || Object.values(draft.notes).some(Boolean);
 
   useEffect(() => {
@@ -43,21 +52,24 @@ export default function FinanceReviewPanel({records, plan, onChange}: {records: 
 
   function resetDraft(type = draft.type, end = draft.end) {
     confirmOrRun(hasDraft, "切换会清空当前未保存的输入，是否继续？", () => {
-      setDraft(newReviewDraft(type, end));
+      setDraft(makeDraft(type, end));
+      setAccountsConfirmed(false);
       setView("entry");
       setStatus("");
     });
   }
   function save() {
     try {
+      if (draft.accounts && !accountsConfirmed) throw new Error("请先核对本期期末账户余额并勾选确认。");
       const budget = draft.type === "month" ? draft.budget ?? {mode: budgetMode, amounts: Object.fromEntries(plan.rows.map(row => [row.id, row[budgetMode]]))} : undefined;
       const record = parseFinanceReview({...draft, budget, savedAt: new Date().toISOString()});
       confirmOrRun(records.some(item => item.id === record.id), "该周期已有记录，是否用本次数据更新？", () => {
-        onChange(upsertFinanceReview(records, record));
+        onChange(upsertFinanceReview(records, record), canSyncAccounts && syncAccounts ? record.accounts : undefined);
         setSelectedId(record.id);
         setView("report");
         setDraft(newReviewDraft(draft.type, draft.end));
-        setStatus("复盘已记录；跨电脑使用前请保存完整版本到云端。");
+        setAccountsConfirmed(false);
+        setStatus(`复盘已记录${canSyncAccounts && syncAccounts && record.accounts ? "，余额已同步到账户管理" : "，当前账户余额未改动"}；跨电脑使用前请保存完整版本到云端。`);
       });
     } catch (error) {setStatus(error instanceof Error ? error.message : "保存失败");}
   }
@@ -80,9 +92,27 @@ export default function FinanceReviewPanel({records, plan, onChange}: {records: 
       const aggregated = aggregateFinanceReviews(records, draft.type, draft.end);
       confirmOrRun(hasDraft, "汇总将替换当前输入，是否继续？", () => {
         setDraft(aggregated);
+        setAccountsConfirmed(false);
         setStatus("已汇总连续覆盖的记录，请核对后保存。");
       });
     } catch (error) {setStatus(error instanceof Error ? error.message : "汇总失败");}
+  }
+  function updateReviewAccount(id: string, patch: Partial<ReviewAccountDraft>) {
+    const next = (draft.accounts ?? []).map(row => row.id === id ? {...row, ...patch} : row);
+    setDraft({...draft, accounts: next, balances: {...draft.balances, cash: reviewAccountCash(next)}});
+    setAccountsConfirmed(false);
+  }
+  function loadAccounts() {
+    confirmOrRun(Boolean(draft.accounts), "重新带入会替换复盘中的账户余额与说明，是否继续？", () => {
+      setDraft(withReviewAccounts(draft, accounts, draft.accounts ?? makeDraft(draft.type, draft.end).accounts));
+      setAccountsConfirmed(false);
+    });
+  }
+  function downloadTemplate() {
+    const template = makeDraft(draft.type, draft.end);
+    template.accounts = template.accounts?.map(row => ({...row, balance: null}));
+    template.balances.cash = null;
+    download("finance-review-template.json", JSON.stringify(template, null, 2), "application/json");
   }
 
   return <div className="finance-review">
@@ -96,7 +126,7 @@ export default function FinanceReviewPanel({records, plan, onChange}: {records: 
         <button type="button" className={view === "report" ? "active" : ""} aria-pressed={view === "report"} onClick={() => setView("report")}>前后对比</button>
       </div>
       <div className="data-actions">
-        <button className="secondary-button" type="button" onClick={() => download("finance-review-template.json", JSON.stringify(newReviewDraft(draft.type, draft.end), null, 2), "application/json")}>下载模板</button>
+        <button className="secondary-button" type="button" onClick={downloadTemplate}>下载模板</button>
         <button className="secondary-button" type="button" onClick={() => fileInput.current?.click()}>导入复盘</button>
         <button className="secondary-button" type="button" disabled={!records.length} onClick={() => download("finance-reviews.json", JSON.stringify({app:"personal-finance-review", version:1, records}, null, 2), "application/json")}>导出记录</button>
         <input className="visually-hidden" ref={fileInput} type="file" accept=".json,application/json" aria-label="导入周期复盘文件" onChange={event => {const file = event.target.files?.[0]; if (file) void importFile(file);}}/>
@@ -118,8 +148,26 @@ export default function FinanceReviewPanel({records, plan, onChange}: {records: 
           <td><input type="text" aria-label={`${row.name}本期事项`} placeholder={row.id === "learning" ? "课程、书籍、工具名称及用途" : undefined} value={draft.notes[row.id] ?? ""} onChange={event => setDraft({...draft, notes:{...draft.notes,[row.id]:event.target.value}})}/></td></tr>)}</tbody>
       </table></div>
       <p className="review-caption">应急&学习金在预算中合并，在复盘中分开：应急填净转入，学习填实际支出与用途。微信充值、自有账户互转、基金预留不记消费；实际付款只记一次。</p>
+      <section aria-labelledby="review-accounts-title" className="review-accounts">
+        <div className="review-toolbar"><h3 id="review-accounts-title">本期账户余额</h3><button className="secondary-button" type="button" disabled={!accounts.length} onClick={loadAccounts}>带入账户管理余额</button></div>
+        {draft.accounts ? <>
+          <p className="review-caption">截至 {draft.end} · 带入值仅供核对，并非本期已确认余额。证券账户、他人资金或已另计的余额请取消计入现金。</p>
+          <div className="table-wrap"><table className="review-table review-account-table"><thead><tr><th>账户 / 用途</th><th>本期期末余额</th><th>计入个人现金</th><th>本期变动说明</th></tr></thead>
+            <tbody>{draft.accounts.map(row => <tr key={row.id}><th scope="row">{row.name}<small>{row.type} · {row.purpose}</small></th>
+              <td><input type="number" min="0" step="0.01" required aria-label={`${row.name}复盘期末余额`} value={row.balance ?? ""} onChange={event => updateReviewAccount(row.id, {balance:numeric(event.target.value)})}/></td>
+              <td><input type="checkbox" aria-label={`${row.name}计入个人现金`} checked={row.included} onChange={event => updateReviewAccount(row.id,{included:event.target.checked})}/></td>
+              <td><input type="text" aria-label={`${row.name}本期变动说明`} value={row.note} onChange={event => updateReviewAccount(row.id,{note:event.target.value})}/></td></tr>)}</tbody>
+            <tfoot><tr><th>个人现金合计</th><td colSpan={3}>{draft.balances.cash === null ? "待补余额" : reviewMoney(draft.balances.cash)}</td></tr></tfoot>
+          </table></div>
+          <div className="review-account-options">
+            <label><input type="checkbox" required checked={accountsConfirmed} onChange={event => setAccountsConfirmed(event.target.checked)}/>已核对本期期末账户余额</label>
+            <label><input type="checkbox" checked={canSyncAccounts && syncAccounts} disabled={!canSyncAccounts} onChange={event => setSyncAccounts(event.target.checked)}/>保存时同步余额到账户管理（仅当天）</label>
+          </div>
+          {!canSyncAccounts && <p className="review-caption">历史日期仅保存复盘快照，不覆盖当前账户管理余额。</p>}
+        </> : <p className="review-caption">本期尚无账户明细，可带入核对；不带入时保留手填现金合计。</p>}
+      </section>
       <h3>期末个人资产与负债</h3>
-      <div className="review-fields balances">{Object.entries(balanceLabels).map(([key,label]) => <label className="field" key={key}><span>{label}</span><input type="number" min="0" step="0.01" required aria-label={label} value={draft.balances[key as keyof typeof draft.balances] ?? ""} onChange={event => setDraft({...draft,balances:{...draft.balances,[key]:numeric(event.target.value)}})}/></label>)}</div>
+      <div className="review-fields balances">{Object.entries(balanceLabels).map(([key,label]) => <label className="field" key={key}><span>{label}{key === "cash" && draft.accounts ? " · 账户合计" : ""}</span><input type="number" min="0" step="0.01" required readOnly={key === "cash" && Boolean(draft.accounts)} aria-label={label} value={draft.balances[key as keyof typeof draft.balances] ?? ""} onChange={event => setDraft({...draft,balances:{...draft.balances,[key]:numeric(event.target.value)}})}/></label>)}</div>
       <p className="review-caption">现金及存款含微信、应急与本人持有的专项现金；证券账户总资产含其中现金和持仓，两边不重复。已交给家人的钱不计个人资产。</p>
       <label className="field"><span>本期补充事项（可选）</span><textarea rows={2} value={draft.summary} onChange={event => setDraft({...draft,summary:event.target.value})}/></label>
       <div className="review-toolbar">
@@ -130,7 +178,7 @@ export default function FinanceReviewPanel({records, plan, onChange}: {records: 
     {view === "report" && (!selected || !analysis ? <p>尚无复盘记录。</p> : <section aria-label="周期对比报告">
       <div className="review-toolbar">
         <label className="field"><span>报告期间</span><select aria-label="报告期间" value={selected.id} onChange={event => setSelectedId(event.target.value)}>{records.map(record => <option key={record.id} value={record.id}>{reviewTypeNames[record.type]} · {record.start} 至 {record.end}</option>)}</select></label>
-        <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => {setDraft({...selected});setView("entry");setStatus("");})}>修订本期</button>
+        <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => {setDraft({...selected});setAccountsConfirmed(false);setView("entry");setStatus("");})}>修订本期</button>
           <button className="secondary-button" type="button" onClick={() => download(`finance-${selected.type}-${selected.start}.md`,financeReviewReport(selected,records),"text/markdown;charset=utf-8")}>下载报告</button></div>
       </div>
       <p className="review-caption">{analysis.previous ? `对比上期：${analysis.previous.start} 至 ${analysis.previous.end}` : "首次基准，暂无上期对比"}</p>
@@ -143,6 +191,10 @@ export default function FinanceReviewPanel({records, plan, onChange}: {records: 
       <div className="table-wrap"><table className="review-table"><thead><tr><th>项目</th><th>本期</th><th>上期</th><th>变化</th><th>本期事项</th></tr></thead>
         <tbody>{analysis.rows.map(row => <tr key={row.id}><th scope="row">{row.name}{row.flow === "transfer" && <small>划拨，不计消费</small>}</th><td>{reviewMoney(row.amount)}</td><td>{row.previous === null ? "无基准" : reviewMoney(row.previous)}</td><td>{change(row.delta)}</td><td>{row.note || "未填写"}</td></tr>)}</tbody>
       </table></div>
+      {analysis.accountRows.length > 0 && <section aria-label="账户余额对比"><h3>账户余额对比</h3>
+        <div className="table-wrap"><table className="review-table"><thead><tr><th>账户</th><th>本期期末</th><th>上期期末</th><th>变化</th><th>计入现金</th><th>本期说明</th></tr></thead>
+          <tbody>{analysis.accountRows.map(row => <tr key={row.id}><th scope="row">{row.name}<small>{row.purpose}</small></th><td>{row.current === null ? "未记录" : reviewMoney(row.current)}</td><td>{row.previous === null ? "无基准" : reviewMoney(row.previous)}</td><td>{change(row.delta)}</td><td>{row.included === null ? "未记录" : row.included ? "是" : "否"}</td><td>{row.note || "未填写"}<small>{row.status}</small></td></tr>)}</tbody>
+        </table></div></section>}
       {selected.budget && <details className="review-method" open><summary>月预算核对 · {selected.budget.mode === "normal" ? "普通月" : "出差月"}</summary>
         <div className="table-wrap"><table className="review-table"><thead><tr><th>项目</th><th>整月预算</th><th>本期金额</th><th>预算减本期</th></tr></thead><tbody>{analysis.budgetRows.map(row => <tr key={row.id}><th>{row.name}</th><td>{reviewMoney(row.budget)}</td><td>{reviewMoney(row.amount)}</td><td>{reviewMoney(row.remaining)}</td></tr>)}</tbody></table></div>
       </details>}

@@ -50,11 +50,15 @@ function run(args) {
     const stem = `${command}-${type}-${draft.start}`;
     if (fs.existsSync(path.join(directory, `${stem}.json`)) || fs.existsSync(path.join(directory, `${stem}.md`))) throw new Error('Template already exists; keep its inputs or use a separate private directory.');
     const previous = history.filter(row=>row.type===type && row.end<draft.start).sort((a,b)=>b.end.localeCompare(a.end))[0];
+    if (command === 'template' && previous?.accounts) draft.accounts = previous.accounts.map(row=>({...row,balance:null,note:''}));
     const template = [
       `# ${model.reviewTypeNames[type]}数据更新`, `期间：${draft.start} 至 ${draft.end}（人民币）`,
       previous ? `上期基准：${previous.start} 至 ${previous.end}；期末净资产 ${model.reviewMoney(model.reviewTotals(previous).netWorth)}` : '暂无同类上期，本次建立首次基准。', '',
       '本期外部收入：', '', '| 项目 | 本期金额 | 发生事项（可选） |', '|---|---:|---|',
       ...model.reviewCategories.map(row=>`| ${row.name}${row.flow==='transfer'?'（净划拨）':''} | | |`), '',
+      '## 本期期末账户', '| 账户编号 / 名称 | 期末余额 | 计入个人现金 | 本期变动说明 |', '|---|---:|---|---|',
+      ...(previous?.accounts ?? []).map(row=>`| ${row.id.replace(/[|\r\n]/g,' ')} / ${row.name.replace(/[|\r\n]/g,' ')} | | ${row.included?'是':'否'} | |`), '',
+      '余额须重新核对；计入账户合计须等于现金及存款，证券账户和他人资金不能重复计入。', '',
       '## 期末余额', ...Object.values(model.balanceLabels).map(label=>`- ${label}：`), '',
       '本期补充事项：', '',
       '没有发生填 0，未知留空待补。七类消费填实际付款减退款；投资和应急填净转入，不计消费。',

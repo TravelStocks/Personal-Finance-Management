@@ -15,6 +15,16 @@ export const reviewTypeNames: Record<ReviewType, string> = {week: "周复盘", m
 export const balanceLabels = {cash: "现金及存款", investments: "证券账户总资产", otherAssets: "其他个人资产", debt: "个人负债"};
 export type ReviewBalances = Record<keyof typeof balanceLabels, number>;
 export type ReviewBudget = {mode: "normal" | "trip"; amounts: Record<ReviewCategory, number>};
+export type ReviewAccount = {
+  id: string;
+  name: string;
+  type: string;
+  purpose: string;
+  balance: number;
+  included: boolean;
+  note: string;
+};
+export type ReviewAccountDraft = Omit<ReviewAccount, "balance"> & {balance: number | null};
 export type FinanceReview = {
   id: string;
   type: ReviewType;
@@ -27,15 +37,39 @@ export type FinanceReview = {
   balances: ReviewBalances;
   summary: string;
   budget?: ReviewBudget;
+  accounts?: ReviewAccount[];
 };
-export type ReviewDraft = Omit<FinanceReview, "id" | "savedAt" | "income" | "amounts" | "balances"> & {
+export type ReviewDraft = Omit<FinanceReview, "id" | "savedAt" | "income" | "amounts" | "balances" | "accounts"> & {
   income: number | null;
   amounts: Record<ReviewCategory, number | null>;
   balances: Record<keyof ReviewBalances, number | null>;
+  accounts?: ReviewAccountDraft[];
 };
 const dayMs = 86400000;
 const cents = (value: number) => Math.round((value + Number.EPSILON * Math.abs(value)) * 100);
 const sum = (values: number[]) => values.reduce((total, value) => total + cents(value), 0) / 100;
+export function reviewAccountCash(accounts: ReviewAccountDraft[]): number | null {
+  if (accounts.some(row => row.balance === null || !Number.isFinite(row.balance) || row.balance < 0)) return null;
+  return sum(accounts.filter(row => row.included).map(row => row.balance!));
+}
+export function withReviewAccounts(draft: ReviewDraft, source: Array<Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance">>, previous?: ReviewAccountDraft[]): ReviewDraft {
+  const accounts = source.map(row => ({...row, included: previous?.find(item => item.id === row.id)?.included ?? true, note: ""}));
+  return {...draft, accounts, balances: {...draft.balances, cash: reviewAccountCash(accounts)}};
+}
+export function compareReviewAccounts(current: FinanceReview, previous?: FinanceReview) {
+  const currentRows = current.accounts ?? [];
+  const previousRows = previous?.accounts ?? [];
+  const ids = [...new Set([...currentRows.map(row => row.id), ...previousRows.map(row => row.id)])];
+  return ids.map(id => {
+    const now = currentRows.find(row => row.id === id);
+    const before = previousRows.find(row => row.id === id);
+    return {id, name: now?.name ?? before!.name, purpose: now?.purpose ?? before!.purpose,
+      current: now?.balance ?? null, previous: before?.balance ?? null,
+      delta: now && before ? sum([now.balance, -before.balance]) : null,
+      included: now?.included ?? null, note: now?.note ?? "",
+      status: !now ? "本期未记录" : !before ? "无上期账户基准" : now.included !== before.included ? "计入范围变化" : "同口径"};
+  });
+}
 export const reviewMoney = (value: number) => new Intl.NumberFormat("zh-CN", {style: "currency", currency: "CNY", maximumFractionDigits: 2}).format(value);
 const signed = (value: number | null) => value === null ? "无上期基准" : `${value > 0 ? "+" : ""}${reviewMoney(value)}`;
 const iso = (date: Date) => date.toISOString().slice(0, 10);
@@ -89,6 +123,20 @@ export function parseFinanceReview(value: unknown): FinanceReview {
   const inputAmounts = object(input.amounts);
   const inputNotes = object(input.notes);
   const inputBalances = object(input.balances);
+  let accounts: ReviewAccount[] | undefined;
+  if (input.accounts !== undefined) {
+    if (!Array.isArray(input.accounts)) throw new Error("账户快照须为列表");
+    const ids = new Set<string>();
+    accounts = input.accounts.map(value => {
+      const row = object(value);
+      if (typeof row.id !== "string" || !row.id.trim() || ids.has(row.id) || typeof row.name !== "string" || !row.name.trim() || typeof row.included !== "boolean") throw new Error("账户快照名称、唯一编号及计入范围须完整");
+      ids.add(row.id);
+      return {id: row.id, name: row.name, type: typeof row.type === "string" ? row.type : "",
+        purpose: typeof row.purpose === "string" ? row.purpose : "", included: row.included,
+        balance: amount(row.balance, `${row.name}期末余额`, true), note: typeof row.note === "string" ? row.note : ""};
+    });
+    if (amount(inputBalances.cash, "现金及存款", true) !== reviewAccountCash(accounts)) throw new Error("现金及存款须与计入的账户余额合计一致");
+  }
   let budget: ReviewBudget | undefined;
   if (input.budget !== undefined) {
     const supplied = object(input.budget);
@@ -102,7 +150,7 @@ export function parseFinanceReview(value: unknown): FinanceReview {
     amounts: Object.fromEntries(reviewCategories.map(row => [row.id, amount(inputAmounts[row.id], row.name)])) as FinanceReview["amounts"],
     notes: Object.fromEntries(reviewCategories.map(row => [row.id, typeof inputNotes[row.id] === "string" ? inputNotes[row.id] : ""])),
     balances: Object.fromEntries(Object.entries(balanceLabels).map(([key, label]) => [key, amount(inputBalances[key], label, true)])) as ReviewBalances,
-    summary: typeof input.summary === "string" ? input.summary : "", ...(budget ? {budget} : {})};
+    summary: typeof input.summary === "string" ? input.summary : "", ...(budget ? {budget} : {}), ...(accounts ? {accounts} : {})};
 }
 export function upsertFinanceReview(records: FinanceReview[], record: FinanceReview) {
   return [...records.filter(item => item.id !== record.id), record].sort((a, b) => b.end.localeCompare(a.end) || a.id.localeCompare(b.id));
@@ -130,6 +178,8 @@ export function analyzeFinanceReview(current: FinanceReview, records: FinanceRev
   // A missing interval cannot be reconciled using just the current period's income and spending.
   const unexplained = contiguous && netWorthDelta !== null ? sum([netWorthDelta, -totals.surplus]) : null;
   const notices = ["投资基金填净投入，应急基金填净转入；二者不计消费。其他七项填实际净支出，不填充值或预算预留。"];
+  const accountRows = compareReviewAccounts(current, previous);
+  if (current.accounts) notices.push("账户余额按复盘时的快照比较；余额变化本身不等于消费，具体原因以本期变动说明和账单为准。账户计入范围变化须另行核对。");
   notices.push("预算中的应急&学习金合并展示；复盘仍区分应急净转入与学习实际消费，学习用途据备注判断。");
   if (!previous) notices.push("本期是首次基准，暂无上期变化；不会把缺失的上期当成 0。");
   else {
@@ -148,7 +198,7 @@ export function analyzeFinanceReview(current: FinanceReview, records: FinanceRev
   if (overDaily.length) actions.unshift(`本月${overDaily.map(row => `${row.name}超过预算${reviewMoney(-row.remaining)}`).join("、")}，核对实际明细，再调整下月额度或消费。`);
   if (current.budget) notices.push("预算为保存时的整月额度，不按天摊分；阶段月报的剩余额度不代表最终结余。消费基金跨月使用时结合历史余额判断，不把预留重复计消费。");
   if (current.budget?.mode === "trip") notices.push("出差预算已从补贴扣除海外开销；若实际收支按毛额录入，先拆分海外开销再核对预算，本表不据此自动判定日常超支。");
-  return {previous, prior, totals, rows, budgetRows, contiguous, netWorthDelta, unexplained, notices, actions: actions.slice(0, 3)};
+  return {previous, prior, totals, rows, accountRows, budgetRows, contiguous, netWorthDelta, unexplained, notices, actions: actions.slice(0, 3)};
 }
 export function financeReviewReport(current: FinanceReview, records: FinanceReview[]) {
   const analysis = analyzeFinanceReview(current, records);
@@ -165,6 +215,8 @@ export function financeReviewReport(current: FinanceReview, records: FinanceRevi
     ...(current.budget ? [`## 月预算核对 · ${current.budget.mode === "normal" ? "普通月" : "出差月"}`, "| 项目 | 整月预算 | 本期金额 | 预算减本期 |", "|---|---:|---:|---:|", ...analysis.budgetRows.map(row => `| ${row.name} | ${reviewMoney(row.budget)} | ${reviewMoney(row.amount)} | ${reviewMoney(row.remaining)} |`), ""] : []),
     "| 期末余额 | 本期 | 上期 | 变化 |", "|---|---:|---:|---:|",
     ...Object.entries(balanceLabels).map(([key, label]) => {const field = key as keyof ReviewBalances; return `| ${label} | ${reviewMoney(current.balances[field])} | ${previous ? reviewMoney(previous.balances[field]) : "无基准"} | ${signed(previous ? sum([current.balances[field], -previous.balances[field]]) : null)} |`;}), "",
+    ...(analysis.accountRows.length ? ["## 账户余额对比", "| 账户 | 本期期末 | 上期期末 | 余额变化 | 计入个人现金 | 本期说明 |", "|---|---:|---:|---:|---|---|",
+      ...analysis.accountRows.map(row => `| ${cell(row.name)} | ${row.current === null ? "未记录" : reviewMoney(row.current)} | ${row.previous === null ? "无基准" : reviewMoney(row.previous)} | ${signed(row.delta)} | ${row.included === null ? "未记录" : row.included ? "是" : "否"} | ${cell([row.status, row.note].filter(Boolean).join("；"))} |`), ""] : []),
     ...(current.summary ? [`本期补充：${cell(current.summary)}`, ""] : []),
     "## 学习用途", `本期学习净支出 ${reviewMoney(current.amounts.learning)}；${cell(current.notes.learning || "未填写学习事项，暂不能判断学了什么。")}`, "",
     "## 下期动作", ...analysis.actions.map(action => `- ${action}`), "",
@@ -186,7 +238,8 @@ export function aggregateFinanceReviews(records: FinanceReview[], type: "month" 
       income: sum(source.map(row => row.income)),
       amounts: Object.fromEntries(reviewCategories.map(category => [category.id, sum(source.map(row => row.amounts[category.id]))])),
       notes: Object.fromEntries(reviewCategories.map(category => [category.id, source.filter(row => row.notes[category.id]).map(row => `${row.start}：${row.notes[category.id]}`).join("；")])),
-      balances: source[source.length - 1].balances, summary: `由 ${source.length} 条无重叠、连续覆盖的${sourceType === "week" ? "周" : "月"}记录汇总；期末余额取最后一期，不累加。`});
+      balances: source[source.length - 1].balances, accounts: source[source.length - 1].accounts,
+      summary: `由 ${source.length} 条无重叠、连续覆盖的${sourceType === "week" ? "周" : "月"}记录汇总；期末余额及账户快照取最后一期，不累加。`});
   }
   throw new Error("现有记录没有完整、连续覆盖该周期，或有跨月/跨季的周记录。请补填本周期实际汇总，不能按天摊分实际消费。");
 }

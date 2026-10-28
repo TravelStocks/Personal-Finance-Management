@@ -27,5 +27,13 @@
 .finance-review ul {padding-left:22px;line-height:1.8;}
 .review-method {border-top:1px solid var(--line);padding-top:14px;}
 .review-method summary {cursor:pointer;font-weight:600;color:var(--blue);}
+.review-accounts {margin-top:24px;border-top:1px solid var(--line);}
+.review-accounts .review-toolbar h3 {margin:0;}
+.review-account-table {min-width:700px;}
+.review-account-table input[type=checkbox],.review-account-options input[type=checkbox] {width:18px;height:18px;flex:none;accent-color:var(--blue);}
+.review-account-table tfoot {font-weight:600;background:var(--soft);}
+.review-account-options {display:flex;gap:12px 24px;flex-wrap:wrap;margin-top:16px;}
+.review-account-options label {display:flex;align-items:center;gap:8px;font-size:14px;}
+.finance-review input[readonly] {background:var(--soft);color:var(--muted);}
 @media(max-width:1000px){.review-metrics,.review-fields.balances {grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:600px){.review-fields {grid-template-columns:1fr;}.review-toolbar>.field {width:100%;}.review-metrics strong {font-size:20px;}}

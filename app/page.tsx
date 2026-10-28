@@ -5,7 +5,8 @@ import { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan 
 import AnnualBudgetPlanner, {AnnualBudgetAllocationTable} from "./annual-budget-plan";
 import { calculateAnnualBudgetPlan, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
 import FinanceReviewPanel from "./finance-review-panel";
-import {parseFinanceReviews, reviewMoney, type FinanceReview} from "./finance-review-model";
+import {parseFinanceReviews, reviewMoney, reviewToday, type FinanceReview} from "./finance-review-model";
+import {applySalaryFromMonth, confirmedMonthlySalary, migrateSalarySettings, salarySettingsVersion} from "./salary-model";
 import {addSpendingDetailPresets, getSpendingGroup, nextMonthSpendingRows, spendingGroups, summarizeLearning, type SpendingBudget as Budget} from "./spending-detail-model";
 
 type Period = "周" | "月" | "季" | "年";
@@ -151,6 +152,7 @@ type ReportRow = {
 };
 
 type PersistedFinanceData = {
+  salarySettingsVersion?: number;
   annualBudgetPlan?: AnnualBudgetPlan;
   financeReviews?: FinanceReview[];
   monthlyCashPlan?: MonthlyCashPlan;
@@ -328,18 +330,18 @@ const initialMonthRecords: MonthRecord[] = [
   {
     id: "2026-06",
     label: "2026年6月",
-    salary: 15000,
+    salary: confirmedMonthlySalary,
     payday: 10,
     stockIncome: 0,
     otherIncome: 0,
     budgets: initialBudgets.map((item) => ({ ...item })),
   },
-  { id: "2026-07", label: "2026年7月", salary: 15000, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
-  { id: "2026-08", label: "2026年8月", salary: 15000, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
-  { id: "2026-09", label: "2026年9月", salary: 15000, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
-  { id: "2026-10", label: "2026年10月", salary: 15000, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
-  { id: "2026-11", label: "2026年11月", salary: 15000, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
-  { id: "2026-12", label: "2026年12月", salary: 15000, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
+  { id: "2026-07", label: "2026年7月", salary: confirmedMonthlySalary, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
+  { id: "2026-08", label: "2026年8月", salary: confirmedMonthlySalary, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
+  { id: "2026-09", label: "2026年9月", salary: confirmedMonthlySalary, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
+  { id: "2026-10", label: "2026年10月", salary: confirmedMonthlySalary, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
+  { id: "2026-11", label: "2026年11月", salary: confirmedMonthlySalary, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
+  { id: "2026-12", label: "2026年12月", salary: confirmedMonthlySalary, payday: 10, stockIncome: 0, otherIncome: 0, budgets: monthBudgets() },
 ];
 
 const initialHoldings: Holding[] = [
@@ -1070,6 +1072,7 @@ export default function FinanceDashboard() {
 
   function getPersistedFinanceData(): PersistedFinanceData {
     return {
+      salarySettingsVersion,
       annualBudgetPlan,
       financeReviews,
       monthlyCashPlan,
@@ -1125,12 +1128,14 @@ export default function FinanceDashboard() {
 
   function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
     const restoredReviews = saved.financeReviews === undefined ? undefined : parseFinanceReviews(saved.financeReviews);
-    setAnnualBudgetPlan(normalizeAnnualBudgetPlan(saved.annualBudgetPlan));
+    const restoredPlan = normalizeAnnualBudgetPlan(saved.annualBudgetPlan);
+    const salaryData = migrateSalarySettings(Array.isArray(saved.monthlyRecords) ? saved.monthlyRecords : initialMonthRecords, restoredPlan.salary, saved.salarySettingsVersion);
+    setAnnualBudgetPlan({...restoredPlan, salary: salaryData.salary});
     if (restoredReviews) setFinanceReviews(restoredReviews);
-    setMonthlyCashPlan(normalizeMonthlyCashPlan(saved.monthlyCashPlan));
+    setMonthlyCashPlan({...normalizeMonthlyCashPlan(saved.monthlyCashPlan), income: salaryData.salary});
     if (saved.period) setPeriod(saved.period);
     if (saved.selectedMonth) setSelectedMonth(saved.selectedMonth);
-    if (Array.isArray(saved.monthlyRecords)) setMonthlyRecords(saved.monthlyRecords);
+    setMonthlyRecords(salaryData.records);
     if (Array.isArray(saved.accounts)) setAccounts(saved.accounts);
     if (Array.isArray(saved.holdings)) setHoldings(saved.holdings);
     if (typeof saved.fxUsd === "number") setFxUsd(saved.fxUsd);
@@ -1717,7 +1722,7 @@ export default function FinanceDashboard() {
     for (let index = 0; index < 6; index += 1) {
       const forecastMonthId = addMonthsToId(selectedMonth, index);
       const forecastRecord = monthlyRecords.find((item) => item.id === forecastMonthId);
-      const forecastSalary = forecastRecord?.salary ?? salary;
+      const forecastSalary = annualBudgetPlan.salary;
       const forecastSpendingPlan = forecastRecord ? recordSpendingPlan(forecastRecord) : totals.spendingPlan;
       const inflow = (cashflowHiddenBuiltinIds.includes("salary") ? 0 : forecastSalary) + customInflow;
       const outflow = (cashflowHiddenBuiltinIds.includes("spendingPlan") ? 0 : forecastSpendingPlan) + totals.assetOutflow;
@@ -1736,7 +1741,7 @@ export default function FinanceDashboard() {
     const customInflow = cashflowCustomItems
       .filter((item) => item.direction === "inflow")
       .reduce((sum, item) => sum + item.amount, 0);
-    const inflow = (cashflowHiddenBuiltinIds.includes("salary") ? 0 : salary) + customInflow;
+    const inflow = (cashflowHiddenBuiltinIds.includes("salary") ? 0 : annualBudgetPlan.salary) + customInflow;
     const rawEvents = [
       ...reminders.map((item) => ({
         date: item.date,
@@ -1745,8 +1750,8 @@ export default function FinanceDashboard() {
         outflow: item.kind === "定存" ? 0 : item.amount,
         kind: item.kind,
       })),
-      { date: "2026-07-10", item: "现金流入", inflow, outflow: 0, kind: "收入" },
-      { date: "2026-07-15", item: "月度资产分配", inflow: 0, outflow: totals.assetOutflow, kind: "分配" },
+      { date: `${selectedMonth}-${String(Math.min(Math.max(activeMonth.payday, 1), new Date(Number(selectedMonth.slice(0,4)), Number(selectedMonth.slice(5)), 0).getDate())).padStart(2,"0")}`, item: "现金流入", inflow, outflow: 0, kind: "收入" },
+      { date: `${selectedMonth}-15`, item: "月度资产分配", inflow: 0, outflow: totals.assetOutflow, kind: "分配" },
     ].sort((a, b) => a.date.localeCompare(b.date));
     return rawEvents.reduce<{ balance: number; rows: CashflowEvent[] }>(
       (state, item) => {
@@ -1815,7 +1820,7 @@ export default function FinanceDashboard() {
       const nextRecord: MonthRecord = {
         id,
         label,
-        salary: lastRecord.salary,
+        salary: annualBudgetPlan.salary,
         payday: lastRecord.payday,
         stockIncome: 0,
         otherIncome: 0,
@@ -1842,8 +1847,12 @@ export default function FinanceDashboard() {
     });
   }
 
-  function setSalary(value: number) {
-    updateMonthRecord(selectedMonth, { salary: value });
+  function updateAnnualBudgetPlan(plan: AnnualBudgetPlan) {
+    if (plan.salary !== annualBudgetPlan.salary) {
+      setMonthlyRecords(records => applySalaryFromMonth(records, plan.salary, reviewToday().slice(0,7)));
+      setMonthlyCashPlan(current => ({...current, income: plan.salary}));
+    }
+    setAnnualBudgetPlan(plan);
   }
 
   function addCashflowCustomItem() {
@@ -2373,10 +2382,10 @@ export default function FinanceDashboard() {
       id: "builtin-salary",
       builtinId: "salary",
       name: "工资流入",
-      amount: salary,
+      amount: annualBudgetPlan.salary,
       direction: "inflow",
-      source: "计入预测",
-      onAmountChange: setSalary,
+      source: "与年度工资规划同步；历史实际收入单独保留",
+      onAmountChange: value => updateAnnualBudgetPlan({...annualBudgetPlan, salary: value}),
       onDelete: () => deleteCashflowBuiltinItem("salary"),
     },
     {
@@ -2539,12 +2548,12 @@ export default function FinanceDashboard() {
   const cashflowOutflowBars = forecast.map((item) => ({ label: item.month, value: item.outflow, color: palette[4] }));
   const waterfallData: WaterfallDatum[] = [
     { label: "期初现金", value: totals.accountTotal, kind: "start", color: palette[0] },
-    { label: "工资", value: salary, kind: "positive", color: palette[1] },
-    { label: "生活支出", value: -totals.spendingPlan, kind: "negative", color: palette[4] },
+    { label: "预测收入", value: cashflowMonthlyInflow, kind: "positive", color: palette[1] },
+    { label: "生活支出", value: -totals.cashflowSpendingPlan, kind: "negative", color: palette[4] },
     { label: "资产分配", value: -totals.assetOutflow, kind: "negative", color: palette[2] },
     {
       label: "月末现金",
-      value: totals.accountTotal + salary - totals.spendingPlan - totals.assetOutflow,
+      value: totals.accountTotal + cashflowExpectedIncrease,
       kind: "end",
       color: palette[3],
     },
@@ -2997,7 +3006,7 @@ export default function FinanceDashboard() {
           </section>
         )}
 
-        <AnnualBudgetPlanner plan={annualBudgetPlan} onChange={setAnnualBudgetPlan} />
+        <AnnualBudgetPlanner plan={annualBudgetPlan} onChange={updateAnnualBudgetPlan} />
         <details className="finance-ledger" open={ledgerOpen} onToggle={event => setLedgerOpen(event.currentTarget.open)}>
           <summary>查看账本、资产与历史记录 <span>按已保存的月份查看实际数据</span></summary>
           <p className="ledger-context">预算汇总与上方年度方案和所选月份类型同步。账户余额、资产和历史收支按已录入数据计算；核算当前净资产前，请更新公司借款及各账户余额。</p>
@@ -3121,6 +3130,7 @@ export default function FinanceDashboard() {
               <section className="detail-panel" id={`finance-${moduleId}`} tabIndex={-1} aria-label={moduleList.find(item => item.id === moduleId)?.title} key={moduleId}>
                 {moduleId === "income" && (
                   <Module title="收入" desc="收入只看实际到账；炒股月结算单独记录，不进入现金流预测。">
+                    <EditableNumber label="每月工资规划（元）" value={annualBudgetPlan.salary} onChange={value => updateAnnualBudgetPlan({...annualBudgetPlan, salary:value})}/>
                     <DataChartLayout
                       data={
                         <EditableMonthlyIncomeTable
@@ -3192,7 +3202,7 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "cashflow" && (
-                  <Module title="账本现金流预测" desc="按所选月份的账本记录推演6个月；出差月份与补贴到账尚未确定，当前方案的现金流请参考上方两类月份核对表。">
+                  <Module title="账本现金流预测" desc="工资采用统一规划值，支出按所选月份账本推演6个月；出差月份与补贴到账尚未确定。历史实际收入不改写预测工资。">
                     <DataChartLayout
                       data={
                         <>
@@ -3286,7 +3296,7 @@ export default function FinanceDashboard() {
                             <Stat label={`${budgetModeName}现金余量`} value={money(cashPlanTotals.surplus)} />
                             <Stat label="全年全部分配" value={money(annualPlanTotals.annualOutflow)} />
                           </div>
-                          <AnnualBudgetAllocationTable plan={annualBudgetPlan} onChange={setAnnualBudgetPlan} titleId="module-annual-allocation-title"/>
+                          <AnnualBudgetAllocationTable plan={annualBudgetPlan} onChange={updateAnnualBudgetPlan} titleId="module-annual-allocation-title"/>
                           <details>
                             <summary>查看历史月份预算与实际支出</summary>
                             <p className="ledger-context">以下是已保存月份的账本数据，年度分配表用于当前计划；历史预算金额可在这里单独维护。</p>
@@ -3578,9 +3588,14 @@ export default function FinanceDashboard() {
 
                 {moduleId === "periodReview" && (
                   <Module title="周期复盘" desc="本期实际发生额与上期同类周期比较；记录与账本明细分别保存。">
-                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} onChange={records => {
-                      persistLocalFinanceData({...getPersistedFinanceData(), financeReviews: records});
+                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} onChange={(records, updatedAccounts) => {
+                      const nextAccounts = updatedAccounts ? accounts.map(account => {
+                        const updated = updatedAccounts.find(row => row.id === account.id);
+                        return updated ? {...account, balance: updated.balance} : account;
+                      }) : accounts;
+                      persistLocalFinanceData({...getPersistedFinanceData(), financeReviews: records, accounts: nextAccounts});
                       setFinanceReviews(records);
+                      if (updatedAccounts) setAccounts(nextAccounts);
                     }}/>
                   </Module>
                 )}
@@ -4081,7 +4096,7 @@ function EditableMonthlyIncomeTable({
           <thead>
             <tr>
               <th>月份</th>
-              <th>工资</th>
+              <th>工资到账记录</th>
               <th>到账日</th>
               <th>炒股月结</th>
               <th>其他收入</th>
