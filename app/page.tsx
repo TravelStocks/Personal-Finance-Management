@@ -1028,6 +1028,7 @@ export default function FinanceDashboard() {
   const [monthlyCashPlan, setMonthlyCashPlan] = useState<MonthlyCashPlan>(initialMonthlyCashPlan);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [activeModules, setActiveModules] = useState<ModuleId[]>([]);
+  const [navigationTarget, setNavigationTarget] = useState<{ id: ModuleId | "overview" } | null>(null);
   const [period, setPeriod] = useState<Period>("月");
   const [selectedMonth, setSelectedMonth] = useState("2026-06");
   const [monthlyRecords, setMonthlyRecords] = useState<MonthRecord[]>(initialMonthRecords);
@@ -2082,6 +2083,33 @@ export default function FinanceDashboard() {
     setActiveModules((items) => (items.includes(id) ? items.filter((item) => item !== id) : [...items, id]));
   }
 
+  function navigateToSection(id: ModuleId | "overview") {
+    setLedgerOpen(true);
+    if (id !== "overview") {
+      setActiveModules((items) => (items.includes(id) ? items : [...items, id]));
+    }
+    setNavigationTarget({ id });
+  }
+
+  useEffect(() => {
+    if (!navigationTarget) return;
+    // Wait until the ledger and the requested module have been rendered before scrolling.
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(`finance-${navigationTarget.id}`);
+      if (!target) return;
+      const stickyHeight = Array.from(document.querySelectorAll<HTMLElement>(".topbar, .selected-title"))
+        .reduce((height, header) => window.getComputedStyle(header).position === "sticky"
+          ? Math.max(height, header.getBoundingClientRect().height) : height, 0);
+      target.style.scrollMarginTop = `${stickyHeight + 16}px`;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [navigationTarget]);
+
   function openAllModules() {
     setActiveModules(moduleList.map((item) => item.id));
   }
@@ -2855,7 +2883,7 @@ export default function FinanceDashboard() {
 
   return (
     <main className="finance-page">
-      <aside className="side-nav">
+      <nav className="side-nav" aria-label="财务模块导航">
         <div className="brand">
           <span className="brand-mark">PF</span>
           <div>
@@ -2863,19 +2891,26 @@ export default function FinanceDashboard() {
             <small>年度预算 / 财务账本</small>
           </div>
         </div>
-        <button className={activeModules.length === 0 ? "active" : ""} onClick={() => setActiveModules([])}>
-          总览 / 清空
+        <button
+          className={!navigationTarget || navigationTarget.id === "overview" ? "active" : ""}
+          aria-current={!navigationTarget || navigationTarget.id === "overview" ? "location" : undefined}
+          type="button"
+          onClick={() => navigateToSection("overview")}
+        >
+          总览
         </button>
         {moduleList.map((item) => (
           <button
-            className={activeModules.includes(item.id) ? "active" : ""}
+            className={navigationTarget?.id === item.id ? "active" : ""}
+            aria-current={navigationTarget?.id === item.id ? "location" : undefined}
             key={item.id}
-            onClick={() => toggleModule(item.id)}
+            type="button"
+            onClick={() => navigateToSection(item.id)}
           >
             {item.title}
           </button>
         ))}
-      </aside>
+      </nav>
 
       <section className="workspace">
         <header className="topbar">
@@ -2958,10 +2993,10 @@ export default function FinanceDashboard() {
         <details className="finance-ledger" open={ledgerOpen} onToggle={event => setLedgerOpen(event.currentTarget.open)}>
           <summary>查看账本、资产与历史记录 <span>按已保存的月份查看实际数据</span></summary>
           <p className="ledger-context">预算汇总与上方年度方案和所选月份类型同步。账户余额、资产和历史收支按已录入数据计算；核算当前净资产前，请更新公司借款及各账户余额。</p>
-        <section className="overview">
+        <section className="overview" id="finance-overview" tabIndex={-1} aria-labelledby="finance-overview-title">
           <div className="section-title">
             <div>
-              <h2>账户与预算总览</h2>
+              <h2 id="finance-overview-title">账户与预算总览</h2>
               <p>前四项是{budgetModeName}预算；账户与资产按实际余额统计，历史收支可在对应模块查看。</p>
             </div>
             <span className="pill good">公开页已脱敏</span>
@@ -3075,7 +3110,7 @@ export default function FinanceDashboard() {
             </div>
 
             {activeModules.map((moduleId) => (
-              <section className="detail-panel" key={moduleId}>
+              <section className="detail-panel" id={`finance-${moduleId}`} tabIndex={-1} aria-label={moduleList.find(item => item.id === moduleId)?.title} key={moduleId}>
                 {moduleId === "income" && (
                   <Module title="收入" desc="收入只看实际到账；炒股月结算单独记录，不进入现金流预测。">
                     <DataChartLayout

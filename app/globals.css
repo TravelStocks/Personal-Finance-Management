@@ -601,6 +601,12 @@ select {
   padding: 16px;
 }
 
+.detail-panel:focus-visible,
+.overview:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 4px;
+}
+
 .selected-modules {
   display: grid;
   gap: 14px;
