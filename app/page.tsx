@@ -2603,7 +2603,7 @@ export default function FinanceDashboard() {
       action:
         totals.emergencyCoverage < 1
           ? "先把硬应急金做到 1 个月必要支出，再追求更高投资速度。"
-          : "应急金继续向 3 个月推进，手机分期按期结束即可。",
+          : `应急金继续向 ${emergencyMonths} 个月、${money(totals.emergencyTarget)} 的统一目标推进；分期余额按实际核对。`,
     },
   ];
   const monthlyLearning = summarizeLearning(budgets);
@@ -4423,7 +4423,7 @@ function EditableAccountsTable({
     <>
       <TableToolbar
         title="账户底表"
-        meta={`${accounts.length} 个账户 / 合计 ${money(total)} / 可动用 ${money(liquidAccountTotal)}`}
+        meta={`${accounts.length} 个账户 / 合计 ${money(total)} / 可提取（含专项）${money(liquidAccountTotal)}`}
         action={<button className="secondary-button" type="button" onClick={addAccount}>新增账户</button>}
       />
       <div className="table-wrap spreadsheet-wrap">
@@ -4435,7 +4435,7 @@ function EditableAccountsTable({
               <th>类型</th>
               <th>余额</th>
               <th>用途</th>
-              <th>可动用</th>
+              <th>可提取</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -4488,7 +4488,7 @@ function EditableAccountsTable({
                 <td><TableTextInput ariaLabel={`${item.name} 类型`} value={item.type} onChange={(value) => updateAccount(item.id, { type: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 余额`} value={item.balance} onChange={(value) => updateAccount(item.id, { balance: value })} /></td>
                 <td><TableTextInput ariaLabel={`${item.name} 用途`} value={item.purpose} onChange={(value) => updateAccount(item.id, { purpose: value })} /></td>
-                <td><TableCheckbox ariaLabel={`${item.name} 可动用`} checked={item.liquid} onChange={(value) => updateAccount(item.id, { liquid: value })} /></td>
+                <td><TableCheckbox ariaLabel={`${item.name} 可提取`} checked={item.liquid} onChange={(value) => updateAccount(item.id, { liquid: value })} /></td>
                 <td>
                   <button className="danger-button compact" disabled={accounts.length <= 1} type="button" onClick={() => deleteAccount(item.id)}>
                     删除

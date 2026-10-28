@@ -12736,7 +12736,7 @@ function sn() {
 			tone: U.emergencyCoverage >= 3 && U.totalDebt <= cr * .2 ? "green" : "amber",
 			summary: `应急覆盖 ${U.emergencyCoverage.toFixed(1)} 个月，负债 ${F(U.totalDebt)}`,
 			detail: `应急目标 ${F(U.emergencyTarget)}，当前 ${F(U.currentEmergencyFund)}；总负债率 ${L(U.debtRatio)}。`,
-			action: U.emergencyCoverage < 1 ? "先把硬应急金做到 1 个月必要支出，再追求更高投资速度。" : "应急金继续向 3 个月推进，手机分期按期结束即可。"
+			action: U.emergencyCoverage < 1 ? "先把硬应急金做到 1 个月必要支出，再追求更高投资速度。" : `应急金继续向 ${_e} 个月、${F(U.emergencyTarget)} 的统一目标推进；分期余额按实际核对。`
 		}
 	], _a = qe(sr), va = [
 		`${rr.label}财务分析报告`,
@@ -15109,7 +15109,7 @@ function xn({ accounts: e, total: t, liquidAccountTotal: n, updateAccount: r, ad
 	let [s, c] = (0, _.useState)(null);
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(hn, {
 		title: "账户底表",
-		meta: `${e.length} 个账户 / 合计 ${F(t)} / 可动用 ${F(n)}`,
+		meta: `${e.length} 个账户 / 合计 ${F(t)} / 可提取（含专项）${F(n)}`,
 		action: /* @__PURE__ */ (0, b.jsx)("button", {
 			className: "secondary-button",
 			type: "button",
@@ -15129,7 +15129,7 @@ function xn({ accounts: e, total: t, liquidAccountTotal: n, updateAccount: r, ad
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "类型" }),
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "余额" }),
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "用途" }),
-				/* @__PURE__ */ (0, b.jsx)("th", { children: "可动用" }),
+				/* @__PURE__ */ (0, b.jsx)("th", { children: "可提取" }),
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "操作" })
 			] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.map((t, n) => /* @__PURE__ */ (0, b.jsxs)("tr", {
 				className: s === t.id ? "dragging" : "",
@@ -15183,7 +15183,7 @@ function xn({ accounts: e, total: t, liquidAccountTotal: n, updateAccount: r, ad
 						onChange: (e) => r(t.id, { purpose: e })
 					}) }),
 					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(mn, {
-						ariaLabel: `${t.name} 可动用`,
+						ariaLabel: `${t.name} 可提取`,
 						checked: t.liquid,
 						onChange: (e) => r(t.id, { liquid: e })
 					}) }),
