@@ -1,0 +1,94 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
+
+function loadModel(name) {
+  const source = path.resolve(__dirname, `../app/${name}.ts`);
+  const compiled = ts.transpileModule(fs.readFileSync(source, 'utf8'), {
+    compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022},
+  }).outputText;
+  const exported = {};
+  new Function('exports', compiled)(exported);
+  return exported;
+}
+const model = loadModel('finance-review-model');
+module.exports = {loadModel};
+
+function run(args) {
+  const command = args.shift();
+  const options = {};
+  while (args.length) {
+    const key = args.shift();
+    if (key === '--replace') options.replace = true;
+    else if (['--type','--end','--dir','--input','--mode'].includes(key) && args[0] && !args[0].startsWith('--')) options[key.slice(2)] = args.shift();
+    else throw new Error(`Unknown or incomplete option: ${key}`);
+  }
+  if (!['template','save','aggregate'].includes(command)) throw new Error('Usage: node scripts/finance-review.cjs template|save|aggregate [--type week|month|quarter] [--end YYYY-MM-DD] [--input file.json] [--dir private-directory] [--replace]');
+  const directory = path.resolve(options.dir || path.join(__dirname, '../.private-finance'));
+  const publicDocs = path.resolve(__dirname, '../docs');
+  if (directory === publicDocs || directory.startsWith(publicDocs + path.sep)) throw new Error('Private financial records must not be written into the public docs directory.');
+  const historyPath = path.join(directory, 'history.json');
+  const history = fs.existsSync(historyPath) ? model.parseFinanceReviews(JSON.parse(fs.readFileSync(historyPath, 'utf8'))) : [];
+  const envelope = records => JSON.stringify({app:'personal-finance-review', version:1, records}, null, 2) + '\n';
+  const write = (name, content, replace = false) => {
+    const target = path.join(directory, name);
+    fs.writeFileSync(target, content, {encoding:'utf8', flag:replace ? 'w' : 'wx'});
+    return target;
+  };
+  if (command === 'template' || command === 'aggregate') {
+    const type = options.type || 'week';
+    if (!['week','month','quarter'].includes(type)) throw new Error('Invalid review type');
+    const end = options.end || model.reviewToday();
+    if (command === 'aggregate' && type === 'week') throw new Error('Aggregate supports month or quarter only');
+    const draft = command === 'template' ? model.newReviewDraft(type, end) : model.aggregateFinanceReviews(history,type,end);
+    if (type === 'month') {
+      const mode = options.mode || 'normal';
+      if (!['normal','trip'].includes(mode)) throw new Error('Invalid month budget mode');
+      const plan = loadModel('annual-budget-model').initialAnnualBudgetPlan;
+      draft.budget = {mode, amounts:Object.fromEntries(plan.rows.map(row=>[row.id,row[mode]]))};
+    }
+    const stem = `${command}-${type}-${draft.start}`;
+    if (fs.existsSync(path.join(directory, `${stem}.json`)) || fs.existsSync(path.join(directory, `${stem}.md`))) throw new Error('Template already exists; keep its inputs or use a separate private directory.');
+    const previous = history.filter(row=>row.type===type && row.end<draft.start).sort((a,b)=>b.end.localeCompare(a.end))[0];
+    const template = [
+      `# ${model.reviewTypeNames[type]}数据更新`, `期间：${draft.start} 至 ${draft.end}（人民币）`,
+      previous ? `上期基准：${previous.start} 至 ${previous.end}；期末净资产 ${model.reviewMoney(model.reviewTotals(previous).netWorth)}` : '暂无同类上期，本次建立首次基准。', '',
+      '本期外部收入：', '', '| 项目 | 本期金额 | 发生事项（可选） |', '|---|---:|---|',
+      ...model.reviewCategories.map(row=>`| ${row.name}${row.flow==='transfer'?'（净划拨）':''} | | |`), '',
+      '## 期末余额', ...Object.values(model.balanceLabels).map(label=>`- ${label}：`), '',
+      '本期补充事项：', '',
+      '没有发生填 0，未知留空待补。七类消费填实际付款减退款；投资和应急填净转入，不计消费。',
+      '微信充值、自有账户转账、专项基金预留不记消费。自有证券账户转入转出不算收入。',
+      '小额支付可用期初支付余额 + 本期净充值 - 期末余额核算，但须排除其他转账、理财及已另记的大额付款。',
+      '现金及存款含本人专项现金；证券账户含持仓和账户现金，不能重复。给家人的钱不再属于个人资产。',
+      '偿还借款本金不计消费或投资划拨，更新现金和负债；利息及费用计实际消费。外币资产统一按同一截至日汇率折算人民币。',
+      ...(type==='month'?['月预算参考来自仓库当前方案；普通月日常使用1,000元。已在网页修改预算时，用实际确认方案替换 JSON budget。']:[]), '',
+    ].join('\n');
+    fs.mkdirSync(directory,{recursive:true});
+    const output = write(`${stem}.json`, JSON.stringify(draft,null,2)+'\n');
+    write(`${stem}.md`,template);
+    console.log(JSON.stringify({draft:output,template:path.join(directory,`${stem}.md`),saved:false}));
+    return;
+  }
+  if (!options.input) throw new Error('save requires --input');
+  const incoming = model.parseFinanceReviews(JSON.parse(fs.readFileSync(path.resolve(options.input),'utf8')));
+  if (!incoming.length) throw new Error('No records to save');
+  const conflicts = incoming.filter(row=>history.some(old=>old.id===row.id));
+  if (conflicts.length && !options.replace) throw new Error(`Existing periods: ${conflicts.map(row=>row.id).join(', ')}. Review changes first; use --replace for an intentional revision.`);
+  const now = new Date().toISOString();
+  const records = incoming.map(row=>({...row,savedAt:now})).reduce(model.upsertFinanceReview,history);
+  const reports = incoming.map(record=>({name:`report-${record.type}-${record.start}.md`, text:model.financeReviewReport(record,records)}));
+  // All input and history are validated before any output or backup is written.
+  fs.mkdirSync(directory,{recursive:true});
+  if (fs.existsSync(historyPath)) fs.copyFileSync(historyPath,path.join(directory,`history-backup-${now.replace(/[:.]/g,'-')}-${process.pid}.json`),fs.constants.COPYFILE_EXCL);
+  const temporary = `${historyPath}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary,envelope(records),{encoding:'utf8',flag:'wx'});
+  fs.renameSync(temporary,historyPath);
+  for (const report of reports) write(report.name,report.text,true);
+  write('website-import.json',envelope(records),true);
+  console.log(JSON.stringify({history:historyPath,reports:reports.map(report=>path.join(directory,report.name)),websiteImport:path.join(directory,'website-import.json'),records:records.length}));
+}
+if (require.main === module) {
+  try {run(process.argv.slice(2));}
+  catch (error) {console.error(error.message);process.exitCode=1;}
+}

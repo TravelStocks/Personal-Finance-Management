@@ -1,0 +1,124 @@
+const assert = require('node:assert/strict');
+const {test} = require('node:test');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const {spawnSync} = require('node:child_process');
+const {loadModel} = require('../scripts/finance-review.cjs');
+const m = loadModel('finance-review-model');
+function record(end, type='week', overrides={}) {
+  return m.parseFinanceReview({...m.newReviewDraft(type,end),income:1000,
+    amounts:Object.fromEntries(m.reviewCategories.map(row=>[row.id,0])),
+    balances:{cash:10000,investments:5000,otherAssets:0,debt:2000},...overrides});
+}
+test('strict inputs, date boundaries, zero, refunds and immutable normalization',()=>{
+  assert.equal(m.reviewPeriod('week','2026-01-01').start,'2025-12-29');
+  assert.equal(m.reviewPeriod('quarter','2026-10-28').start,'2026-10-01');
+  assert.equal(m.reviewPeriod('month','2024-02-20').limit,'2024-02-29');
+  assert.throws(()=>m.reviewPeriod('week','2026-02-30'),/无效日期/);
+  assert.throws(()=>m.parseFinanceReview(m.newReviewDraft('week','2026-10-25')),/外部收入/);
+  const r=record('2026-10-25');
+  assert.throws(()=>m.parseFinanceReview({...r,amounts:{...r.amounts,daily:null}}),/日常使用/);
+  assert.throws(()=>m.parseFinanceReview({...r,balances:{...r.balances,cash:-1}}),/现金/);
+  assert.throws(()=>m.parseFinanceReview({...r,start:'2026-10-20'}),/跨周期/);
+  assert.throws(()=>m.parseFinanceReview({...r,income:Infinity}),/外部收入/);
+  const before=structuredClone(r);
+  assert.equal(m.parseFinanceReview({...r,amounts:{...r.amounts,daily:-10.555}}).amounts.daily,-10.55);
+  assert.deepEqual(r,before);
+  assert.equal(m.parseFinanceReview({...r,income:0}).income,0);
+});
+test('transfers do not count as spending or income; notes do not become invented explanations',()=>{
+  const r=record('2026-10-25');
+  r.amounts={...r.amounts,daily:100,small:50,investment:5000,emergency:500};
+  const a=m.analyzeFinanceReview(r,[]);
+  assert.equal(a.totals.spending,150);
+  assert.equal(a.totals.surplus,850);
+  assert.equal(a.totals.netWorth,13000);
+  assert.equal(a.previous,undefined);
+  assert.equal(a.netWorthDelta,null);
+  assert.equal(a.rows[0].delta,null);
+  assert.match(m.financeReviewReport(r,[]),/首次基准/);
+  assert.match(m.financeReviewReport(r,[]),/未填写事项/);
+});
+test('same-type previous period, corrections, gaps and unexplained changes',()=>{
+  const prior=record('2026-10-18');
+  const current=record('2026-10-25');
+  current.amounts.daily=200;
+  current.balances.cash=10900;
+  const future=record('2026-11-01');
+  const month=record('2026-10-18','month');
+  const a=m.analyzeFinanceReview(current,[future,prior,month]);
+  assert.equal(a.previous.id,prior.id);
+  assert.equal(a.contiguous,true);
+  assert.equal(a.netWorthDelta,900);
+  assert.equal(a.unexplained,100);
+  assert.match(a.actions.join(' '),/不能直接当作投资收益/);
+  assert.match(a.actions.join(' '),/补充发生事项/);
+  assert.equal(m.analyzeFinanceReview(current,[record('2026-10-11')]).unexplained,null);
+  const updated=m.upsertFinanceReview([current,prior],{...current,income:2000});
+  assert.equal(updated.length,2);
+  assert.equal(updated[0].income,2000);
+  assert.equal(current.income,1000);
+  const partial=m.analyzeFinanceReview(record('2026-10-21'),[prior]);
+  assert.equal(partial.totals.days,3);
+  assert.match(partial.notices.join(' '),/阶段数据/);
+  assert.match(partial.notices.join(' '),/日均支出/);
+});
+test('aggregates exact coverage only, keeps ending balances and never adds both months and weeks',()=>{
+  const weeks=['2026-06-07','2026-06-14','2026-06-21','2026-06-28','2026-06-30'].map(end=>record(end));
+  weeks[4].balances.cash=12345;
+  const june=m.aggregateFinanceReviews(weeks,'month','2026-06-30');
+  assert.equal(june.income,5000);
+  assert.equal(june.balances.cash,12345);
+  assert.throws(()=>m.aggregateFinanceReviews(weeks.slice(1),'month','2026-06-30'),/没有完整/);
+  assert.throws(()=>m.aggregateFinanceReviews([record('2026-07-05')],'month','2026-07-05'),/没有完整/);
+  const months=['2026-04-30','2026-05-31','2026-06-30'].map(end=>record(end,'month'));
+  months[2].balances.cash=20000;
+  const quarter=m.aggregateFinanceReviews([...months,...weeks],'quarter','2026-06-30');
+  assert.equal(quarter.income,3000);
+  assert.equal(quarter.balances.cash,20000);
+  assert.throws(()=>m.aggregateFinanceReviews([months[0],months[2]],'quarter','2026-06-30'),/没有完整/);
+});
+test('monthly budget snapshot survives later changes and flags everyday overspend',()=>{
+  const plan=loadModel('annual-budget-model').initialAnnualBudgetPlan;
+  const raw=record('2026-10-28','month');
+  raw.budget={mode:'normal',amounts:Object.fromEntries(plan.rows.map(row=>[row.id,row.normal]))};
+  raw.amounts.daily=1200;
+  const current=m.parseFinanceReview(raw);
+  raw.budget.amounts.daily=2000;
+  const a=m.analyzeFinanceReview(current,[]);
+  assert.equal(a.budgetRows.find(row=>row.id==='daily').remaining,-200);
+  assert.match(a.actions[0],/日常使用超过预算/);
+  assert.match(m.financeReviewReport(current,[]),/月预算核对/);
+  const trip=m.analyzeFinanceReview({...current,budget:{...current.budget,mode:'trip'}},[]);
+  assert.ok(trip.notices.some(note=>note.includes('海外开销')));
+  assert.ok(!trip.actions.some(action=>action.includes('超过预算')));
+  assert.throws(()=>m.parseFinanceReview({...current,type:'quarter'}),/月度预算/);
+  assert.equal(m.parseFinanceReviews({records:[current,current]}).length,1);
+  assert.throws(()=>m.parseFinanceReviews({records:[current,{}]}));
+});
+test('CLI template, validation, saved history, correction backups and private website interchange',()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'finance-review-test-'));
+  const script=path.resolve(__dirname,'../scripts/finance-review.cjs');
+  const run=(...args)=>spawnSync(process.execPath,[script,...args,'--dir',dir],{encoding:'utf8'});
+  try {
+    assert.equal(run('template','--type','week','--end','2026-10-25').status,0);
+    const template=path.join(dir,'template-week-2026-10-19.json');
+    assert.equal(JSON.parse(fs.readFileSync(template)).amounts.daily,null);
+    assert.notEqual(run('save','--input',template).status,0);
+    assert.equal(fs.existsSync(path.join(dir,'history.json')),false);
+    const input=path.join(dir,'input.json');
+    fs.writeFileSync(input,JSON.stringify(record('2026-10-18')));
+    assert.equal(run('save','--input',input).status,0);
+    const before=fs.readFileSync(path.join(dir,'history.json'),'utf8');
+    assert.notEqual(run('save','--input',input).status,0);
+    assert.equal(fs.readFileSync(path.join(dir,'history.json'),'utf8'),before);
+    fs.writeFileSync(input,JSON.stringify(record('2026-10-18','week',{income:2000})));
+    assert.equal(run('save','--input',input,'--replace').status,0);
+    assert.ok(fs.readdirSync(dir).some(file=>file.startsWith('history-backup-')));
+    const imported=m.parseFinanceReviews(JSON.parse(fs.readFileSync(path.join(dir,'website-import.json'))));
+    assert.equal(imported[0].income,2000);
+    assert.match(fs.readFileSync(path.join(dir,'report-week-2026-10-12.md'),'utf8'),/首次基准/);
+    assert.notEqual(run('aggregate','--type','month','--end','2026-10-31').status,0);
+  } finally {fs.rmSync(dir,{recursive:true,force:true});}
+});

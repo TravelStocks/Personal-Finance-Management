@@ -28,21 +28,15 @@ export const initialAnnualBudgetPlan: AnnualBudgetPlan = {
   budgetFx: 6.7, emergencyCurrent: 2000, emergencyTargetMonths: 6, basicMeals: 1800,
   bufferMonths: 3, bonusAfterTax: null, mode: "normal",
   rows: [
-    {id: "rent", name: "房租，个人承担", kind: "consumption", normal: 2750, trip: 2750, note: "全年保留"},
-    {id: "parents", name: "父母家用", kind: "consumption", normal: 2000, trip: 2000, note: "家用支出，不计为个人储蓄"},
-    {id: "food", name: "本地吃饭、零食、聚会", kind: "consumption", normal: 2880, trip: 0, note: "按确认分配表预留，含本地餐饮、零食与聚会"},
-    {id: "transport", name: "本地日常交通", kind: "consumption", normal: 670, trip: 0, note: "按确认分配表预留，本地出行预算"},
-    {id: "learning", name: "学习：订阅、书籍、其他会员", kind: "consumption", normal: 1000, trip: 1000, note: "已替代原学习基金500元，不重复拨款"},
-    {id: "sports", name: "运动：健身、踢球、装备", kind: "consumption", normal: 400, trip: 400, note: "含运动装备，不额外增加装备预算"},
-    {id: "clothes", name: "衣物、日用品", kind: "consumption", normal: 300, trip: 300, note: "全年保留"},
-    {id: "digital", name: "数码产品摊销、手机费", kind: "consumption", normal: 300, trip: 300, note: "全年保留"},
-    {id: "medical", name: "医疗、个人护理", kind: "consumption", normal: 300, trip: 300, note: "全年保留"},
-    {id: "gifts", name: "人情红包", kind: "consumption", normal: 100, trip: 100, note: "全年保留"},
-    {id: "dates", name: "伴侣基金之外的约会支出", kind: "consumption", normal: 300, trip: 300, note: "与伴侣基金分别列明"},
-    {id: "partner", name: "伴侣基金：含水电网、住房额外支出等", kind: "consumption", normal: 1000, trip: 1000, note: "实际开销从基金支付，不另加一遍"},
-    {id: "travel", name: "旅游基金：实际旅行从中支付", kind: "consumption", normal: 1000, trip: 1000, note: "未来消费预留，不重复计入实际旅行开销"},
-    {id: "emergency", name: "应急基金", kind: "emergency", normal: 500, trip: 500, note: "新增现金储备，独立于日常周转金"},
+    {id: "rent", name: "房租", kind: "consumption", normal: 2750, trip: 2750, note: "个人承担的房租"},
+    {id: "parents", name: "家用", kind: "consumption", normal: 2000, trip: 2000, note: "给父母的家用，不计为个人资产"},
     {id: "investment", name: "投资基金", kind: "investment", normal: 2750, trip: 2750, note: "投入本金，不计投资收益或亏损"},
+    {id: "emergency", name: "应急基金", kind: "emergency", normal: 500, trip: 500, note: "新增现金储备，独立于日常周转金"},
+    {id: "learning", name: "学习基金", kind: "consumption", normal: 1000, trip: 1000, note: "订阅、书籍和其他会员"},
+    {id: "travel", name: "旅游基金", kind: "consumption", normal: 1000, trip: 1000, note: "实际旅行从中支付，不重复拨款"},
+    {id: "partner", name: "伴侣基金", kind: "consumption", normal: 1000, trip: 1000, note: "水电网、住房额外支出等"},
+    {id: "small", name: "小额支付", kind: "consumption", normal: 1000, trip: 0, note: "早餐、地铁通勤、日常小零食"},
+    {id: "daily", name: "日常使用", kind: "consumption", normal: 1000, trip: 1700, note: "午晚餐及其余生活消费；普通月压缩至收支平衡"},
   ],
 };
 
@@ -74,6 +68,25 @@ export function normalizeAnnualBudgetPlan(value: unknown): AnnualBudgetPlan {
     }
     return row;
   });
+  const legacyDaily = {food: [2880, 0], transport: [670, 0], sports: [400, 400], clothes: [300, 300], digital: [300, 300], medical: [300, 300], gifts: [100, 100], dates: [300, 300]};
+  if (Array.isArray(saved.rows) && !saved.rows.some(row => row?.id === "small" || row?.id === "daily") &&
+      saved.rows.some(row => row && Object.hasOwn(legacyDaily, row.id))) {
+    // Merge old categories without losing the user's edited amounts or increasing the total budget.
+    for (const [index, mode] of (["normal", "trip"] as const).entries()) {
+      const combined = Object.entries(legacyDaily).reduce((sum, [id, defaults]) => {
+        const amount = saved.rows?.find(row => row?.id === id)?.[mode];
+        return sum + cents(typeof amount === "number" && Number.isFinite(amount) && amount >= 0 ? Math.min(amount, 100000000) : defaults[index]);
+      }, 0) / 100;
+      const small = mode === "normal" ? Math.min(1000, combined) : 0;
+      result.rows.find(row => row.id === "small")![mode] = small;
+      result.rows.find(row => row.id === "daily")![mode] = round(combined - small);
+    }
+    // Upgrade the unchanged previous reference plan; preserve any customized allocation.
+    if (result.salary === 13000 && result.rows.every(row => {
+      const baseline = initialAnnualBudgetPlan.rows.find(item => item.id === row.id)!;
+      return row.normal === (row.id === "daily" ? 4250 : baseline.normal) && row.trip === baseline.trip;
+    })) result.rows.find(row => row.id === "daily")!.normal = 1000;
+  }
   return result;
 }
 

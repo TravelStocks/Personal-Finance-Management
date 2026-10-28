@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
 import AnnualBudgetPlanner, {AnnualBudgetAllocationTable} from "./annual-budget-plan";
 import { calculateAnnualBudgetPlan, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
+import FinanceReviewPanel from "./finance-review-panel";
+import {parseFinanceReviews, type FinanceReview} from "./finance-review-model";
 
 type Period = "周" | "月" | "季" | "年";
 type Tone = "blue" | "green" | "amber" | "red" | "violet";
@@ -20,6 +22,7 @@ type ModuleId =
   | "goals"
   | "fundBuckets"
   | "reports"
+  | "periodReview"
   | "monthlyArchive"
   | "cloudSync"
   | "health"
@@ -157,6 +160,7 @@ type ReportRow = {
 
 type PersistedFinanceData = {
   annualBudgetPlan?: AnnualBudgetPlan;
+  financeReviews?: FinanceReview[];
   monthlyCashPlan?: MonthlyCashPlan;
   period?: Period;
   selectedMonth?: string;
@@ -486,6 +490,7 @@ const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "goals", title: "目标管理", desc: "旅游、学习、父母储蓄、伴侣基金和大额支出目标" },
   { id: "fundBuckets", title: "大花费项目", desc: "旅行、搬家、分期、应急金和待投资金隔离" },
   { id: "reports", title: "财务报表", desc: "收入、支出、结余、投资表现" },
+  { id: "periodReview", title: "周期复盘", desc: "九类数据更新、周月季度对比和下期动作" },
   { id: "monthlyArchive", title: "月度存档", desc: "保存每月收入、支出、账户余额和净资产变化" },
   { id: "cloudSync", title: "云同步", desc: "用加密 GitHub Gist 跨电脑保存和恢复数据" },
   { id: "health", title: "健康评分", desc: "100 分制财务健康状态" },
@@ -1025,6 +1030,7 @@ function EditableNumber({
 
 export default function FinanceDashboard() {
   const [annualBudgetPlan, setAnnualBudgetPlan] = useState<AnnualBudgetPlan>(initialAnnualBudgetPlan);
+  const [financeReviews, setFinanceReviews] = useState<FinanceReview[]>([]);
   const [monthlyCashPlan, setMonthlyCashPlan] = useState<MonthlyCashPlan>(initialMonthlyCashPlan);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [activeModules, setActiveModules] = useState<ModuleId[]>([]);
@@ -1073,6 +1079,7 @@ export default function FinanceDashboard() {
   function getPersistedFinanceData(): PersistedFinanceData {
     return {
       annualBudgetPlan,
+      financeReviews,
       monthlyCashPlan,
       period,
       selectedMonth,
@@ -1125,7 +1132,9 @@ export default function FinanceDashboard() {
   }
 
   function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
+    const restoredReviews = saved.financeReviews === undefined ? undefined : parseFinanceReviews(saved.financeReviews);
     setAnnualBudgetPlan(normalizeAnnualBudgetPlan(saved.annualBudgetPlan));
+    if (restoredReviews) setFinanceReviews(restoredReviews);
     setMonthlyCashPlan(normalizeMonthlyCashPlan(saved.monthlyCashPlan));
     if (saved.period) setPeriod(saved.period);
     if (saved.selectedMonth) setSelectedMonth(saved.selectedMonth);
@@ -1199,8 +1208,8 @@ export default function FinanceDashboard() {
             setCloudStatus(savedCloudSync.gistId ? "已读取云同步配置，准备连接云端" : "未连接云同步");
           }
         } catch {
-          window.localStorage.removeItem(financeStorageKey);
-          setSaveStatus("本地数据读取失败，已使用默认数据");
+          setSaveStatus("本地数据读取失败，原数据已保留；已暂停自动保存，请先恢复有效备份后刷新。");
+          return;
         }
 
         const canAutoPullCloud =
@@ -1277,6 +1286,7 @@ export default function FinanceDashboard() {
   }, [
     savedDataReady,
     annualBudgetPlan,
+    financeReviews,
     monthlyCashPlan,
     period,
     selectedMonth,
@@ -3558,6 +3568,15 @@ export default function FinanceDashboard() {
                         </div>
                       }
                     />
+                  </Module>
+                )}
+
+                {moduleId === "periodReview" && (
+                  <Module title="周期复盘" desc="本期实际发生额与上期同类周期比较；记录与账本明细分别保存。">
+                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} onChange={records => {
+                      persistLocalFinanceData({...getPersistedFinanceData(), financeReviews: records});
+                      setFinanceReviews(records);
+                    }}/>
                   </Module>
                 )}
 

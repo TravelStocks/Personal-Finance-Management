@@ -1,0 +1,31 @@
+.finance-review {min-width:0;}
+.finance-review .period-tabs button {min-width:88px;min-height:40px;padding:8px 12px;}
+.review-confirm {width:min(440px,calc(100vw - 32px));border:1px solid var(--line);border-radius:8px;padding:20px;color:var(--ink);background:white;}
+.review-confirm::backdrop {background:rgba(12,25,40,.35);}
+.review-confirm h3 {margin-top:0;}
+.review-confirm p {line-height:1.6;}
+.review-toolbar {display:flex;align-items:end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:16px 0;}
+.review-fields {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.review-fields.balances {grid-template-columns:repeat(4,minmax(0,1fr));}
+.review-caption,.review-table small {color:var(--muted);font-size:13px;line-height:1.6;}
+.review-status {padding:10px 12px;border-left:3px solid var(--blue);background:var(--soft);}
+.review-table {width:100%;border-collapse:collapse;min-width:580px;font-size:14px;}
+.review-table th,.review-table td {padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+.review-table th {font-weight:600;}
+.review-table thead {background:var(--soft);}
+.review-table th:first-child {min-width:120px;}
+.review-table td {overflow-wrap:anywhere;}
+.review-table input[type=number] {min-width:110px;max-width:180px;}
+.review-table input[type=text] {min-width:190px;}
+.review-table small {display:block;font-weight:400;}
+.review-metrics {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-block:1px solid var(--line);margin:20px 0;gap:16px;padding:16px 0;}
+.review-metrics div {display:grid;align-content:start;gap:5px;min-width:0;}
+.review-metrics span,.review-metrics small {font-size:13px;color:var(--muted);}
+.review-metrics strong {font-size:22px;overflow-wrap:anywhere;}
+.finance-review h3 {font-size:18px;margin:22px 0 12px;}
+.finance-review textarea {width:100%;font:inherit;border:1px solid var(--line);border-radius:6px;padding:10px;resize:vertical;}
+.finance-review ul {padding-left:22px;line-height:1.8;}
+.review-method {border-top:1px solid var(--line);padding-top:14px;}
+.review-method summary {cursor:pointer;font-weight:600;color:var(--blue);}
+@media(max-width:1000px){.review-metrics,.review-fields.balances {grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:600px){.review-fields {grid-template-columns:1fr;}.review-toolbar>.field {width:100%;}.review-metrics strong {font-size:20px;}}
