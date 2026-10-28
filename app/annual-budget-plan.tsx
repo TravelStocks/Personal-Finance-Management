@@ -106,9 +106,10 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
     {label: "新增应急现金", amount: totals.annualEmergency, className: "emergency"},
     {label: "额外现金余量", amount: Math.max(0, totals.annualSurplus), className: "surplus"},
   ];
-  return <section className="annual-budget" aria-labelledby="annual-budget-title">
+  return <details className="annual-budget" aria-labelledby="annual-budget-toggle">
+    <summary className="annual-budget-toggle" id="annual-budget-toggle">全年预算参考 · 12个月</summary>
     <header className="annual-budget-heading">
-      <div><span className="annual-budget-kicker">全年预算参考 · 12个月</span><h2 id="annual-budget-title">把出差结余，留给普通月份</h2>
+      <div><h2 id="annual-budget-title">把出差结余，留给普通月份</h2>
         <p>{totals.normalMonths}个普通月 + {plan.awayMonths}个出差月；全年{plan.paidDays}个领补贴日，出差期间工资照常发放。</p>
         <div className="annual-budget-jump-links"><a className="annual-table-link" href="#annual-allocation-title">查看完整分配表 ↓</a>
           <a className="annual-table-link" href="#annual-accumulation-title">查看年度积累与奖金 ↓</a></div></div>
@@ -196,5 +197,5 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
         <input aria-label={field.label} type="number" min="0" step={field.step} value={plan[field.key]} onChange={event => update(field.key, event.target.value)}/><small>{field.unit}</small></label>)}</div>
       <p>预算汇率仅用于测算。每天出差开销已从补贴中扣除，不再加进人民币支出。本地餐饮与交通按分配表预留；公司旧借款还款未计入此年度方案，实际欠款与账户余额仍在账本记录。</p>
     </details>
-  </section>;
+  </details>;
 }

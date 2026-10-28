@@ -8688,17 +8688,18 @@ function le({ plan: e, onChange: t }) {
 			className: "surplus"
 		}
 	];
-	return /* @__PURE__ */ (0, b.jsxs)("section", {
+	return /* @__PURE__ */ (0, b.jsxs)("details", {
 		className: "annual-budget",
-		"aria-labelledby": "annual-budget-title",
+		"aria-labelledby": "annual-budget-toggle",
 		children: [
+			/* @__PURE__ */ (0, b.jsx)("summary", {
+				className: "annual-budget-toggle",
+				id: "annual-budget-toggle",
+				children: "全年预算参考 · 12个月"
+			}),
 			/* @__PURE__ */ (0, b.jsxs)("header", {
 				className: "annual-budget-heading",
 				children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [
-					/* @__PURE__ */ (0, b.jsx)("span", {
-						className: "annual-budget-kicker",
-						children: "全年预算参考 · 12个月"
-					}),
 					/* @__PURE__ */ (0, b.jsx)("h2", {
 						id: "annual-budget-title",
 						children: "把出差结余，留给普通月份"

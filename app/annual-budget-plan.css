@@ -1,6 +1,9 @@
 .annual-budget {--annual-ink:#143932; margin:24px 0; padding:28px; background:var(--surface); color:var(--ink); border-top:4px solid var(--annual-ink); font-variant-numeric:tabular-nums;}
 .annual-budget-heading {display:flex; justify-content:space-between; align-items:flex-start; gap:24px;}
-.annual-budget-kicker {font-size:13px; font-weight:600; letter-spacing:.1em; color:var(--annual-ink);}
+.annual-budget:not([open]) {padding-block:16px;}
+.annual-budget > .annual-budget-toggle {padding:6px 0; font-size:16px; font-weight:600; letter-spacing:0; line-height:1.5; color:var(--annual-ink); cursor:pointer; overflow-wrap:anywhere;}
+.annual-budget > .annual-budget-toggle:focus-visible {outline:2px solid var(--blue); outline-offset:4px;}
+.annual-budget[open] > .annual-budget-toggle {margin-bottom:20px;}
 .annual-budget h2 {font-family:"Noto Serif SC","Songti SC","SimSun",serif; font-size:clamp(24px,2.4vw,36px); line-height:1.3; margin:10px 0; letter-spacing:-.035em;}
 .annual-budget-heading p,.annual-subheading p {color:var(--muted); margin:0;}
 .annual-budget-status {font-size:13px; padding:8px 12px; border:1px solid currentColor; white-space:nowrap;}
