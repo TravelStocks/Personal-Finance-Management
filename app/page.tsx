@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
 import AnnualBudgetPlanner, {AnnualBudgetAllocationTable} from "./annual-budget-plan";
-import { calculateAnnualBudgetPlan, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
+import { calculateAnnualBudgetPlan, calculateCashflowScenario, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
+import {calculateLiquidity} from "./liquidity-model";
 import FinanceReviewPanel from "./finance-review-panel";
 import {parseFinanceReviews, reviewMoney, reviewToday, type FinanceReview} from "./finance-review-model";
 import {applySalaryFromMonth, confirmedMonthlySalary, migrateSalarySettings, salarySettingsVersion} from "./salary-model";
@@ -126,6 +127,7 @@ type FundBucket = {
   dueDate: string;
   locked: boolean;
   note: string;
+  fundingAccountId?: string;
 };
 
 type CashflowTableRow = {
@@ -262,7 +264,6 @@ type CashflowEvent = {
   item: string;
   inflow: number;
   outflow: number;
-  balance: number;
   kind: string;
 };
 
@@ -474,7 +475,7 @@ const maxMonthlyArchives = 48;
 const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "income", title: "收入", desc: "税后工资、实际到账、炒股月结算记录" },
   { id: "spending", title: "支出", desc: "实际花费、必要支出、可取消支出" },
-  { id: "cashflow", title: "现金流预测", desc: "按已保存账本推演6个月资金变化" },
+  { id: "cashflow", title: "现金流预测", desc: "当前预算与可自由动用现金" },
   { id: "accounts", title: "账户管理", desc: "银行卡、支付宝、微信、现金余额可编辑" },
   { id: "budget", title: "预算管理", desc: "完整月度与年度分配、月份现金流" },
   { id: "investment", title: "投资管理", desc: "A股、美股、港股市值和投入计划" },
@@ -546,10 +547,6 @@ function recordSpendingActual(record: MonthRecord) {
   return record.budgets.reduce((sum, item) => sum + item.actual, 0);
 }
 
-function recordSpendingPlan(record: MonthRecord) {
-  return record.budgets.reduce((sum, item) => sum + item.plan, 0);
-}
-
 function investmentReserveKind(account: Account) {
   const text = `${account.name} ${account.type} ${account.purpose}`.toLowerCase();
   if ((text.includes("余额宝") && text.includes("8514")) || text.includes("a股")) return "aShare";
@@ -575,6 +572,16 @@ function isTravelSavingsAccount(account: Account) {
 function isLearningSavingsAccount(account: Account) {
   const text = `${account.name} ${account.type} ${account.purpose}`.toLowerCase();
   return !isInvestmentReserveAccount(account) && (text.includes("学习") || text.includes("教育") || text.includes("成长"));
+}
+
+function cashReservePurpose(account: Account): string | null {
+  if (isInvestmentReserveAccount(account)) return "投资待投金";
+  const text = `${account.name} ${account.type} ${account.purpose}`;
+  if (/应急|紧急/.test(text)) return "应急储备";
+  if (isTravelSavingsAccount(account)) return "旅游专项";
+  if (isLearningSavingsAccount(account)) return "学习专项";
+  if (/伴侣|情侣|共同|父母|家用|家庭/.test(text)) return "家庭专项";
+  return null;
 }
 
 function isTotalSavingsAccount(account: Account) {
@@ -661,6 +668,12 @@ function summarizeGoals(goals: Goal[]) {
   return summary;
 }
 
+function goalsWithEmergencyBudget(goals: Goal[], plan: AnnualBudgetPlan) {
+  const firstEmergencyId = goals.find(goal => goalKind(goal) === "emergency")?.id;
+  const monthly = plan.rows.find(row => row.id === "emergency")?.[plan.mode] ?? 0;
+  return goals.map(goal => goalKind(goal) === "emergency" ? {...goal, monthly: goal.id === firstEmergencyId ? monthly : 0} : goal);
+}
+
 function normalizeGoals(value: unknown) {
   const savedGoals = Array.isArray(value) ? value : [];
   const normalized = savedGoals
@@ -725,7 +738,7 @@ function normalizeBalanceAssets(value: unknown) {
 function normalizeFundBuckets(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value
-    .map((item, index) => {
+    .map((item, index): FundBucket | null => {
       if (!item || typeof item !== "object") return null;
       const raw = item as Partial<FundBucket>;
       const kind = fundBucketKinds.includes(raw.kind as FundBucketKind) ? (raw.kind as FundBucketKind) : "其他";
@@ -738,6 +751,7 @@ function normalizeFundBuckets(value: unknown) {
         dueDate: typeof raw.dueDate === "string" && raw.dueDate ? raw.dueDate : "2026-12-31",
         locked: typeof raw.locked === "boolean" ? raw.locked : true,
         note: typeof raw.note === "string" ? raw.note : "",
+        fundingAccountId: typeof raw.fundingAccountId === "string" ? raw.fundingAccountId : "",
       };
     })
     .filter((item): item is FundBucket => item !== null);
@@ -1042,12 +1056,15 @@ export default function FinanceDashboard() {
   const [travelSaving, setTravelSaving] = useState(3000);
   const [learningSaving, setLearningSaving] = useState(500);
   const [emergencyFund, setEmergencyFund] = useState(2000);
-  const [emergencyMonths, setEmergencyMonths] = useState(3);
-  const [emergencyMonthlyNeed, setEmergencyMonthlyNeed] = useState(4500);
+  const emergencyMonths = annualBudgetPlan.emergencyTargetMonths;
+  const emergencyMonthlyNeed = annualBudgetPlan.emergencyMonthlyNeed;
+  const setEmergencyMonths = (value: number) => setAnnualBudgetPlan(plan => normalizeAnnualBudgetPlan({...plan, emergencyTargetMonths: value}));
+  const setEmergencyMonthlyNeed = (value: number) => setAnnualBudgetPlan(plan => normalizeAnnualBudgetPlan({...plan, emergencyMonthlyNeed: value}));
   const [balanceAssets, setBalanceAssets] = useState<BalanceAsset[]>(initialBalanceAssets);
   const [liabilities, setLiabilities] = useState<Liability[]>(initialLiabilities);
   const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
+  const plannedGoals = goalsWithEmergencyBudget(goals, annualBudgetPlan);
   const [fundBuckets, setFundBuckets] = useState<FundBucket[]>(initialFundBuckets);
   const [futureCapabilities, setFutureCapabilities] = useState<FutureCapability[]>(initialFutureCapabilities);
   const [cashflowHiddenBuiltinIds, setCashflowHiddenBuiltinIds] = useState<CashflowBuiltinId[]>([]);
@@ -1094,7 +1111,7 @@ export default function FinanceDashboard() {
       balanceAssets,
       liabilities,
       reminders,
-      goals,
+      goals: goalsWithEmergencyBudget(goals, annualBudgetPlan),
       fundBuckets,
       futureCapabilities,
       cashflowHiddenBuiltinIds,
@@ -1146,8 +1163,6 @@ export default function FinanceDashboard() {
     if (typeof saved.travelSaving === "number") setTravelSaving(saved.travelSaving);
     if (typeof saved.learningSaving === "number") setLearningSaving(saved.learningSaving);
     if (typeof saved.emergencyFund === "number") setEmergencyFund(saved.emergencyFund);
-    if (typeof saved.emergencyMonths === "number") setEmergencyMonths(saved.emergencyMonths);
-    if (typeof saved.emergencyMonthlyNeed === "number") setEmergencyMonthlyNeed(saved.emergencyMonthlyNeed);
     const savedBalanceAssets = normalizeBalanceAssets(saved.balanceAssets);
     if (savedBalanceAssets.length > 0) setBalanceAssets(savedBalanceAssets);
     const savedLiabilities = normalizeLiabilities(saved.liabilities);
@@ -1502,6 +1517,9 @@ export default function FinanceDashboard() {
   const annualPlanTotals = calculateAnnualBudgetPlan(annualBudgetPlan);
   const cashPlanTotals = annualPlanTotals[annualBudgetPlan.mode];
   const budgetModeName = annualBudgetPlan.mode === "normal" ? "普通月" : "出差月";
+  const cashflowScenario = calculateCashflowScenario(annualBudgetPlan, cashflowCustomItems);
+  const liquidity = calculateLiquidity(accounts.map(account => ({...account, reserve: cashReservePurpose(account)})), fundBuckets);
+  const emergencyAccounts = accounts.filter(account => cashReservePurpose(account) === "应急储备");
 
   const totals = (() => {
     const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
@@ -1517,18 +1535,18 @@ export default function FinanceDashboard() {
     const accountTravelSavings = accounts.filter(isTravelSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
     const accountLearningSavings = accounts.filter(isLearningSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
     const accountSpecialSavings = accountTravelSavings + accountLearningSavings;
-    const goalSummary = summarizeGoals(goals);
-    const travelSavings = accountTravelSavings > 0 ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
+    const goalSummary = summarizeGoals(plannedGoals);
+    const travelSavings = accounts.some(isTravelSavingsAccount) ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
     const learningSavings =
-      accountLearningSavings > 0 ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
-    const currentEmergencyFund = goalSummary.hasEmergency ? goalSummary.emergencyCurrent : emergencyFund;
+      accounts.some(isLearningSavingsAccount) ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
+    const currentEmergencyFund = emergencyAccounts.length ? emergencyAccounts.reduce((sum, account) => sum + account.balance, 0) : goalSummary.hasEmergency ? goalSummary.emergencyCurrent : emergencyFund;
     const parentSavings = goalSummary.parentCurrent;
     const partnerSavings = goalSummary.partnerCurrent;
     const otherSavings = goalSummary.otherCurrent;
     const familyFund = partnerSavings;
     const totalSavings = travelSavings + learningSavings + otherSavings;
     const savingsOutsideAccounts = Math.max(0, totalSavings - accountSpecialSavings);
-    const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings;
+    const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings - (emergencyAccounts.length ? currentEmergencyFund : 0);
     const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
     const spendingActual = budgets.reduce((sum, item) => sum + item.actual, 0);
     const spendingPlan = budgets.reduce((sum, item) => sum + item.plan, 0);
@@ -1542,7 +1560,7 @@ export default function FinanceDashboard() {
     const hkShareValue = holdings.filter((item) => item.market === "港股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const manualAssetTotal = balanceAssets.reduce((sum, item) => sum + item.amount, 0);
     const totalDebt = liabilities.reduce((sum, item) => sum + item.amount, 0);
-    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + parentSavings + currentEmergencyFund + manualAssetTotal;
+    const totalAssets = accountTotal + investmentValue + savingsOutsideAccounts + (emergencyAccounts.length ? 0 : currentEmergencyFund) + manualAssetTotal;
     const customOutflow = cashflowCustomItems
       .filter((item) => item.direction === "outflow")
       .reduce((sum, item) => sum + item.amount, 0);
@@ -1557,7 +1575,7 @@ export default function FinanceDashboard() {
     const learningExpectedSource = goalSummary.hasLearning ? goalSummary.learningMonthly : learningSaving;
     const parentExpectedSource = goalSummary.hasParent ? goalSummary.parentMonthly : 0;
     const partnerExpectedSource = goalSummary.hasPartner ? goalSummary.partnerMonthly : 0;
-    const emergencyExpectedSource = goalSummary.hasEmergency ? goalSummary.emergencyMonthly : 0;
+    const emergencyExpectedSource = annualBudgetPlan.rows.find(row => row.id === "emergency")?.[annualBudgetPlan.mode] ?? 0;
     const travelAllocation = enabledCashflowValue("travelSaving", travelAllocationSource);
     const learningAllocation = enabledCashflowValue("learningSaving", learningAllocationSource);
     const parentAllocation = enabledCashflowValue("parentSaving", parentAllocationSource);
@@ -1715,20 +1733,13 @@ export default function FinanceDashboard() {
 
   const forecast = (() => {
     const rows: Array<{ month: string; inflow: number; outflow: number; balance: number }> = [];
-    let balance = totals.accountTotal;
-    const customInflow = cashflowCustomItems
-      .filter((item) => item.direction === "inflow")
-      .reduce((sum, item) => sum + item.amount, 0);
+    let balance = liquidity.available;
     for (let index = 0; index < 6; index += 1) {
-      const forecastMonthId = addMonthsToId(selectedMonth, index);
-      const forecastRecord = monthlyRecords.find((item) => item.id === forecastMonthId);
-      const forecastSalary = annualBudgetPlan.salary;
-      const forecastSpendingPlan = forecastRecord ? recordSpendingPlan(forecastRecord) : totals.spendingPlan;
-      const inflow = (cashflowHiddenBuiltinIds.includes("salary") ? 0 : forecastSalary) + customInflow;
-      const outflow = (cashflowHiddenBuiltinIds.includes("spendingPlan") ? 0 : forecastSpendingPlan) + totals.assetOutflow;
+      const forecastMonthId = addMonthsToId(reviewToday().slice(0, 7), index + 1);
+      const {inflow, outflow} = cashflowScenario;
       balance += inflow - outflow;
       rows.push({
-        month: shortMonth(forecastRecord?.label ?? monthLabelFromId(forecastMonthId)),
+        month: shortMonth(monthLabelFromId(forecastMonthId)),
         inflow,
         outflow,
         balance,
@@ -1738,11 +1749,8 @@ export default function FinanceDashboard() {
   })();
 
   const cashflowEvents = (() => {
-    const customInflow = cashflowCustomItems
-      .filter((item) => item.direction === "inflow")
-      .reduce((sum, item) => sum + item.amount, 0);
-    const inflow = (cashflowHiddenBuiltinIds.includes("salary") ? 0 : annualBudgetPlan.salary) + customInflow;
-    const rawEvents = [
+    const month = reviewToday().slice(0, 7);
+    const events = [
       ...reminders.map((item) => ({
         date: item.date,
         item: item.name,
@@ -1750,19 +1758,9 @@ export default function FinanceDashboard() {
         outflow: item.kind === "定存" ? 0 : item.amount,
         kind: item.kind,
       })),
-      { date: `${selectedMonth}-${String(Math.min(Math.max(activeMonth.payday, 1), new Date(Number(selectedMonth.slice(0,4)), Number(selectedMonth.slice(5)), 0).getDate())).padStart(2,"0")}`, item: "现金流入", inflow, outflow: 0, kind: "收入" },
-      { date: `${selectedMonth}-15`, item: "月度资产分配", inflow: 0, outflow: totals.assetOutflow, kind: "分配" },
-    ].sort((a, b) => a.date.localeCompare(b.date));
-    return rawEvents.reduce<{ balance: number; rows: CashflowEvent[] }>(
-      (state, item) => {
-        const nextBalance = state.balance + item.inflow - item.outflow;
-        return {
-          balance: nextBalance,
-          rows: [...state.rows, { ...item, balance: nextBalance }],
-        };
-      },
-      { balance: totals.accountTotal, rows: [] },
-    ).rows;
+      { date: `${month}-${String(Math.min(Math.max(monthlyRecords.find(record => record.id === month)?.payday ?? 10, 1), new Date(Number(month.slice(0,4)), Number(month.slice(5)), 0).getDate())).padStart(2,"0")}`, item: "工资计划", inflow: annualBudgetPlan.salary, outflow: 0, kind: "收入" },
+    ].filter(event => event.date >= reviewToday()).sort((a, b) => a.date.localeCompare(b.date));
+    return events;
   })();
 
   function updateAccount(id: string, patch: Partial<Account>) {
@@ -1873,10 +1871,6 @@ export default function FinanceDashboard() {
 
   function deleteCashflowCustomItem(id: string) {
     setCashflowCustomItems((items) => items.filter((item) => item.id !== id));
-  }
-
-  function deleteCashflowBuiltinItem(id: CashflowBuiltinId) {
-    setCashflowHiddenBuiltinIds((items) => (items.includes(id) ? items : [...items, id]));
   }
 
   function updateBudget(id: string, patch: Partial<Budget>) {
@@ -2009,6 +2003,9 @@ export default function FinanceDashboard() {
   }
 
   function updateGoal(id: string, patch: Partial<Goal>) {
+    if (patch.monthly !== undefined && goals.some(goal => goal.id === id && goalKind(goal) === "emergency")) {
+      updateAnnualBudgetPlan({...annualBudgetPlan, rows: annualBudgetPlan.rows.map(row => row.id === "emergency" ? {...row, normal: patch.monthly!, trip: patch.monthly!} : row)});
+    }
     setGoals((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
@@ -2020,29 +2017,12 @@ export default function FinanceDashboard() {
     });
   }
 
-  function setTravelSavingFromInput(value: number) {
-    setTravelSaving(value);
-    updateFirstGoalByKind("travel", { actualMonthly: value });
-  }
-
-  function setLearningSavingFromInput(value: number) {
-    setLearningSaving(value);
-    updateFirstGoalByKind("learning", { actualMonthly: value });
-  }
-
-  function setParentSavingFromInput(value: number) {
-    updateFirstGoalByKind("parent", { actualMonthly: value });
-  }
-
-  function setPartnerSavingFromInput(value: number) {
-    updateFirstGoalByKind("partner", { actualMonthly: value });
-  }
-
-  function setEmergencyAllocationFromInput(value: number) {
-    updateFirstGoalByKind("emergency", { actualMonthly: value });
-  }
-
   function setEmergencyFundFromInput(value: number) {
+    if (emergencyAccounts.length === 1) {
+      updateAccount(emergencyAccounts[0].id, {balance: value});
+      return;
+    }
+    if (emergencyAccounts.length > 1) return;
     setEmergencyFund(value);
     updateFirstGoalByKind("emergency", { current: value });
   }
@@ -2284,8 +2264,8 @@ export default function FinanceDashboard() {
     {
       title: "当前账户余额",
       value: money(totals.accountTotal),
-      detail: `${currentCashflowItems.length} 个非零账户 / 合计 ${money(totals.accountTotal)} / 可动用 ${money(totals.liquidAccountTotal)}`,
-      tone: totals.liquidAccountTotal < totals.emergencyMonthlyNeed * 2 ? ("red" as Tone) : ("green" as Tone),
+      detail: `${currentCashflowItems.length} 个非零账户 / 可提取 ${money(liquidity.liquidCash)} / 扣除专项后可自由动用 ${money(liquidity.available)}`,
+      tone: liquidity.available < 0 ? ("red" as Tone) : ("green" as Tone),
       items: currentCashflowItems,
     },
     {
@@ -2374,128 +2354,33 @@ export default function FinanceDashboard() {
     { label: "必须支出", value: totals.requiredSpending, color: palette[1] },
     { label: "可取消支出", value: Math.max(totals.spendingPlan - totals.requiredSpending, 0), color: palette[2] },
   ];
-  const cashflowMonthlyInflow = forecast[0]?.inflow ?? 0;
-  const cashflowMonthlyOutflow = totals.cashflowSpendingPlan + totals.assetOutflow;
+  const cashflowMonthlyInflow = cashflowScenario.inflow;
+  const cashflowMonthlyOutflow = cashflowScenario.outflow;
   const cashflowExpectedIncrease = cashflowMonthlyInflow - cashflowMonthlyOutflow;
   const cashflowBuiltinRows: CashflowTableRow[] = [
     {
       id: "builtin-salary",
-      builtinId: "salary",
       name: "工资流入",
       amount: annualBudgetPlan.salary,
       direction: "inflow",
       source: "与年度工资规划同步；历史实际收入单独保留",
       onAmountChange: value => updateAnnualBudgetPlan({...annualBudgetPlan, salary: value}),
-      onDelete: () => deleteCashflowBuiltinItem("salary"),
     },
-    {
-      id: "builtin-spending-plan",
-      builtinId: "spendingPlan",
-      name: "生活支出预算",
-      amount: totals.spendingPlan,
-      direction: "outflow",
-      source: `${activeMonth.label}预算表动态汇总`,
-      readonlyAmount: true,
-      onDelete: () => deleteCashflowBuiltinItem("spendingPlan"),
-    },
-    {
-      id: "calculated-budget-remaining",
-      name: "本月预算剩余",
-      amount: totals.budgetRemaining,
-      direction: totals.budgetRemaining >= 0 ? "inflow" : "outflow",
-      source: "预算 - 实际，可转储蓄，不计入预测",
-      readonlyAmount: true,
-      summaryOnly: true,
-    },
-    {
-      id: "builtin-travel-saving",
-      builtinId: "travelSaving",
-      name: "旅游储蓄",
-      amount: totals.travelAllocationSource,
-      direction: "outflow",
-      source: "来自目标实际投入",
-      onAmountChange: setTravelSavingFromInput,
-      onDelete: () => deleteCashflowBuiltinItem("travelSaving"),
-    },
-    {
-      id: "builtin-learning-saving",
-      builtinId: "learningSaving",
-      name: "学习储蓄",
-      amount: totals.learningAllocationSource,
-      direction: "outflow",
-      source: "来自目标实际投入",
-      onAmountChange: setLearningSavingFromInput,
-      onDelete: () => deleteCashflowBuiltinItem("learningSaving"),
-    },
-    {
-      id: "builtin-parent-saving",
-      builtinId: "parentSaving",
-      name: "父母储蓄",
-      amount: totals.parentAllocationSource,
-      direction: "outflow",
-      source: "来自目标实际投入",
-      onAmountChange: setParentSavingFromInput,
-      onDelete: () => deleteCashflowBuiltinItem("parentSaving"),
-    },
-    {
-      id: "builtin-partner-saving",
-      builtinId: "partnerSaving",
-      name: "伴侣基金",
-      amount: totals.partnerAllocationSource,
-      direction: "outflow",
-      source: "来自目标实际投入",
-      onAmountChange: setPartnerSavingFromInput,
-      onDelete: () => deleteCashflowBuiltinItem("partnerSaving"),
-    },
-    {
-      id: "builtin-emergency-fund",
-      builtinId: "emergencyFund",
-      name: "应急金投入",
-      amount: totals.emergencyAllocationSource,
-      direction: "outflow",
-      source: "来自目标实际投入",
-      onAmountChange: setEmergencyAllocationFromInput,
-      onDelete: () => deleteCashflowBuiltinItem("emergencyFund"),
-    },
-    {
-      id: "builtin-ashare-plan",
-      builtinId: "aSharePlan",
-      name: "A股计划",
-      amount: aSharePlan,
-      direction: "outflow",
-      source: "现金流出",
-      onAmountChange: setASharePlan,
-      onDelete: () => deleteCashflowBuiltinItem("aSharePlan"),
-    },
-    {
-      id: "builtin-usshare-plan",
-      builtinId: "usSharePlan",
-      name: "美股计划",
-      amount: usSharePlan,
-      direction: "outflow",
-      source: "现金流出",
-      onAmountChange: setUsSharePlan,
-      onDelete: () => deleteCashflowBuiltinItem("usSharePlan"),
-    },
-    {
-      id: "builtin-hkshare-plan",
-      builtinId: "hkSharePlan",
-      name: "港股计划",
-      amount: hkSharePlan,
-      direction: "outflow",
-      source: "现金流出",
-      onAmountChange: setHkSharePlan,
-      onDelete: () => deleteCashflowBuiltinItem("hkSharePlan"),
-    },
+    ...annualBudgetPlan.rows.map(row => ({
+      id: `plan-${row.id}`, name: row.name, amount: row[annualBudgetPlan.mode], direction: "outflow" as const,
+      source: `${budgetModeName}统一预算${row.kind !== "consumption" ? "，划拨后仍属个人资产" : ""}`,
+      onAmountChange: (value: number) => updateAnnualBudgetPlan({...annualBudgetPlan,
+        rows: annualBudgetPlan.rows.map(item => item.id === row.id ? {...item, [annualBudgetPlan.mode]: value} : item)}),
+    })),
   ];
   const cashflowRows: CashflowTableRow[] = [
-    ...cashflowBuiltinRows.filter((item) => !item.builtinId || !cashflowHiddenBuiltinIds.includes(item.builtinId)),
+    ...cashflowBuiltinRows,
     ...cashflowCustomItems.map((item) => ({
       id: item.id,
       name: item.name,
       amount: item.amount,
       direction: item.direction,
-      source: "自定义",
+      source: "预算外追加（不得重复预算内费用）",
       onNameChange: (value: string) => updateCashflowCustomItem(item.id, { name: value }),
       onAmountChange: (value: number) => updateCashflowCustomItem(item.id, { amount: value }),
       onDirectionChange: (value: CashflowDirection) => updateCashflowCustomItem(item.id, { direction: value }),
@@ -2547,13 +2432,14 @@ export default function FinanceDashboard() {
   const cashflowLine = forecast.map((item) => ({ label: item.month, value: item.balance }));
   const cashflowOutflowBars = forecast.map((item) => ({ label: item.month, value: item.outflow, color: palette[4] }));
   const waterfallData: WaterfallDatum[] = [
-    { label: "期初现金", value: totals.accountTotal, kind: "start", color: palette[0] },
+    { label: "可动用起点", value: liquidity.available, kind: "start", color: palette[0] },
     { label: "预测收入", value: cashflowMonthlyInflow, kind: "positive", color: palette[1] },
-    { label: "生活支出", value: -totals.cashflowSpendingPlan, kind: "negative", color: palette[4] },
-    { label: "资产分配", value: -totals.assetOutflow, kind: "negative", color: palette[2] },
+    { label: "消费与预留", value: -cashflowScenario.consumption, kind: "negative", color: palette[4] },
+    { label: "投资与应急", value: -cashflowScenario.saving, kind: "negative", color: palette[2] },
+    { label: "预算外追加", value: -cashflowScenario.extraOutflow, kind: "negative", color: palette[4] },
     {
-      label: "月末现金",
-      value: totals.accountTotal + cashflowExpectedIncrease,
+      label: "一期后余量",
+      value: liquidity.available + cashflowExpectedIncrease,
       kind: "end",
       color: palette[3],
     },
@@ -2573,16 +2459,9 @@ export default function FinanceDashboard() {
     {label: "新增应急现金", value: annualPlanTotals.annualEmergency, color: palette[2]},
     {label: "额外现金余量", value: Math.max(0, annualPlanTotals.annualSurplus), color: palette[3]},
   ];
-  const netWorthTrend = forecast.map((item) => ({
+  const netWorthTrend = forecast.map((item, index) => ({
     label: item.month,
-    value:
-      item.balance +
-      totals.investmentValue +
-      totals.totalSavings +
-      totals.parentSavings +
-      totals.currentEmergencyFund +
-      totals.manualAssetTotal -
-      totals.totalDebt,
+    value: totals.netWorth + (index + 1) * (cashflowScenario.inflow - cashflowScenario.consumption - cashflowScenario.extraOutflow),
   }));
   const balanceData = [
     { label: "总资产", value: totals.totalAssets, color: palette[0] },
@@ -2609,7 +2488,7 @@ export default function FinanceDashboard() {
   }));
   const totalGoalCurrent = goals.reduce((sum, item) => sum + item.current, 0);
   const totalGoalTarget = goals.reduce((sum, item) => sum + item.target, 0);
-  const totalGoalExpectedInput = goals.reduce((sum, item) => sum + item.monthly, 0);
+  const totalGoalExpectedInput = plannedGoals.reduce((sum, item) => sum + item.monthly, 0);
   const totalGoalActualInput = goals.reduce((sum, item) => sum + item.actualMonthly, 0);
   const selectedMonthIndex = Math.max(0, reportMonthRecords.findIndex((item) => item.id === selectedMonth));
   const monthlyGoalInputTrend = reportMonthRecords.map((record, index) => ({
@@ -2635,48 +2514,30 @@ export default function FinanceDashboard() {
   }));
   const fundBucketRows = fundBuckets.map((item, index) => {
     const gap = Math.max(0, item.target - item.current);
-    const monthsLeft = monthsBetweenMonthIdAndDate(selectedMonth, item.dueDate);
+    const pastDue = item.dueDate < reviewToday();
+    const monthsLeft = monthsBetweenMonthIdAndDate(reviewToday().slice(0, 7), item.dueDate);
     return {
       ...item,
       index,
       gap,
       monthsLeft,
-      monthlyNeed: gap / monthsLeft,
-      status: gap <= 0 ? "已覆盖" : monthsLeft <= 2 ? "紧急补齐" : "持续准备",
+      monthlyNeed: pastDue ? 0 : gap / monthsLeft,
+      status: gap <= 0 ? "已覆盖" : pastDue ? "日期已过，状态待核实" : monthsLeft <= 2 ? "紧急补齐" : "持续准备",
     };
   });
   const fundBucketPreparedTotal = fundBucketRows.reduce((sum, item) => sum + item.current, 0);
-  const lockedFundBucketPrepared = fundBucketRows
-    .filter((item) => item.locked)
-    .reduce((sum, item) => sum + item.current, 0);
   const fundBucketTargetTotal = fundBucketRows.reduce((sum, item) => sum + item.target, 0);
   const fundBucketGapTotal = fundBucketRows.reduce((sum, item) => sum + item.gap, 0);
   const urgentFundBucketGap = fundBucketRows
-    .filter((item) => item.gap > 0 && item.monthsLeft <= 2)
+    .filter((item) => item.gap > 0 && item.dueDate >= reviewToday() && item.monthsLeft <= 2)
     .reduce((sum, item) => sum + item.gap, 0);
   const monthlyFundBucketNeed = fundBucketRows.reduce((sum, item) => sum + item.monthlyNeed, 0);
-  const liquidAfterBuckets = totals.liquidAccountTotal - totals.investmentReserve - lockedFundBucketPrepared;
-  const investmentReserveCoverage = totals.investmentSavingAllocation
-    ? totals.investmentReserve / totals.investmentSavingAllocation
-    : 0;
+  const liquidAfterBuckets = liquidity.available;
+  const monthlyInvestmentPlan = annualBudgetPlan.rows.find(row => row.id === "investment")?.[annualBudgetPlan.mode] ?? 0;
+  const investmentReserveCoverage = monthlyInvestmentPlan ? totals.investmentReserve / monthlyInvestmentPlan : 0;
   const cashAfterFamily = actualIncome - totals.spendingActual - totals.parentAllocation - totals.partnerAllocation;
   const cashAfterFamilyAndInvestment = cashAfterFamily - totals.investmentSavingAllocation;
-  const fundBucketChartData = [
-    {
-      label: "投资待投金",
-      value: totals.investmentReserve,
-      color: palette[6],
-      detail: `约覆盖 ${investmentReserveCoverage.toFixed(1)} 个月投资计划`,
-    },
-    ...fundBucketRows
-      .filter((item) => item.current > 0)
-      .map((item, index) => ({
-        label: item.name,
-        value: item.current,
-        color: palette[(index + 1) % palette.length],
-        detail: `${item.kind} / ${item.locked ? "锁定" : "可调整"}`,
-      })),
-  ];
+  const fundBucketChartData = liquidity.deductions.map((item, index) => ({label: item.name, value: item.amount, color: palette[index % palette.length], detail: item.source}));
   const fundBucketGapData = fundBucketRows
     .filter((item) => item.gap > 0)
     .sort((left, right) => left.dueDate.localeCompare(right.dueDate))
@@ -2728,7 +2589,7 @@ export default function FinanceDashboard() {
       title: "投资纪律",
       tone: investmentReserveCoverage >= 2 ? ("green" as Tone) : investmentReserveCoverage >= 1 ? ("amber" as Tone) : ("red" as Tone),
       summary: `待投资金可覆盖 ${investmentReserveCoverage.toFixed(1)} 个月计划`,
-      detail: `A股待投 ${money(totals.aShareInvestmentReserve)}，美股待投 ${money(totals.usShareInvestmentReserve)}，每月投资计划 ${money(totals.investmentSavingAllocation)}。`,
+      detail: `A股待投 ${money(totals.aShareInvestmentReserve)}，美股待投 ${money(totals.usShareInvestmentReserve)}，当前每月投资预算 ${money(monthlyInvestmentPlan)}。`,
       action:
         investmentReserveCoverage >= 2
           ? "不需要额外加速投入；保持只用待投资金，不动应急、旅行和家庭责任资金。"
@@ -2749,7 +2610,7 @@ export default function FinanceDashboard() {
   const monthlyAnalysisReportText = [
     `${activeMonth.label}财务分析报告`,
     "",
-    `1. 净资产与现金：总资产 ${money(totals.totalAssets)}，净资产 ${money(totals.netWorth)}，可动用现金 ${money(totals.liquidAccountTotal)}，大花费项目后未分配现金 ${money(liquidAfterBuckets)}。`,
+    `1. 净资产与现金：总资产 ${money(totals.totalAssets)}，净资产 ${money(totals.netWorth)}，可提取现金 ${money(liquidity.liquidCash)}，扣除专项后可自由动用 ${money(liquidAfterBuckets)}。`,
     `2. 收支：收入 ${money(actualIncome)}，生活支出 ${money(totals.spendingActual)}，资产/责任分配 ${money(totals.assetOutflow)}，当月余额 ${money(totals.monthlySurplus)}。`,
     `3. 家庭责任：父母 ${money(totals.parentAllocation)}，伴侣 ${money(totals.partnerAllocation)}，合计占收入 ${percent((totals.parentAllocation + totals.partnerAllocation) / Math.max(actualIncome, 1))}。`,
     `4. 大花费项目：目标 ${money(fundBucketTargetTotal)}，已准备 ${money(fundBucketPreparedTotal)}，缺口 ${money(fundBucketGapTotal)}，其中两个月内缺口 ${money(urgentFundBucketGap)}。`,
@@ -2784,12 +2645,12 @@ export default function FinanceDashboard() {
     { id: "parent-saving", name: "父母储蓄", amount: totals.parentAllocationSource, flow: "资产分配", source: "目标管理本月实际投入" },
     { id: "partner-saving", name: "伴侣基金", amount: totals.partnerAllocationSource, flow: "家庭分配", source: "目标管理本月实际投入，不计入个人总资产" },
     { id: "emergency-saving", name: "应急金投入", amount: totals.emergencyAllocationSource, flow: "资产分配", source: "目标管理本月实际投入" },
-    { id: "ashare-plan", name: "A股计划", amount: aSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
-    { id: "usshare-plan", name: "美股计划", amount: usSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
-    { id: "hkshare-plan", name: "港股计划", amount: hkSharePlan, flow: "资产分配", source: "投资计划 / 现金流预测" },
+    { id: "ashare-plan", name: "A股账本分配", amount: aSharePlan, flow: "资产分配", source: "账本投资分配，非当前预测预算" },
+    { id: "usshare-plan", name: "美股账本分配", amount: usSharePlan, flow: "资产分配", source: "账本投资分配，非当前预测预算" },
+    { id: "hkshare-plan", name: "港股账本分配", amount: hkSharePlan, flow: "资产分配", source: "账本投资分配，非当前预测预算" },
     { id: "investment-reserve", name: "投资待投金", amount: totals.investmentReserve, flow: "大花费项目", source: "账户用途自动识别：A股待投 + 美股待投" },
     { id: "fund-bucket-gap", name: "大花费项目缺口", amount: fundBucketGapTotal, flow: "大花费项目", source: "大花费项目目标 - 已准备金额" },
-    { id: "liquid-after-buckets", name: "大花费项目后未分配现金", amount: liquidAfterBuckets, flow: "安全垫", source: "可动用现金 - 待投资金 - 已锁定大花费项目" },
+    { id: "liquid-after-buckets", name: "可自由动用现金", amount: liquidAfterBuckets, flow: "安全垫", source: "可提取账户 - 专项账户占用 - 项目追加锁定（关联后去重）" },
     { id: "monthly-surplus", name: "当月余额", amount: totals.monthlySurplus, flow: "结余", source: "收入 - 实际支出 - 实际资产分配" },
   ];
   const reportData = [
@@ -3202,19 +3063,14 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "cashflow" && (
-                  <Module title="账本现金流预测" desc="工资采用统一规划值，支出按所选月份账本推演6个月；出差月份与补贴到账尚未确定。历史实际收入不改写预测工资。">
+                  <Module title="当前现金流预测" desc="当前余额扣除专项占用，再测算六个完整月预算周期；不是本月剩余天数的到账预测。出差补贴未确认到账，不预支；历史账本不参与当前预算。">
                     <DataChartLayout
                       data={
                         <>
-                          <MonthSelector
-                            records={monthlyRecords}
-                            selectedMonth={selectedMonth}
-                            onAddMonth={addMonthRecord}
-                            onChange={setSelectedMonth}
-                            onDeleteSelectedMonth={() => deleteMonthRecord(selectedMonth)}
-                          />
+                          <LiquiditySummary liquidity={liquidity}/>
+                          <label className="field"><span>预测月份类型</span><select aria-label="预测月份类型" value={annualBudgetPlan.mode} onChange={event => updateAnnualBudgetPlan({...annualBudgetPlan, mode: event.target.value as "normal" | "trip"})}><option value="normal">普通月</option><option value="trip" disabled={annualBudgetPlan.awayMonths === 0}>出差月（不预支补贴）</option></select></label>
                           <EditableCashflowInputsTable
-                            accountTotal={totals.accountTotal}
+                            accountTotal={liquidity.available}
                             addCashflowCustomItem={addCashflowCustomItem}
                             monthlyInflow={cashflowMonthlyInflow}
                             monthlyOutflow={cashflowMonthlyOutflow}
@@ -3230,16 +3086,16 @@ export default function FinanceDashboard() {
                       }
                       charts={
                         <div className="chart-grid two">
-                          <ChartPanel title="余额趋势" summary="未来 6 个月">
+                          <ChartPanel title="可动用余量情景" summary={`${budgetModeName} × 6 个完整周期`}>
                             <LineChart data={cashflowLine} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="月度流出压力" summary={`每月流出 ${money(cashflowMonthlyOutflow)}`}>
                             <VerticalBarChart data={cashflowOutflowBars} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="现金瀑布" summary="本月资金变化">
+                          <ChartPanel title="现金瀑布" summary="一个完整预算周期">
                             <WaterfallChart data={waterfallData} />
                           </ChartPanel>
-                          <ChartPanel title="现金流日历" summary="账单与工资联动">
+                          <ChartPanel title="现金流日历" summary="事项提醒，不重复扣预算">
                             <CashflowCalendar events={cashflowEvents} />
                           </ChartPanel>
                         </div>
@@ -3269,7 +3125,7 @@ export default function FinanceDashboard() {
                           <ChartPanel title="账户余额分布" summary={`账户合计 ${money(totals.accountTotal)} / 按余额降序`}>
                             <DonutChart data={accountChartData} centerLabel="账户" centerValue={money(totals.accountTotal)} />
                           </ChartPanel>
-                          <ChartPanel title="可动用现金" summary={`可立即动用 ${money(totals.liquidAccountTotal)} / 按余额降序`}>
+                          <ChartPanel title="可提取账户余额" summary={`含专项 ${money(liquidity.liquidCash)} / 自由动用 ${money(liquidity.available)}`}>
                             <HorizontalBarChart data={accountChartData} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="账户用途映射" summary="账户余额流向 / 按余额降序">
@@ -3418,6 +3274,7 @@ export default function FinanceDashboard() {
                         <>
                           <EditableEmergencyTable
                             emergencyFund={totals.currentEmergencyFund}
+                            accountCount={emergencyAccounts.length}
                             emergencyMonthlyNeed={emergencyMonthlyNeed}
                             emergencyMonths={emergencyMonths}
                             setEmergencyFund={setEmergencyFundFromInput}
@@ -3454,8 +3311,8 @@ export default function FinanceDashboard() {
                             <HorizontalBarChart
                               data={[
                                 { label: "应急月均支出", value: totals.emergencyMonthlyNeed, color: palette[1] },
-                                { label: "预算必要支出", value: totals.requiredSpending, color: palette[2] },
-                                { label: "预算总额", value: totals.spendingPlan, color: palette[4] },
+                                { label: "当前消费预留", value: cashPlanTotals.consumption, color: palette[2] },
+                                { label: "当前全部安排", value: cashPlanTotals.totalOutflow, color: palette[4] },
                               ]}
                               valueFormatter={money}
                             />
@@ -3501,7 +3358,7 @@ export default function FinanceDashboard() {
                         <>
                           <MonthSelector records={monthlyRecords} selectedMonth={selectedMonth} onChange={setSelectedMonth} />
                           <EditableGoalsTable
-                            goals={goals}
+                            goals={plannedGoals}
                             addGoal={addGoal}
                             deleteGoal={deleteGoal}
                             updateGoal={updateGoal}
@@ -3515,7 +3372,7 @@ export default function FinanceDashboard() {
                           </ChartPanel>
                           <ChartPanel title="每月预期准备结构" summary={`预期 ${money(totalGoalExpectedInput)}`}>
                             <DonutChart
-                              data={goals.map((item, index) => ({
+                              data={plannedGoals.map((item, index) => ({
                                 label: item.name,
                                 value: item.monthly,
                                 color: palette[index % palette.length],
@@ -3544,13 +3401,9 @@ export default function FinanceDashboard() {
                     <DataChartLayout
                       data={
                         <>
-                          <div className="stat-strip">
-                            <Stat label="可动用现金" value={money(totals.liquidAccountTotal)} />
-                            <Stat label="投资待投金" value={money(totals.investmentReserve)} />
-                            <Stat label="项目缺口" value={money(fundBucketGapTotal)} />
-                            <Stat label="未分配现金" value={money(liquidAfterBuckets)} />
-                          </div>
+                          <LiquiditySummary liquidity={liquidity}/>
                           <EditableFundBucketTable
+                            accounts={accounts}
                             buckets={fundBucketRows}
                             addFundBucket={addFundBucket}
                             deleteFundBucket={deleteFundBucket}
@@ -3563,8 +3416,8 @@ export default function FinanceDashboard() {
                       }
                       charts={
                         <div className="chart-grid two">
-                          <ChartPanel title="已锁定资金" summary={`含待投资金 ${money(totals.investmentReserve)}`}>
-                            <DonutChart data={fundBucketChartData} centerLabel="已准备" centerValue={money(fundBucketPreparedTotal + totals.investmentReserve)} />
+                          <ChartPanel title="已锁定资金" summary="可提取现金中的占用，已去重">
+                            <DonutChart data={fundBucketChartData} centerLabel="已锁定" centerValue={money(liquidity.reserved)} />
                           </ChartPanel>
                           <ChartPanel title="大花费项目缺口" summary={`总缺口 ${money(fundBucketGapTotal)}`}>
                             <HorizontalBarChart data={fundBucketGapData} valueFormatter={money} />
@@ -3572,11 +3425,11 @@ export default function FinanceDashboard() {
                           <ChartPanel title="每月补齐压力" summary={`每月需 ${money(monthlyFundBucketNeed)}`}>
                             <VerticalBarChart data={fundBucketMonthlyNeedData} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="大花费项目结论" summary={liquidAfterBuckets < 0 ? "存在重复占用" : "现金标签可执行"}>
+                          <ChartPanel title="大花费项目结论" summary={liquidAfterBuckets < 0 || liquidity.overallocated > 0 || liquidity.unlinkedCount > 0 ? "占用待核对" : "占用已核算"}>
                             <div className="fund-bucket-note">
-                              <strong>{liquidAfterBuckets < 0 ? "先处理现金占用冲突" : "当前标签可落地"}</strong>
+                              <strong>{liquidAfterBuckets < 0 || liquidity.overallocated > 0 ? "存在资金占用缺口" : liquidity.unlinkedCount > 0 ? "存在未关联账户的项目" : "当前余额可覆盖已锁定金额"}</strong>
                               <span>
-                                待投资金会自动从账户用途识别，不需要手动重复录入。旅行、搬家、分期和应急金只记录额外需要锁定的现金。
+                                未准备的项目缺口不冒充已锁定资金。待付账单是否包含在预算内，仍需核对。
                               </span>
                             </div>
                           </ChartPanel>
@@ -4862,6 +4715,7 @@ function EditableDebtTable({
 }
 
 function EditableEmergencyTable({
+  accountCount,
   emergencyFund,
   setEmergencyFund,
   emergencyMonths,
@@ -4869,6 +4723,7 @@ function EditableEmergencyTable({
   emergencyMonthlyNeed,
   setEmergencyMonthlyNeed,
 }: {
+  accountCount: number;
   emergencyFund: number;
   setEmergencyFund: (value: number) => void;
   emergencyMonths: number;
@@ -4879,7 +4734,7 @@ function EditableEmergencyTable({
   const target = emergencyMonthlyNeed * emergencyMonths;
   return (
     <>
-      <TableToolbar title="应急金底表" meta={`目标 ${money(target)} / 当前 ${money(emergencyFund)}`} />
+      <TableToolbar title="应急金底表" meta={`目标 ${money(target)} / 当前 ${money(emergencyFund)} / ${accountCount ? `${accountCount} 个应急账户实时余额` : "手动参考余额，未关联账户"}`} />
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table">
           <thead>
@@ -4892,7 +4747,7 @@ function EditableEmergencyTable({
           <tbody>
             <tr>
               <td>当前应急金</td>
-              <td><TableNumberInput ariaLabel="当前应急金" value={emergencyFund} onChange={setEmergencyFund} /></td>
+              <td>{accountCount > 1 ? <span className="calculated-cell">{money(emergencyFund)}（账户管理汇总）</span> : <TableNumberInput ariaLabel="当前应急金" value={emergencyFund} onChange={setEmergencyFund} />}</td>
               <td className="calculated-cell">覆盖 {emergencyMonthlyNeed ? (emergencyFund / emergencyMonthlyNeed).toFixed(1) : "0.0"} 月</td>
             </tr>
             <tr>
@@ -5023,6 +4878,7 @@ function EditableGoalsTable({
 }
 
 function EditableFundBucketTable({
+  accounts,
   buckets,
   updateFundBucket,
   addFundBucket,
@@ -5031,6 +4887,7 @@ function EditableFundBucketTable({
   liquidAfterBuckets,
   monthlyNeed,
 }: {
+  accounts: Account[];
   buckets: Array<FundBucket & { gap: number; monthsLeft: number; monthlyNeed: number; status: string }>;
   updateFundBucket: (id: string, patch: Partial<FundBucket>) => void;
   addFundBucket: () => void;
@@ -5050,7 +4907,7 @@ function EditableFundBucketTable({
       />
       <div className="auto-bucket-row">
         <strong>自动锁定：投资待投金 {money(investmentReserve)}</strong>
-        <span>A股待投和美股待投从账户用途自动识别，不在下表重复录入。</span>
+        <span>应急、旅游、学习、家庭专户也计占用；关联同一账户的项目不重复扣款。未关联项目按额外占用计。</span>
       </div>
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table fund-bucket-table">
@@ -5061,6 +4918,7 @@ function EditableFundBucketTable({
               <th>截止日期</th>
               <th>目标</th>
               <th>已准备</th>
+              <th>资金所在账户</th>
               <th>缺口</th>
               <th>每月需补</th>
               <th>锁定</th>
@@ -5083,6 +4941,11 @@ function EditableFundBucketTable({
                 <td><TableDateInput ariaLabel={`${item.name} 截止日期`} value={item.dueDate} onChange={(value) => updateFundBucket(item.id, { dueDate: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 目标`} value={item.target} onChange={(value) => updateFundBucket(item.id, { target: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 已准备`} value={item.current} onChange={(value) => updateFundBucket(item.id, { current: value })} /></td>
+                <td><select aria-label={`${item.name} 资金所在账户`} value={item.fundingAccountId ?? ""} onChange={event => updateFundBucket(item.id, {fundingAccountId: event.target.value})}>
+                  <option value="">未关联（另占通用现金）</option>
+                  {item.fundingAccountId && !accounts.some(account => account.id === item.fundingAccountId) && <option value={item.fundingAccountId}>原账户已删除，待核对</option>}
+                  {accounts.map(account => <option key={account.id} value={account.id}>{account.name}{cashReservePurpose(account) ? "（专项）" : ""}{account.liquid ? "" : "（不可提取）"}</option>)}
+                </select></td>
                 <td>
                   <span className={item.gap > 0 ? "negative" : "positive"}>{money(item.gap)}</span>
                   <span className="table-subtext">{item.status}</span>
@@ -5102,6 +4965,26 @@ function EditableFundBucketTable({
       </div>
     </>
   );
+}
+
+function LiquiditySummary({liquidity}: {liquidity: ReturnType<typeof calculateLiquidity>}) {
+  return <section className="liquidity-summary" aria-label="可动用现金核对">
+    <div className="stat-strip">
+      <Stat label="可提取账户余额" value={money(liquidity.liquidCash)}/>
+      <Stat label="专项账户占用" value={money(liquidity.accountReserved)}/>
+      <Stat label="项目追加锁定" value={money(liquidity.projectReserved)}/>
+      <Stat label="可自由动用" value={money(liquidity.available)}/>
+    </div>
+    <details className="liquidity-details"><summary>资金占用明细</summary>
+      <div className="table-wrap"><table className="spreadsheet-table"><thead><tr><th>账户或项目</th><th>占用</th><th>口径</th></tr></thead><tbody>
+        {liquidity.deductions.map(item => <tr key={item.id}><td>{item.name}</td><td>{money(item.amount)}</td><td>{item.source}</td></tr>)}
+        {!liquidity.deductions.length && <tr><td colSpan={3}>暂无已识别专项占用</td></tr>}
+      </tbody></table></div>
+    </details>
+    {liquidity.unlinkedCount > 0 && <p className="table-subtext">{liquidity.unlinkedCount} 个已准备项目尚未关联账户，暂按额外占用扣减；若钱已在专项账户中，当前可动用金额可能偏低。</p>}
+    {liquidity.overallocated > 0 && <p className="negative" role="alert">关联项目超过账户余额 {money(liquidity.overallocated)}，请核对准备金额。</p>}
+    {liquidity.available < 0 && <p className="negative" role="alert">资金占用超出可提取余额 {money(-liquidity.available)}。</p>}
+  </section>;
 }
 
 function MonthlyAnalysisReport({
@@ -5607,7 +5490,7 @@ function CashflowCalendar({ events }: { events: CashflowEvent[] }) {
             {event.inflow > 0 && <em className="positive">+{money(event.inflow)}</em>}
             {event.outflow > 0 && <em className="negative">-{money(event.outflow)}</em>}
           </div>
-          <small>余额 {money(event.balance)}</small>
+          <small>事项金额，非额外预算</small>
         </article>
       ))}
     </div>

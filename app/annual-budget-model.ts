@@ -8,7 +8,7 @@ export type AnnualBudgetRow = {
   note: string;
 };
 export type AnnualBudgetPlan = {
-  allocationVersion: 2;
+  allocationVersion: 3;
   salary: number;
   awayMonths: number;
   paidDays: number;
@@ -17,7 +17,7 @@ export type AnnualBudgetPlan = {
   budgetFx: number;
   emergencyCurrent: number;
   emergencyTargetMonths: number;
-  basicMeals: number;
+  emergencyMonthlyNeed: number;
   bufferMonths: number;
   bonusAfterTax: number | null;
   mode: BudgetMonthMode;
@@ -25,15 +25,15 @@ export type AnnualBudgetPlan = {
 };
 
 export const initialAnnualBudgetPlan: AnnualBudgetPlan = {
-  allocationVersion: 2,
+  allocationVersion: 3,
   salary: 13000, awayMonths: 3, paidDays: 90, allowanceUsd: 110, dailySpendUsd: 60,
-  budgetFx: 6.7, emergencyCurrent: 2000, emergencyTargetMonths: 6, basicMeals: 1800,
+  budgetFx: 6.7, emergencyCurrent: 2000, emergencyTargetMonths: 6, emergencyMonthlyNeed: 4750,
   bufferMonths: 3, bonusAfterTax: null, mode: "normal",
   rows: [
     {id: "rent", name: "房租", kind: "consumption", normal: 2750, trip: 2750, note: "个人承担的房租"},
     {id: "parents", name: "家用", kind: "consumption", normal: 2000, trip: 2000, note: "给父母的家用，不计为个人资产"},
     {id: "investment", name: "投资基金", kind: "investment", normal: 2750, trip: 2750, note: "投入本金，不计投资收益或亏损"},
-    {id: "emergency", name: "应急储备", kind: "emergency", normal: 1000, trip: 1000, note: "应急&学习金中的应急部分，不计学习消费"},
+    {id: "emergency", name: "应急储备", kind: "emergency", normal: 500, trip: 500, note: "应急&学习金中的应急部分，不计学习消费"},
     {id: "learning", name: "学习基金", kind: "consumption", normal: 1000, trip: 1000, note: "订阅、书籍和其他会员"},
     {id: "travel", name: "旅游基金", kind: "consumption", normal: 1000, trip: 1000, note: "实际旅行从中支付，不重复拨款"},
     {id: "partner", name: "伴侣基金", kind: "consumption", normal: 1000, trip: 1000, note: "水电网、住房额外支出等"},
@@ -44,7 +44,7 @@ export const initialAnnualBudgetPlan: AnnualBudgetPlan = {
 
 const round = (value: number) => Math.round((value + Number.EPSILON * Math.abs(value)) * 100) / 100;
 const cents = (value: number) => Math.round(round(value) * 100);
-const numberFields = ["salary", "awayMonths", "paidDays", "allowanceUsd", "dailySpendUsd", "budgetFx", "emergencyCurrent", "emergencyTargetMonths", "basicMeals", "bufferMonths"] as const;
+const numberFields = ["salary", "awayMonths", "paidDays", "allowanceUsd", "dailySpendUsd", "budgetFx", "emergencyCurrent", "emergencyTargetMonths", "emergencyMonthlyNeed", "bufferMonths"] as const;
 
 export function normalizeAnnualBudgetPlan(value: unknown): AnnualBudgetPlan {
   const result = {...initialAnnualBudgetPlan, rows: initialAnnualBudgetPlan.rows.map(row => ({...row}))};
@@ -89,10 +89,12 @@ export function normalizeAnnualBudgetPlan(value: unknown): AnnualBudgetPlan {
       return row.normal === (row.id === "daily" ? 4250 : row.id === "emergency" ? 500 : baseline.normal) && row.trip === (row.id === "emergency" ? 500 : baseline.trip);
     })) result.rows.find(row => row.id === "daily")!.normal = 1000;
   }
-  if (saved.allocationVersion !== 2) {
+  if (saved.allocationVersion !== 3) {
+    // Apply the newly confirmed planning settings once; balances and historical records are not migrated.
+    result.emergencyMonthlyNeed = 4750;
     const emergency = result.rows.find(row => row.id === "emergency")!;
     for (const mode of ["normal", "trip"] as const) {
-      if (emergency[mode] === 500) emergency[mode] = 1000;
+      emergency[mode] = 500;
     }
   }
   return result;
@@ -107,6 +109,16 @@ export function calculateAnnualAccumulation(plan: AnnualBudgetPlan, bonusAfterTa
   const projectedAccumulation = round(totals.annualRetained + bonus);
   return {bonus, incomeWithBonus, fixedTarget, projectedCash, projectedAccumulation,
     accumulationRate: incomeWithBonus > 0 ? projectedAccumulation / incomeWithBonus : null};
+}
+
+export function calculateCashflowScenario(plan: AnnualBudgetPlan, extras: Array<{direction: "inflow" | "outflow"; amount: number}> = []) {
+  const budget = calculateAnnualBudgetPlan(plan)[plan.mode];
+  const extraInflow = round(extras.filter(item => item.direction === "inflow").reduce((sum, item) => sum + item.amount, 0));
+  const extraOutflow = round(extras.filter(item => item.direction === "outflow").reduce((sum, item) => sum + item.amount, 0));
+  // Subsidies have no confirmed payment schedule; do not turn their annual average into spendable cash.
+  const inflow = round(plan.salary + extraInflow);
+  const outflow = round(budget.totalOutflow + extraOutflow);
+  return {inflow, outflow, change: round(inflow - outflow), consumption: budget.consumption, saving: budget.saving, extraInflow, extraOutflow};
 }
 
 export function calculateAnnualBudgetPlan(plan: AnnualBudgetPlan) {
@@ -145,9 +157,7 @@ export function calculateAnnualBudgetPlan(plan: AnnualBudgetPlan) {
   const annualTripSurplus = round(annualTripNet + (plan.salary - trip.totalOutflow) * plan.awayMonths);
   const normalDeficit = Math.max(0, -normal.surplus);
   const buffer = round(normalDeficit * plan.bufferMonths);
-  const rent = rows.find(row => row.id === "rent")?.normal ?? 0;
-  const parents = rows.find(row => row.id === "parents")?.normal ?? 0;
-  const basicNeed = round(rent + parents + plan.basicMeals);
+  const basicNeed = round(plan.emergencyMonthlyNeed);
   const emergencyTarget = round(basicNeed * plan.emergencyTargetMonths);
   const emergencyYearEnd = round(plan.emergencyCurrent + annualEmergency);
   const dailyNetCny = round(netUsd * plan.budgetFx);

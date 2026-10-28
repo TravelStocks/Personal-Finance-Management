@@ -101,7 +101,7 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
     {key: "budgetFx", label: "预算汇率", unit: "人民币 / 美元", step: "0.01"},
     {key: "emergencyCurrent", label: "应急期初参考余额", unit: "元，非账户实时余额", step: "100"},
     {key: "emergencyTargetMonths", label: "应急覆盖目标", unit: "个月", step: "1"},
-    {key: "basicMeals", label: "应急测算基本餐饮", unit: "元 / 月，目标下限口径", step: "100"},
+    {key: "emergencyMonthlyNeed", label: "月均必要支出", unit: "元 / 月，应急目标统一基数", step: "50"},
     {key: "bufferMonths", label: "连续普通月周转测算", unit: "个月", step: "1"},
   ];
   const annualSlices = [
@@ -183,8 +183,8 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
           <small>年度平均值；普通月份到账工资仍为{money(plan.salary)}。</small></article>
         <article><span>应急金全年后参考余额</span><strong data-testid="emergency-year-end">{money(totals.emergencyYearEnd)}</strong>
           <small>期初参考{money(plan.emergencyCurrent)} + 全年新增{money(totals.annualEmergency)}，假设不动用、不计收益。</small></article>
-        <article><span>{plan.emergencyTargetMonths}个月应急目标保守下限</span><strong data-testid="emergency-target-floor">{money(totals.emergencyTarget)}</strong>
-          <small>房租 + 父母家用 + 基本餐饮，共{money(totals.basicNeed)} / 月；未含必要通讯、交通、医疗。全年后仍差{money(totals.emergencyGap)}。</small></article>
+        <article><span>{plan.emergencyTargetMonths}个月应急目标</span><strong data-testid="emergency-target-floor">{money(totals.emergencyTarget)}</strong>
+          <small>统一必要支出基数{money(totals.basicNeed)} / 月 × {plan.emergencyTargetMonths}个月。全年参考余额距目标仍差{money(totals.emergencyGap)}。</small></article>
       </div>
     </section>
 

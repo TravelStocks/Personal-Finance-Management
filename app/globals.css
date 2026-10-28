@@ -1685,7 +1685,45 @@ th {
 }
 
 .fund-bucket-table {
-  min-width: 1180px;
+  min-width: 1380px;
+}
+
+.liquidity-summary {
+  min-width: 0;
+  margin-bottom: 14px;
+}
+
+.liquidity-summary .stat-card span,
+.liquidity-summary .stat-card strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.liquidity-summary .stat-card strong {
+  margin-top: 6px;
+  font-size: 21px;
+}
+
+.liquidity-details {
+  margin-top: 10px;
+}
+
+.liquidity-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.liquidity-details table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.liquidity-details th,
+.liquidity-details td {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .fund-bucket-note {
