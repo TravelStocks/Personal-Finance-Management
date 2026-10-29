@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
 import AnnualBudgetPlanner, {AnnualBudgetAllocationTable} from "./annual-budget-plan";
 import { calculateAnnualBudgetPlan, calculateCashflowScenario, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
@@ -8,6 +8,7 @@ import {calculateLiquidity} from "./liquidity-model";
 import FinanceReviewPanel from "./finance-review-panel";
 import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, type FinanceReview} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
+import {financeBackupSignature, financeDataOnly, financeSaveConflict, hasPendingFinanceSave, markFinanceCloudSaved, writeLocalFinanceData} from "./finance-save-model";
 import {applySalaryFromMonth, confirmedMonthlySalary, migrateSalarySettings, salarySettingsVersion} from "./salary-model";
 import {addSpendingDetailPresets, getSpendingGroup, nextMonthSpendingRows, spendingGroups, summarizeLearning, type SpendingBudget as Budget} from "./spending-detail-model";
 
@@ -1081,6 +1082,10 @@ export default function FinanceDashboard() {
   const [reportCopyStatus, setReportCopyStatus] = useState("报告随数据自动更新");
   const [savedDataReady, setSavedDataReady] = useState(false);
   const cloudAutoSyncTimerRef = useRef<number | null>(null);
+  const cloudOperationRef = useRef(false);
+  const cloudAutoUploadBlockedRef = useRef(false);
+  const lastCloudSignatureRef = useRef("");
+  const lastLocalDataRef = useRef<string | undefined>(undefined);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   function getPersistedFinanceData(): PersistedFinanceData {
@@ -1115,8 +1120,10 @@ export default function FinanceDashboard() {
     };
   }
 
-  function persistLocalFinanceData(data: PersistedFinanceData = getPersistedFinanceData()) {
-    window.localStorage.setItem(financeStorageKey, JSON.stringify(data));
+  function persistLocalFinanceData(data: PersistedFinanceData = getPersistedFinanceData(), cloudClean = false) {
+    const metadata = writeLocalFinanceData(window.localStorage, financeStorageKey, data, cloudClean, undefined, lastLocalDataRef.current);
+    lastLocalDataRef.current = JSON.stringify(financeDataOnly(data));
+    return metadata;
   }
 
   function getCloudSyncBackup(overrides: Partial<Pick<CloudSyncBackup, "data" | "snapshots" | "monthlyArchives">> = {}): CloudSyncBackup {
@@ -1190,6 +1197,7 @@ export default function FinanceDashboard() {
     const loadSavedData = window.setTimeout(() => {
       void (async () => {
         let hasLocalData = false;
+        let pendingLocalChanges = false;
         let savedCloudSync = normalizeCloudSyncSettings(null);
         let rememberedPassphrase = "";
 
@@ -1201,8 +1209,10 @@ export default function FinanceDashboard() {
           rememberedPassphrase = window.localStorage.getItem(financeCloudPassphraseKey) ?? "";
           if (raw) {
             const saved = JSON.parse(raw) as Partial<PersistedFinanceData>;
+            lastLocalDataRef.current = JSON.stringify(financeDataOnly(saved));
             applyPersistedFinanceData(saved);
             hasLocalData = true;
+            pendingLocalChanges = hasPendingFinanceSave(saved);
           }
           if (rawSnapshots) {
             const savedSnapshots = JSON.parse(rawSnapshots) as FinanceSnapshot[];
@@ -1226,7 +1236,14 @@ export default function FinanceDashboard() {
           savedCloudSync.rememberPassphrase &&
           Boolean(rememberedPassphrase.trim());
 
-        if (canAutoPullCloud) {
+        cloudAutoUploadBlockedRef.current = pendingLocalChanges && Boolean(savedCloudSync.gistId.trim());
+
+        if (canAutoPullCloud && pendingLocalChanges) {
+          cloudAutoUploadBlockedRef.current = true;
+          setSaveStatus("已恢复本机修改，尚未同步云端");
+          setCloudStatus("本机有未同步修改，已保留；请保存到云端，或核对后手动拉取。");
+        } else if (canAutoPullCloud) {
+          cloudOperationRef.current = true;
           setCloudSyncing(true);
           setCloudStatus("正在打开时自动拉取云端数据…");
           try {
@@ -1242,15 +1259,18 @@ export default function FinanceDashboard() {
             setSaveStatus("已从云端自动恢复最新数据");
             setCloudStatus(`云端数据已自动拉取 · ${formatSnapshotTime(pulledAt)}`);
           } catch {
+            cloudAutoUploadBlockedRef.current = true;
             if (!cancelled) {
               setSaveStatus(hasLocalData ? "已恢复本机数据，云端自动拉取失败" : "已启用自动保存，云端自动拉取失败");
               setCloudStatus("打开时自动拉取失败，请检查同步密码、Token 和 Gist ID。");
             }
           } finally {
+            cloudOperationRef.current = false;
             if (!cancelled) setCloudSyncing(false);
           }
         } else {
           setSaveStatus(hasLocalData ? "已恢复上次保存的数据" : "已启用自动保存");
+          if (!hasLocalData) persistLocalFinanceData(getPersistedFinanceData(), true);
         }
 
         if (!cancelled) setSavedDataReady(true);
@@ -1263,34 +1283,48 @@ export default function FinanceDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Autosave follows the persisted values; helper identities intentionally stay out of this effect.
+  const autoSaveToCloud = useEffectEvent(() => {
+    if (!savedDataReady || cloudAutoUploadBlockedRef.current || cloudOperationRef.current || !cloudSyncSettings.autoSync ||
+        !cloudSyncSettings.gistId.trim() || !cloudSyncSettings.token.trim() || !cloudPassphrase.trim()) return;
+    const backup = getCloudSyncBackup();
+    if (financeBackupSignature(backup) !== lastCloudSignatureRef.current) void uploadCloudSync(true, backup);
+  });
+  const flushLocalSave = useEffectEvent(() => {
+    if (!savedDataReady) return;
+    try {
+      persistLocalFinanceData();
+      setSaveStatus(`本机已自动保存 · ${new Date().toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit", second: "2-digit"})}`);
+    } catch (error) {
+      setSaveStatus(error instanceof Error && error.message === financeSaveConflict ? financeSaveConflict : "本机保存失败，请立即导出备份");
+    }
+  });
+
+  useEffect(() => {
+    if (!savedDataReady) return;
+    const timer = window.setInterval(() => {flushLocalSave(); autoSaveToCloud();}, 30000);
+    const flushPage = () => flushLocalSave();
+    const flushHidden = () => {if (document.visibilityState === "hidden") flushLocalSave();};
+    window.addEventListener("pagehide", flushPage);
+    document.addEventListener("visibilitychange", flushHidden);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("pagehide", flushPage);
+      document.removeEventListener("visibilitychange", flushHidden);
+    };
+  }, [savedDataReady]);
+
+  // Edits debounce locally; periodic and lifecycle saves use the latest committed values.
   useEffect(() => {
     if (!savedDataReady) return;
     const timer = window.setTimeout(() => {
-      try {
-        persistLocalFinanceData();
-        setSaveStatus(`已自动保存 · ${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`);
-        if (
-          cloudSyncSettings.autoSync &&
-          cloudSyncSettings.gistId.trim() &&
-          cloudSyncSettings.token.trim() &&
-          cloudPassphrase.trim() &&
-          !cloudSyncing
-        ) {
-          if (cloudAutoSyncTimerRef.current) window.clearTimeout(cloudAutoSyncTimerRef.current);
-          cloudAutoSyncTimerRef.current = window.setTimeout(() => {
-            void uploadCloudSync(true);
-          }, 3500);
-        }
-      } catch {
-        setSaveStatus("自动保存失败，请导出备份");
-      }
+      flushLocalSave();
+      if (cloudAutoSyncTimerRef.current) window.clearTimeout(cloudAutoSyncTimerRef.current);
+      cloudAutoSyncTimerRef.current = window.setTimeout(() => autoSaveToCloud(), 3500);
     }, 300);
     return () => {
       window.clearTimeout(timer);
       if (cloudAutoSyncTimerRef.current) window.clearTimeout(cloudAutoSyncTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     savedDataReady,
     annualBudgetPlan,
@@ -1323,8 +1357,24 @@ export default function FinanceDashboard() {
     cloudSyncSettings.gistId,
     cloudSyncSettings.token,
     cloudPassphrase,
-    cloudSyncing,
   ]);
+
+  async function saveCurrentData() {
+    if (!savedDataReady || cloudOperationRef.current) return;
+    try {
+      const backup = getCloudSyncBackup();
+      persistLocalFinanceData(backup.data);
+      setSaveStatus(`本机已保存 · ${formatSnapshotTime(new Date().toISOString())}`);
+      if (cloudSyncSettings.token.trim() && cloudPassphrase.trim()) {
+        const uploaded = await uploadCloudSync(false, backup);
+        setSaveStatus(uploaded ? "当前数据已保存到本机和云端" : "本机已保存，云端未更新");
+      } else {
+        setCloudStatus("未连接云同步，仅保存到本机");
+      }
+    } catch (error) {
+      setSaveStatus(error instanceof Error && error.message === financeSaveConflict ? financeSaveConflict : "保存失败，请立即导出备份；本次修改尚未确认保存");
+    }
+  }
 
   async function saveSnapshot() {
     const snapshot: FinanceSnapshot = {
@@ -1424,12 +1474,15 @@ export default function FinanceDashboard() {
     const importedMonthlyArchives = normalizeMonthlyArchives(backup.monthlyArchives);
     setSnapshots(importedSnapshots);
     setMonthlyArchives(importedMonthlyArchives);
-    persistLocalFinanceData(backup.data);
+    persistLocalFinanceData(backup.data, true);
     window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(importedSnapshots));
     window.localStorage.setItem(financeMonthlyArchiveKey, JSON.stringify(importedMonthlyArchives));
+    lastCloudSignatureRef.current = financeBackupSignature(backup);
+    cloudAutoUploadBlockedRef.current = false;
   }
 
   async function uploadCloudSync(silent = false, backup: CloudSyncBackup = getCloudSyncBackup()) {
+    if (!savedDataReady || cloudOperationRef.current) return false;
     if (!cloudSyncSettings.token.trim()) {
       if (!silent) {
         setActiveModules((items) => (items.includes("cloudSync") ? items : [...items, "cloudSync"]));
@@ -1445,9 +1498,11 @@ export default function FinanceDashboard() {
       return false;
     }
 
+    cloudOperationRef.current = true;
     setCloudSyncing(true);
     if (!silent) setCloudStatus("正在加密并上传到 GitHub Gist…");
     try {
+      persistLocalFinanceData(backup.data);
       const gist = await pushCloudSyncBackup({
         backup,
         gistId: cloudSyncSettings.gistId,
@@ -1461,18 +1516,23 @@ export default function FinanceDashboard() {
         lastPushedAt: pushedAt,
       };
       persistCloudSyncSettings(nextSettings);
-      setCloudStatus(`${silent ? "已自动云同步" : "云端保存完成"} · ${formatSnapshotTime(pushedAt)}`);
-      return true;
+      lastCloudSignatureRef.current = financeBackupSignature(backup);
+      cloudAutoUploadBlockedRef.current = false;
+      const synchronized = markFinanceCloudSaved(window.localStorage, financeStorageKey, backup.data);
+      setCloudStatus(synchronized ? `${silent ? "已自动云同步" : "云端保存完成"} · ${formatSnapshotTime(pushedAt)}` : "上一版已上传，最新本机修改待同步");
+      return synchronized;
     } catch (error) {
       setCloudStatus("云端保存失败，请检查 Token、Gist ID 和网络。");
       if (!silent) window.alert(error instanceof Error ? error.message : "云端保存失败");
       return false;
     } finally {
+      cloudOperationRef.current = false;
       setCloudSyncing(false);
     }
   }
 
   async function downloadCloudSync() {
+    if (cloudOperationRef.current) return;
     if (!cloudSyncSettings.gistId.trim()) {
       window.alert("请先填写 Gist ID，或先上传一次创建云端存档。");
       return;
@@ -1487,6 +1547,7 @@ export default function FinanceDashboard() {
     }
     if (!window.confirm("确定从云端覆盖当前本机数据吗？建议覆盖前先导出备份。")) return;
 
+    cloudOperationRef.current = true;
     setCloudSyncing(true);
     setCloudStatus("正在从 GitHub Gist 拉取并解密…");
     try {
@@ -1500,6 +1561,7 @@ export default function FinanceDashboard() {
       setCloudStatus("云端拉取失败，请检查同步密码、Token 和 Gist ID。");
       window.alert(error instanceof Error ? error.message : "云端拉取失败");
     } finally {
+      cloudOperationRef.current = false;
       setCloudSyncing(false);
     }
   }
@@ -2805,12 +2867,13 @@ export default function FinanceDashboard() {
             <span className={savedDataReady ? "save-dot ready" : "save-dot"} />
             <div>
               <strong>{saveStatus}</strong>
-              <small>本机会自动保存；跨电脑请用“保存完整版本”或云同步里的“保存到云端”。{cloudStatus ? `云端：${cloudStatus}` : ""}</small>
+              <small>本机自动保存 · 每 30 秒检查 · {cloudStatus}</small>
             </div>
           </div>
           <div className="data-actions">
-            <button className="primary-button" disabled={cloudSyncing} type="button" onClick={() => void saveMonthlyArchive()}>保存本月月报</button>
-            <button className="secondary-button" disabled={cloudSyncing} type="button" onClick={() => void saveSnapshot()}>保存完整版本</button>
+            <button className="primary-button" disabled={!savedDataReady || cloudSyncing} type="button" onClick={() => void saveCurrentData()}>保存当前数据</button>
+            <button className="secondary-button" disabled={!savedDataReady || cloudSyncing} type="button" onClick={() => void saveMonthlyArchive()}>保存本月月报</button>
+            <button className="secondary-button" disabled={!savedDataReady || cloudSyncing} type="button" onClick={() => void saveSnapshot()}>保存完整版本</button>
             <button className="secondary-button" type="button" onClick={() => setActiveModules((items) => (items.includes("cloudSync") ? items : [...items, "cloudSync"]))}>
               打开云同步
             </button>
@@ -3269,6 +3332,7 @@ export default function FinanceDashboard() {
                       data={
                         <>
                           <EditableEmergencyTable
+                            saveAction={<button className="primary-button" disabled={!savedDataReady || cloudSyncing} type="button" onClick={() => void saveCurrentData()}>保存应急设置</button>}
                             emergencyFund={totals.currentEmergencyFund}
                             accountCount={emergencyAccounts.length}
                             emergencyMonthlyNeed={emergencyMonthlyNeed}
@@ -3277,6 +3341,7 @@ export default function FinanceDashboard() {
                             setEmergencyMonthlyNeed={setEmergencyMonthlyNeed}
                             setEmergencyMonths={setEmergencyMonths}
                           />
+                          <p className="review-caption" role="status">{saveStatus} · {cloudStatus}</p>
                           <div className="stat-strip">
                             <Stat label="覆盖月数" value={`${totals.emergencyCoverage.toFixed(1)} 个月`} />
                             <Stat label="目标金额" value={money(totals.emergencyTarget)} />
@@ -4712,6 +4777,7 @@ function EditableDebtTable({
 }
 
 function EditableEmergencyTable({
+  saveAction,
   accountCount,
   emergencyFund,
   setEmergencyFund,
@@ -4720,6 +4786,7 @@ function EditableEmergencyTable({
   emergencyMonthlyNeed,
   setEmergencyMonthlyNeed,
 }: {
+  saveAction: ReactNode;
   accountCount: number;
   emergencyFund: number;
   setEmergencyFund: (value: number) => void;
@@ -4731,7 +4798,7 @@ function EditableEmergencyTable({
   const target = emergencyMonthlyNeed * emergencyMonths;
   return (
     <>
-      <TableToolbar title="应急金底表" meta={`目标 ${money(target)} / 当前 ${money(emergencyFund)} / ${accountCount ? `${accountCount} 个应急账户实时余额` : "手动参考余额，未关联账户"}`} />
+      <TableToolbar title="应急金底表" meta={`目标 ${money(target)} / 当前 ${money(emergencyFund)} / ${accountCount ? `${accountCount} 个应急账户实时余额` : "手动参考余额，未关联账户"}`} action={saveAction} />
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table">
           <thead>
