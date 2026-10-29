@@ -320,6 +320,20 @@ select {
   gap: 12px;
 }
 
+.review-overview {
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+.review-overview h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.review-overview .section-title {
+  flex-wrap: wrap;
+}
+
 .total-assets-hero {
   display: grid;
   grid-template-columns: minmax(240px, 0.72fr) minmax(0, 2fr);

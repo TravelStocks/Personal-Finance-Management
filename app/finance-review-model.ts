@@ -275,6 +275,10 @@ export function reviewTotals(record: FinanceReview) {
   return {income: record.income, spending, surplus: sum([record.income, -spending]), assets,
     netWorth: sum([assets, -record.balances.debt]), days: (dateValue(record.end).getTime() - dateValue(record.start).getTime()) / dayMs + 1};
 }
+export function latestWeeklyReview(records: FinanceReview[]) {
+  return records.filter(record => record.type === "week")
+    .sort((a, b) => b.end.localeCompare(a.end) || b.savedAt.localeCompare(a.savedAt))[0];
+}
 export function reviewIncomeRows(record:Pick<FinanceReview,"ledger" | "incomeLedger">) {
   return (record.ledger ?? record.incomeLedger)?.filter(row=>row.flow==="income");
 }

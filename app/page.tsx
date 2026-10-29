@@ -8,6 +8,7 @@ import {calculateLiquidity} from "./liquidity-model";
 import FinanceReviewPanel from "./finance-review-panel";
 import DatedLedgerEditor from "./dated-ledger-editor";
 import WeeklyLedgerView from "./weekly-ledger-view";
+import ReviewOverview from "./review-overview";
 import {syncWeeklyReview} from "./review-ledger-sync";
 import {changeDatedEntry, parseDatedEntries, preserveDatedSalaries, type DatedEntry, type EntryMode} from "./dated-ledger-model";
 import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, type FinanceReview} from "./finance-review-model";
@@ -2205,9 +2206,6 @@ export default function FinanceDashboard() {
         .join(" / ")}${liabilities.length > 3 ? " / 更多" : ""}`
     : "暂无负债";
 
-  const monthlyAssetAllocationSummary = [
-    ...annualPlanTotals.rows.filter(row => row.kind !== "consumption").map(row => `${row.name} ${money(row[annualBudgetPlan.mode])}`),
-  ].join(" / ");
   const specialSavingsDetail = [
     `旅游 ${money(totals.travelSavings)}`,
     `学习 ${money(totals.learningSavings)}`,
@@ -2324,31 +2322,31 @@ export default function FinanceDashboard() {
   }> = [
     {
       id: "monthly-overview-income",
-      title: `${budgetModeName}可分配资金`,
-      value: money(cashPlanTotals.income),
-      detail: `工资 ${money(annualBudgetPlan.salary)} + 出差净结余 ${money(cashPlanTotals.tripNet)} / ${annualBudgetPlan.mode === "trip" ? "出差结余按全年平均分摊" : "不预支出差结余"}`,
+      title: "所选月已录收入",
+      value: money(actualIncome),
+      detail: `${activeMonth.label}（自然月账本） / 工资 ${money(salary)} / 其他及股票收益 ${money(otherIncome + Math.max(stockIncome, 0))}`,
       tone: "blue" as Tone,
     },
     {
       id: "monthly-overview-living",
-      title: `${budgetModeName}生活与消费预留`,
-      value: money(cashPlanTotals.consumption),
-      detail: "含房租、家用、学习、旅游与伴侣预留 / 完整明细见上方预算表",
+      title: "所选月已录支出",
+      value: money(totals.spendingActual),
+      detail: `${activeMonth.label} / 支出账本合计，含已同步周复盘；不再叠加复盘金额`,
       tone: "green" as Tone,
     },
     {
-      id: "monthly-overview-allocation",
-      title: `${budgetModeName}投资与应急储备`,
-      value: money(cashPlanTotals.saving),
-      detail: monthlyAssetAllocationSummary,
+      id: "monthly-overview-surplus",
+      title: "所选月收支结余",
+      value: money(actualIncome - totals.spendingActual),
+      detail: "已录收入减支出；不扣预算预留，不等于账户可用余额",
       tone: "violet" as Tone,
     },
     {
-      id: "monthly-overview-surplus",
-      title: `${budgetModeName}预算现金余量`,
-      value: money(cashPlanTotals.surplus),
-      detail: `可分配 ${money(cashPlanTotals.income)} - 生活消费 ${money(cashPlanTotals.consumption)} - 投资应急 ${money(cashPlanTotals.saving)}`,
-      tone: cashPlanTotals.surplus < 0 ? ("red" as Tone) : cashPlanTotals.surplus < cashPlanTotals.income * 0.1 ? ("amber" as Tone) : ("green" as Tone),
+      id: "monthly-overview-remaining",
+      title: "所选月消费预算剩余",
+      value: money(cashPlanTotals.consumption - totals.spendingActual),
+      detail: `${budgetModeName}消费预算 ${money(cashPlanTotals.consumption)} - 已录支出 ${money(totals.spendingActual)}`,
+      tone: totals.spendingActual > cashPlanTotals.consumption ? ("red" as Tone) : ("amber" as Tone),
     },
     {
       title: "当前账户余额",
@@ -2965,11 +2963,12 @@ export default function FinanceDashboard() {
         <section className="overview" id="finance-overview" tabIndex={-1} aria-labelledby="finance-overview-title">
           <div className="section-title">
             <div>
-              <h2 id="finance-overview-title">账户与预算总览</h2>
-              <p>前四项是{budgetModeName}预算；账户与资产按实际余额统计，历史收支可在对应模块查看。</p>
+              <h2 id="finance-overview-title">账户与收支总览</h2>
+              <p>{activeMonth.label}账本 · 账户与持仓为当前模块余额，复盘期末余额单列。</p>
             </div>
             <span className="pill good">公开页已脱敏</span>
           </div>
+          <ReviewOverview records={financeReviews} onOpen={() => navigateToSection("periodReview")} />
           <article className="total-assets-hero">
             <div className="total-assets-main">
               <span>当前总资产与负债</span>
