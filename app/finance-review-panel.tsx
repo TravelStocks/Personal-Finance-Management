@@ -3,7 +3,8 @@
 import {useEffect, useRef, useState} from "react";
 import type {AnnualBudgetPlan, BudgetMonthMode} from "./annual-budget-model";
 import ReviewFocusChecklist from "./finance-review-focus";
-import {newReviewFocus, reviewFocusMatchesSource, type ReviewFocusSource} from "./finance-review-model";
+import {newReviewFocus, syncReviewFocus, reviewFocusMatchesSource, type ReviewFocusSource} from "./finance-review-model";
+import {useFinanceToday} from "./use-finance-today";
 import {aggregateFinanceReviews, analyzeFinanceReview, balanceLabels, financeReviewReport, newReviewDraft, parseFinanceReview, parseFinanceReviews, reviewAccountCash, reviewCategories, reviewMoney, reviewToday, reviewTypeNames, upsertFinanceReview, withReviewAccounts, type FinanceReview, type ReviewAccount, type ReviewAccountDraft, type ReviewDraft, type ReviewType} from "./finance-review-model";
 import "./finance-review-panel.css";
 
@@ -20,12 +21,14 @@ const change = (value: number | null) => value === null ? "无基准" : `${value
 
 type AccountSource = Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance">;
 export default function FinanceReviewPanel({records, plan, accounts, focusSource, onOpenModule, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; focusSource: ReviewFocusSource; onOpenModule:(module:"fundBuckets" | "reminders" | "balance")=>void; onChange: (records: FinanceReview[], accounts?: ReviewAccount[]) => void}) {
+  const today = useFinanceToday();
   function makeDraft(type?: ReviewType, end = reviewToday()) {
     const previous = records.filter(record => record.accounts && record.end <= end).sort((a,b) => b.end.localeCompare(a.end))[0];
     const blank = {...newReviewDraft(type, end), focus:newReviewFocus(focusSource)};
     return accounts.length ? withReviewAccounts(blank, accounts, previous?.accounts) : blank;
   }
   const [draft, setDraft] = useState<ReviewDraft>(() => makeDraft());
+  const [liveFocus, setLiveFocus] = useState(true);
   const [accountsConfirmed, setAccountsConfirmed] = useState(false);
   const [syncAccounts, setSyncAccounts] = useState(true);
   const [view, setView] = useState<"entry" | "report">(records.length ? "report" : "entry");
@@ -37,8 +40,12 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   const [confirmation, setConfirmation] = useState<{message: string; action: () => void} | null>(null);
   const selected = records.find(record => record.id === selectedId) ?? records[0];
   const analysis = selected ? analyzeFinanceReview(selected, records) : null;
-  const canSyncAccounts = draft.end === reviewToday();
-  const focusStale = Boolean(canSyncAccounts && draft.focus && !reviewFocusMatchesSource(draft.focus,focusSource));
+  const canSyncAccounts = draft.end === today;
+  const followsSource = liveFocus && canSyncAccounts;
+  // Only an unsaved current-date intake follows live modules; saved revisions and rollups stay snapshots.
+  if (followsSource && (!draft.focus || !reviewFocusMatchesSource(draft.focus, focusSource))) {
+    setDraft({...draft, focus: syncReviewFocus(draft.focus, focusSource)});
+  }
   const hasDraft = draft.income !== null || Object.values(draft.amounts).some(value => value !== null) || Object.values(draft.balances).some(value => value !== null) || Boolean(draft.summary) || Object.values(draft.notes).some(Boolean) || Object.values(draft.focus?.checks ?? {}).some(Boolean) || Object.values(draft.focus?.notes ?? {}).some(Boolean);
 
   useEffect(() => {
@@ -56,6 +63,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   function resetDraft(type = draft.type, end = draft.end) {
     confirmOrRun(hasDraft, "切换会清空当前未保存的输入，是否继续？", () => {
       setDraft(makeDraft(type, end));
+      setLiveFocus(end === today);
       setAccountsConfirmed(false);
       setView("entry");
       setStatus("");
@@ -63,7 +71,6 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   }
   function save() {
     try {
-      if (focusStale) throw new Error("来源模块已有更新，请先刷新关键事项并重新核对。");
       if (draft.accounts && !accountsConfirmed) throw new Error("请先核对本期期末账户余额并勾选确认。");
       const budget = draft.type === "month" ? draft.budget ?? {mode: budgetMode, amounts: Object.fromEntries(plan.rows.map(row => [row.id, row[budgetMode]]))} : undefined;
       const record = parseFinanceReview({...draft, budget, savedAt: new Date().toISOString()});
@@ -71,7 +78,8 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
         onChange(upsertFinanceReview(records, record), canSyncAccounts && syncAccounts ? record.accounts : undefined);
         setSelectedId(record.id);
         setView("report");
-        setDraft(newReviewDraft(draft.type, draft.end));
+        setDraft(makeDraft(draft.type, draft.end));
+        setLiveFocus(draft.end === today);
         setAccountsConfirmed(false);
         setStatus(`复盘已记录${canSyncAccounts && syncAccounts && record.accounts ? "，余额已同步到账户管理" : "，当前账户余额未改动"}；跨电脑使用前请保存完整版本到云端。`);
       });
@@ -96,6 +104,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
       const aggregated = aggregateFinanceReviews(records, draft.type, draft.end);
       confirmOrRun(hasDraft, "汇总将替换当前输入，是否继续？", () => {
         setDraft(aggregated);
+        setLiveFocus(false);
         setAccountsConfirmed(false);
         setStatus("已汇总连续覆盖的记录，请核对后保存。");
       });
@@ -119,7 +128,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
     download("finance-review-template.json", JSON.stringify(template, null, 2), "application/json");
   }
   function refreshFocus() {
-    confirmOrRun(Object.values(draft.focus?.checks ?? {}).some(Boolean), "刷新会带入当前模块数据并重新核对，变化说明保留。历史复盘请确认这些数据属于该截至日。", () => {
+    confirmOrRun(!followsSource || Object.values(draft.focus?.checks ?? {}).some(Boolean), "刷新会带入当前模块数据并重新核对，变化说明保留。历史复盘请确认这些数据属于该截至日。", () => {
       const focus = newReviewFocus(focusSource);
       focus.notes = {...draft.focus?.notes};
       setDraft({...draft,focus});
@@ -167,8 +176,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
           <td><input type="text" aria-label={`${row.name}本期事项`} placeholder={row.id === "learning" ? "课程、书籍、工具名称及用途" : undefined} value={draft.notes[row.id] ?? ""} onChange={event => setDraft({...draft, notes:{...draft.notes,[row.id]:event.target.value}})}/></td></tr>)}</tbody>
       </table></div>
       <p className="review-caption">应急&学习金在预算中合并，在复盘中分开：应急填净转入，学习填实际支出与用途。微信充值、自有账户互转、基金预留不记消费；实际付款只记一次。</p>
-      {focusStale && <p className="review-status" role="status">来源模块已有更新，当前关键事项尚未刷新。</p>}
-      <ReviewFocusChecklist focus={draft.focus} onChange={focus=>setDraft({...draft,focus})} onRefresh={refreshFocus} onOpen={onOpenModule} onUseBalances={useFocusBalances}/>
+      <ReviewFocusChecklist focus={draft.focus} live={followsSource} onChange={focus=>setDraft({...draft,focus})} onRefresh={refreshFocus} onOpen={onOpenModule} onUseBalances={useFocusBalances}/>
       <section aria-labelledby="review-accounts-title" className="review-accounts">
         <div className="review-toolbar"><h3 id="review-accounts-title">本期账户余额</h3><button className="secondary-button" type="button" disabled={!accounts.length} onClick={loadAccounts}>带入账户管理余额</button></div>
         {draft.accounts ? <>
@@ -199,7 +207,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
     {view === "report" && (!selected || !analysis ? <p>尚无复盘记录。</p> : <section aria-label="周期对比报告">
       <div className="review-toolbar">
         <label className="field"><span>报告期间</span><select aria-label="报告期间" value={selected.id} onChange={event => setSelectedId(event.target.value)}>{records.map(record => <option key={record.id} value={record.id}>{reviewTypeNames[record.type]} · {record.start} 至 {record.end}</option>)}</select></label>
-        <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => {setDraft({...selected});setAccountsConfirmed(false);setView("entry");setStatus("");})}>修订本期</button>
+        <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => {setDraft({...selected});setLiveFocus(false);setAccountsConfirmed(false);setView("entry");setStatus("");})}>修订本期</button>
           <button className="secondary-button" type="button" onClick={() => download(`finance-${selected.type}-${selected.start}.md`,financeReviewReport(selected,records),"text/markdown;charset=utf-8")}>下载报告</button></div>
       </div>
       <p className="review-caption">{analysis.previous ? `对比上期：${analysis.previous.start} 至 ${analysis.previous.end}` : "首次基准，暂无上期对比"}</p>

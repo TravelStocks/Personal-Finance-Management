@@ -1,7 +1,8 @@
 import {reviewFocusLabels, reviewMoney, type ReviewFocus, type ReviewFocusKey} from "./finance-review-model";
 
-export default function ReviewFocusChecklist({focus, onChange, onRefresh, onOpen, onUseBalances}: {
+export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, onOpen, onUseBalances}: {
   focus?: ReviewFocus;
+  live: boolean;
   onChange: (focus: ReviewFocus) => void;
   onRefresh: () => void;
   onOpen: (module: "fundBuckets" | "reminders" | "balance") => void;
@@ -17,7 +18,7 @@ export default function ReviewFocusChecklist({focus, onChange, onRefresh, onOpen
   return <section className="review-focus-entry" aria-label="关键事项核对">
     <div className="review-toolbar"><h3>关键事项核对</h3><button type="button" className="secondary-button" onClick={onRefresh}>刷新关键事项</button></div>
     {!focus ? <p className="review-caption">本期尚无项目、账单及资产负债明细快照。</p> : <>
-      <p className="review-caption">来源：已保存模块。核对的是截至复盘日的登记状态，未勾选的事项保留为待核对，不计入本期消费。</p>
+      <p className="review-caption">{live ? "当前模块实时联动；有变化的项目会重新标记为待核对，已填说明保留。" : "历史／修订快照，不自动替换为当前模块数据。"}登记金额不计入本期消费。</p>
       {(Object.keys(reviewFocusLabels) as ReviewFocusKey[]).map(key => <div className="review-focus-check" key={key}>
         <details><summary><strong>{reviewFocusLabels[key]}</strong><span>{summaries![key]}</span></summary>
           <div className="table-wrap"><table className="review-table">

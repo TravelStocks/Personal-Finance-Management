@@ -46,6 +46,16 @@ export function newReviewFocus(source: ReviewFocusSource): ReviewFocus {
 export function reviewFocusMatchesSource(focus: ReviewFocus, source: ReviewFocusSource) {
   return (["projects","bills","assets","debts","holdings"] as const).every(key => JSON.stringify(focus[key]) === JSON.stringify(source[key]));
 }
+export function syncReviewFocus(focus: ReviewFocus | undefined, source: ReviewFocusSource): ReviewFocus {
+  if (!focus) return newReviewFocus(source);
+  if (reviewFocusMatchesSource(focus, source)) return focus;
+  const next = newReviewFocus(source);
+  const same = (key: keyof ReviewFocusSource) => JSON.stringify(focus[key]) === JSON.stringify(source[key]);
+  next.checks = {projects: same("projects") && focus.checks.projects, bills: same("bills") && focus.checks.bills,
+    balance: same("assets") && same("debts") && same("holdings") && focus.checks.balance};
+  next.notes = {...focus.notes};
+  return next;
+}
 export type FinanceReview = {
   id: string;
   type: ReviewType;
@@ -101,8 +111,16 @@ function dateValue(value: unknown): Date {
   if (!Number.isFinite(date.getTime()) || iso(date) !== value) throw new Error(`无效日期：${value}`);
   return date;
 }
-export function reviewToday() {
-  return new Intl.DateTimeFormat("en-CA", {timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date());
+export function reviewToday(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit"}).format(now);
+}
+export function reviewDayDistance(target: string, base = reviewToday()): number | null {
+  try {return (dateValue(target).getTime() - dateValue(base).getTime()) / dayMs;}
+  catch {return null;}
+}
+export function reviewDeadlineLabel(target: string, base = reviewToday()) {
+  const days = reviewDayDistance(target, base);
+  return days === null ? "日期待补" : days < 0 ? `已过 ${-days} 天，待核实` : days === 0 ? "今天" : `${days} 天后`;
 }
 export function reviewPeriod(type: ReviewType, end: string) {
   const date = dateValue(end);

@@ -6,7 +6,8 @@ import AnnualBudgetPlanner, {AnnualBudgetAllocationTable} from "./annual-budget-
 import { calculateAnnualBudgetPlan, calculateCashflowScenario, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
 import {calculateLiquidity} from "./liquidity-model";
 import FinanceReviewPanel from "./finance-review-panel";
-import {parseFinanceReviews, reviewMoney, reviewToday, type FinanceReview} from "./finance-review-model";
+import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, type FinanceReview} from "./finance-review-model";
+import {useFinanceToday} from "./use-finance-today";
 import {applySalaryFromMonth, confirmedMonthlySalary, migrateSalarySettings, salarySettingsVersion} from "./salary-model";
 import {addSpendingDetailPresets, getSpendingGroup, nextMonthSpendingRows, spendingGroups, summarizeLearning, type SpendingBudget as Budget} from "./spending-detail-model";
 
@@ -293,7 +294,6 @@ type ScatterPoint = {
 type GoalKind = "travel" | "learning" | "parent" | "partner" | "emergency" | "other";
 
 const palette = ["#1f5fbf", "#07835f", "#b7791f", "#6852bd", "#c53030", "#2b6cb0", "#0f766e", "#805ad5"];
-const today = new Date("2026-06-14T00:00:00+08:00");
 
 const initialAccounts: Account[] = [
   { id: "icbc2616", name: "工行 2616", type: "银行卡", balance: 1479.79, purpose: "工资主账户", liquid: true },
@@ -833,11 +833,6 @@ function legacyLiabilitiesFromSaved(saved: Partial<PersistedFinanceData>) {
   }));
 }
 
-function dayDistance(date: string) {
-  const target = new Date(`${date}T00:00:00+08:00`);
-  return Math.ceil((target.getTime() - today.getTime()) / 86400000);
-}
-
 function monthsBetweenMonthIdAndDate(monthId: string, date: string) {
   const [baseYearText, baseMonthText] = monthId.split("-");
   const [targetYearText, targetMonthText] = date.split("-");
@@ -1037,6 +1032,7 @@ function EditableNumber({
 }
 
 export default function FinanceDashboard() {
+  const currentDate = useFinanceToday();
   const [annualBudgetPlan, setAnnualBudgetPlan] = useState<AnnualBudgetPlan>(initialAnnualBudgetPlan);
   const [financeReviews, setFinanceReviews] = useState<FinanceReview[]>([]);
   const [monthlyCashPlan, setMonthlyCashPlan] = useState<MonthlyCashPlan>(initialMonthlyCashPlan);
@@ -2625,14 +2621,13 @@ export default function FinanceDashboard() {
     label: item.name,
     value: item.amount,
     color: palette[index % palette.length],
-    detail: `${Math.max(0, dayDistance(item.date))} 天后`,
+    detail: reviewDeadlineLabel(item.date, currentDate),
   }));
-  const reminderDaysData = reminders.map((item, index) => ({
-    label: item.kind,
-    value: Math.max(0, dayDistance(item.date)),
-    color: palette[index % palette.length],
-    detail: item.date,
-  }));
+  const reminderDaysData = reminders.flatMap((item, index) => {
+    const days = reviewDayDistance(item.date, currentDate);
+    return days === null || days < 0 ? [] : [{label: item.name, value: days,
+      color: palette[index % palette.length], detail: `${item.date} / ${reviewDeadlineLabel(item.date, currentDate)}`}];
+  });
   const reportRows: ReportRow[] = [
     { id: "salary", name: "工资", amount: salary, flow: "收入", source: `${activeMonth.label}收入底表` },
     { id: "stock-income", name: "炒股月结", amount: Math.max(stockIncome, 0), flow: "收入", source: `${activeMonth.label}收入底表` },
@@ -3077,6 +3072,7 @@ export default function FinanceDashboard() {
                             rows={cashflowRows}
                           />
                           <EditableReminderTable
+                            baseDate={currentDate}
                             reminders={reminders}
                             addReminder={addReminder}
                             deleteReminder={deleteReminder}
@@ -3328,6 +3324,7 @@ export default function FinanceDashboard() {
                     <DataChartLayout
                       data={
                         <EditableReminderTable
+                          baseDate={currentDate}
                           reminders={reminders}
                           addReminder={addReminder}
                           deleteReminder={deleteReminder}
@@ -3339,7 +3336,7 @@ export default function FinanceDashboard() {
                           <ChartPanel title="提醒金额" summary="避免漏扣">
                             <HorizontalBarChart data={reminderAmountData} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="距离到期" summary="以 2026-06-14 为当前日">
+                          <ChartPanel title="距离到期" summary={`北京时间 ${currentDate} / 仅今日及未来事项`}>
                             <VerticalBarChart data={reminderDaysData} valueFormatter={(value) => `${value.toFixed(0)}天`} />
                           </ChartPanel>
                           <ChartPanel title="提醒日历" summary="未来关键扣款">
@@ -4768,11 +4765,13 @@ function EditableEmergencyTable({
 }
 
 function EditableReminderTable({
+  baseDate,
   reminders,
   updateReminder,
   addReminder,
   deleteReminder,
 }: {
+  baseDate: string;
   reminders: Reminder[];
   updateReminder: (id: string, patch: Partial<Reminder>) => void;
   addReminder: () => void;
@@ -4783,7 +4782,7 @@ function EditableReminderTable({
     <>
       <TableToolbar
         title="提醒底表"
-        meta={`${reminders.length} 条 / 金额 ${money(total)}`}
+        meta={`${reminders.length} 条 / 金额 ${reviewMoney(total)} / 北京时间 ${baseDate}`}
         action={<button className="secondary-button" type="button" onClick={addReminder}>新增提醒</button>}
       />
       <div className="table-wrap spreadsheet-wrap">
@@ -4805,7 +4804,7 @@ function EditableReminderTable({
                 <td><TableDateInput ariaLabel={`${item.name} 日期`} value={item.date} onChange={(value) => updateReminder(item.id, { date: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 金额`} value={item.amount} onChange={(value) => updateReminder(item.id, { amount: value })} /></td>
                 <td><TableTextInput ariaLabel={`${item.name} 类型`} value={item.kind} onChange={(value) => updateReminder(item.id, { kind: value })} /></td>
-                <td className="calculated-cell">{Math.max(0, dayDistance(item.date))} 天</td>
+                <td className="calculated-cell">{reviewDeadlineLabel(item.date, baseDate)}</td>
                 <td>
                   <button className="danger-button compact" disabled={reminders.length <= 1} type="button" onClick={() => deleteReminder(item.id)}>
                     删除
