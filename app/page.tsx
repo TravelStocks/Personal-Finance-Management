@@ -11,6 +11,7 @@ import WeeklyLedgerView from "./weekly-ledger-view";
 import ReviewOverview from "./review-overview";
 import ReviewUpdateHistory from "./review-update-history";
 import {commitReviewUpdate, dashboardSourceSignature, parseReviewUpdates, type ReviewUpdate} from "./review-dashboard-sync";
+import {commitReviewModule, reviewModuleLabels, reviewModuleSignature, type ReviewModule} from "./review-module-sync";
 import {changeDatedEntry, parseDatedEntries, preserveDatedSalaries, type DatedEntry, type EntryMode} from "./dated-ledger-model";
 import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, reviewInvestmentTotal, type FinanceReview} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
@@ -1607,6 +1608,7 @@ export default function FinanceDashboard() {
   const budgetModeName = annualBudgetPlan.mode === "normal" ? "普通月" : "出差月";
   const cashflowScenario = calculateCashflowScenario(annualBudgetPlan, cashflowCustomItems);
   const personalAccounts = accounts.filter(account=>account.includedInPersonal!==false);
+  const hasAccountReview = Boolean(dashboardAsOf) || reviewUpdates.some(update=>update.published && update.module==="accounts");
   const liquidity = calculateLiquidity(personalAccounts.map(account => ({...account, reserve: cashReservePurpose(account)})), fundBuckets);
   const emergencyAccounts = personalAccounts.filter(account => cashReservePurpose(account) === "应急储备");
 
@@ -1625,16 +1627,16 @@ export default function FinanceDashboard() {
     const accountLearningSavings = personalAccounts.filter(isLearningSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
     const accountSpecialSavings = accountTravelSavings + accountLearningSavings;
     const goalSummary = summarizeGoals(plannedGoals);
-    const travelSavings = personalAccounts.some(isTravelSavingsAccount) || dashboardAsOf ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
+    const travelSavings = personalAccounts.some(isTravelSavingsAccount) || hasAccountReview ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
     const learningSavings =
-      personalAccounts.some(isLearningSavingsAccount) || dashboardAsOf ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
-    const currentEmergencyFund = emergencyAccounts.length ? emergencyAccounts.reduce((sum, account) => sum + account.balance, 0) : dashboardAsOf ? 0 : goalSummary.hasEmergency ? goalSummary.emergencyCurrent : emergencyFund;
+      personalAccounts.some(isLearningSavingsAccount) || hasAccountReview ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
+    const currentEmergencyFund = emergencyAccounts.length ? emergencyAccounts.reduce((sum, account) => sum + account.balance, 0) : hasAccountReview ? 0 : goalSummary.hasEmergency ? goalSummary.emergencyCurrent : emergencyFund;
     const parentSavings = goalSummary.parentCurrent;
     const partnerSavings = goalSummary.partnerCurrent;
-    const otherSavings = dashboardAsOf ? 0 : goalSummary.otherCurrent;
+    const otherSavings = hasAccountReview ? 0 : goalSummary.otherCurrent;
     const familyFund = partnerSavings;
     const totalSavings = travelSavings + learningSavings + otherSavings;
-    const savingsOutsideAccounts = dashboardAsOf ? 0 : Math.max(0, totalSavings - accountSpecialSavings);
+    const savingsOutsideAccounts = hasAccountReview ? 0 : Math.max(0, totalSavings - accountSpecialSavings);
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings - (emergencyAccounts.length ? currentEmergencyFund : 0);
     const liquidAccountTotal = personalAccounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
     const spendingActual = budgets.reduce((sum, item) => sum + item.actual, 0);
@@ -3560,7 +3562,18 @@ export default function FinanceDashboard() {
 
                 {moduleId === "periodReview" && (
                   <Module title="周期复盘" desc="本期实际收支与期末余额；整期更新、历史版本及逐账户变化。">
-                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} investments={{holdings,fxUsd,fxHkd}} goals={goals.map(({id,name,current})=>({id,name,current}))} dashboardAsOf={dashboardAsOf} sourceSignature={dashboardSourceSignature(getPersistedFinanceData())} ledgerMonths={monthlyRecords} datedEntries={datedEntries} onSaveIncome={saveDatedEntry} onDeleteIncome={deleteDatedEntry}
+                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} investments={{holdings,fxUsd,fxHkd}} goals={goals.map(({id,name,current})=>({id,name,current}))} dashboardAsOf={dashboardAsOf} sourceSignature={dashboardSourceSignature(getPersistedFinanceData())}
+                      moduleUpdates={reviewUpdates} moduleSignatures={Object.fromEntries((Object.keys(reviewModuleLabels) as ReviewModule[]).map(key=>[key,reviewModuleSignature(getPersistedFinanceData(),key)])) as Record<ReviewModule,string>}
+                      onSaveModule={(draft,module,signature)=>{
+                        const {data:next,patch}=commitReviewModule(getPersistedFinanceData(),draft,module,signature);
+                        persistLocalFinanceData(next);
+                        setReviewUpdates(next.reviewUpdates ?? []);
+                        setAccounts(next.accounts);setHoldings(next.holdings);setFxUsd(next.fxUsd);setFxHkd(next.fxHkd);
+                        setBalanceAssets(next.balanceAssets);setLiabilities(next.liabilities);setReminders(next.reminders);setFundBuckets(next.fundBuckets);setGoals(next.goals);
+                        setMonthlyRecords(next.monthlyRecords);if(next.selectedMonth)setSelectedMonth(next.selectedMonth);
+                        setSaveStatus(`${reviewModuleLabels[module]}已更新并保存到本机`);
+                        return {patch,moduleSignature:reviewModuleSignature(next,module),sourceSignature:dashboardSourceSignature(next)};
+                      }} ledgerMonths={monthlyRecords} datedEntries={datedEntries} onSaveIncome={saveDatedEntry} onDeleteIncome={deleteDatedEntry}
                       focusSource={{
                         projects:fundBuckets.map(({id,name,target,current,dueDate})=>({id,name,target,current,dueDate})),
                         bills:reminders.map(({id,name,amount,date,kind})=>({id,name,amount,date,kind})),
@@ -3576,7 +3589,7 @@ export default function FinanceDashboard() {
                         setReminders(next.reminders);setFundBuckets(next.fundBuckets);setGoals(next.goals);
                       }
                       setSaveStatus("本期数据与更新前后历史已保存到本机");
-                      return {sourceSignature:dashboardSourceSignature(next)};
+                      return {sourceSignature:dashboardSourceSignature(next),moduleSignatures:Object.fromEntries((Object.keys(reviewModuleLabels) as ReviewModule[]).map(key=>[key,reviewModuleSignature(next,key)])) as Record<ReviewModule,string>};
                     }}/>
                     <ReviewUpdateHistory updates={reviewUpdates} onExport={exportReviewUpdate}/>
                   </Module>

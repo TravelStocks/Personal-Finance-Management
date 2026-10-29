@@ -1,8 +1,9 @@
-import {parseFinanceReview, reviewInvestmentTotal, reviewToday, type FinanceReview, type ReviewHolding} from "./finance-review-model";
+import {newReviewDraft, parseFinanceReview, reviewInvestmentTotal, reviewToday, type FinanceReview, type ReviewHolding} from "./finance-review-model";
+import {mergeReviewModule, normalizeReviewModule, reviewModuleLabels, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
 import {syncWeeklyReview} from "./review-ledger-sync";
 import type {DatedEntry, LedgerMonth} from "./dated-ledger-model";
 
-export type ReviewUpdate = {id:string; reviewId:string; asOf:string; savedAt:string; published:boolean; before:Record<string,unknown>; after:Record<string,unknown>};
+export type ReviewUpdate = {id:string; reviewId:string; asOf:string; savedAt:string; published:boolean; module?:ReviewModule; moduleDraft?:ReviewModulePatch; before:Record<string,unknown>; after:Record<string,unknown>};
 export type DashboardState = {
   monthlyRecords:LedgerMonth[]; datedEntries?:DatedEntry[]; financeReviews?:FinanceReview[];
   accounts:Array<{id:string;name:string;type:string;purpose:string;balance:number;includedInPersonal?:boolean}>;
@@ -34,9 +35,15 @@ export function parseReviewUpdates(value:unknown):ReviewUpdate[] {
   if(!Array.isArray(value)) throw new Error("整期更新历史格式无效，未导入。");
   const ids=new Set<string>();
   return value.map(raw=>{
-    const row=raw as ReviewUpdate;
+    const row=structuredClone(raw) as ReviewUpdate;
     if(!row || typeof row.id!=="string" || ids.has(row.id) || typeof row.reviewId!=="string" || typeof row.asOf!=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(row.asOf) || !Number.isFinite(Date.parse(row.savedAt)) || typeof row.published!=="boolean") throw new Error("整期更新历史编号或日期无效，未导入。");
     ids.add(row.id);
+    if(row.module!==undefined) {
+      if(!Object.hasOwn(reviewModuleLabels,row.module) || !row.moduleDraft || !row.published) throw new Error("模块更新历史无效，未导入。");
+      const draft=newReviewDraft("week",row.asOf);
+      if(row.reviewId!==`week:${draft.start}`) throw new Error("模块更新历史周期无效，未导入。");
+      row.moduleDraft=normalizeReviewModule(mergeReviewModule(draft,row.moduleDraft),row.module);
+    }
     for(const snapshot of [row.before,row.after]) {
       if(!snapshot || typeof snapshot!=="object" || "reviewUpdates" in snapshot || !["accounts","holdings","balanceAssets","liabilities","monthlyRecords","reminders","fundBuckets","goals"].every(key=>Array.isArray(snapshot[key]))) throw new Error("整期更新历史快照不完整，未导入。");
       try {
@@ -53,7 +60,7 @@ export function commitReviewUpdate<T extends DashboardState>(state:T, records:Fi
   const record=request.record ? parseFinanceReview(request.record) : undefined;
   if(request.publish) {
     if(!record || record.type!=="week") throw new Error("只有周复盘可以更新当前看板。");
-    const cutoff=[state.dashboardAsOf ?? "",...(state.financeReviews ?? []).filter(row=>row.type==="week").map(row=>row.end)].sort().at(-1)!;
+    const cutoff=[state.dashboardAsOf ?? "",...(state.financeReviews ?? []).filter(row=>row.type==="week").map(row=>row.end),...(state.reviewUpdates ?? []).filter(row=>row.published).map(row=>row.asOf)].sort().at(-1)!;
     if(record.end<cutoff || record.end>today) throw new Error("较早或未来一期不能覆盖当前看板，请选择仅保存历史报告。");
     if(request.sourceSignature!==dashboardSourceSignature(state)) throw new Error("当前模块在复盘期间已变化，请重新带入当前模块并核对后保存。");
     if(!record.accounts || !record.investments || !record.focus || !record.goals) throw new Error("请补齐账户、逐账户投资、关键事项和目标余额明细。");

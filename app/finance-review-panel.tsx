@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useRef, useState, type MouseEvent} from "react";
 import type {AnnualBudgetPlan, BudgetMonthMode} from "./annual-budget-model";
 import ReviewFocusChecklist from "./finance-review-focus";
 import {ReviewInvestmentsEditor, ReviewInvestmentComparison} from "./review-investments";
@@ -13,6 +13,8 @@ import {reviewPeriod, reviewIncomeRows, weeklyLedgerTotals} from "./finance-revi
 import {aggregateFinanceReviews, analyzeFinanceReview, balanceLabels, financeReviewReport, newReviewDraft, parseFinanceReview, parseFinanceReviews, reviewAccountCash, reviewCategories, reviewMoney, reviewToday, reviewTypeNames, upsertFinanceReview, withReviewAccounts, type FinanceReview, type ReviewAccount, type ReviewAccountDraft, type ReviewDraft, type ReviewType} from "./finance-review-model";
 import "./finance-review-panel.css";
 import "./dated-ledger.css";
+import {mergeReviewModule, restoreReviewModules, reviewModuleLabels, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
+import type {ReviewUpdate} from "./review-dashboard-sync";
 
 function download(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], {type}));
@@ -26,13 +28,16 @@ const numeric = (value: string) => value.trim() === "" ? null : Number(value);
 const change = (value: number | null) => value === null ? "无基准" : `${value > 0 ? "+" : ""}${reviewMoney(value)}`;
 
 type AccountSource = Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance"> & {includedInPersonal?:boolean};
-export default function FinanceReviewPanel({records, plan, accounts, investments, goals, dashboardAsOf, sourceSignature, focusSource, ledgerMonths, datedEntries, onSaveIncome, onDeleteIncome, onOpenModule, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; investments:ReviewInvestments; goals:ReviewGoal[]; dashboardAsOf?:string; sourceSignature:string; focusSource: ReviewFocusSource; ledgerMonths:LedgerMonth[]; datedEntries:DatedEntry[]; onSaveIncome:(entry:DatedEntry,previousId:string|undefined,mode:EntryMode)=>void; onDeleteIncome:(id:string)=>void; onOpenModule:(module:"fundBuckets" | "reminders" | "balance" | "income" | "spending" | "investment")=>void; onChange: (records: FinanceReview[], update?:{record:FinanceReview;publish:boolean;sourceSignature:string}) => {sourceSignature:string}}) {
+export default function FinanceReviewPanel({records, plan, accounts, investments, goals, dashboardAsOf, sourceSignature, moduleSignatures, moduleUpdates, onSaveModule, focusSource, ledgerMonths, datedEntries, onSaveIncome, onDeleteIncome, onOpenModule, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; investments:ReviewInvestments; goals:ReviewGoal[]; dashboardAsOf?:string; sourceSignature:string;
+  moduleSignatures:Record<ReviewModule,string>;moduleUpdates:ReviewUpdate[];
+  onSaveModule:(draft:ReviewDraft,module:ReviewModule,signature:string)=>{patch:ReviewModulePatch;moduleSignature:string;sourceSignature:string};
+  focusSource: ReviewFocusSource; ledgerMonths:LedgerMonth[]; datedEntries:DatedEntry[]; onSaveIncome:(entry:DatedEntry,previousId:string|undefined,mode:EntryMode)=>void; onDeleteIncome:(id:string)=>void; onOpenModule:(module:"fundBuckets" | "reminders" | "balance" | "income" | "spending" | "investment")=>void; onChange: (records: FinanceReview[], update?:{record:FinanceReview;publish:boolean;sourceSignature:string}) => {sourceSignature:string;moduleSignatures?:Record<ReviewModule,string>}}) {
   const today = useFinanceToday();
   function makeDraft(type?: ReviewType, end = reviewToday(), monthStartDay:1|10 = 10) {
     const previous = records.filter(record => record.accounts && record.end <= end).sort((a,b) => b.end.localeCompare(a.end))[0];
     const blank = {...newReviewDraft(type, end, monthStartDay), focus:newReviewFocus(focusSource),investments:structuredClone(investments),goals:goals.map(row=>({...row}))};
     blank.balances={...blank.balances,investments:reviewInvestmentTotal(investments),otherAssets:focusSource.assets.reduce((s,r)=>s+r.amount,0),debt:focusSource.debts.reduce((s,r)=>s+r.amount,0)};
-    return withReviewAccounts(blank, accounts, previous?.accounts);
+    return restoreReviewModules(withReviewAccounts(blank, accounts, previous?.accounts),moduleUpdates,moduleSignatures);
   }
   const [draft, setDraft] = useState<ReviewDraft>(() => makeDraft());
   const [liveFocus, setLiveFocus] = useState(true);
@@ -50,6 +55,7 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
   const [investmentsConfirmed,setInvestmentsConfirmed] = useState(false);
   const [goalsConfirmed,setGoalsConfirmed] = useState(false);
   const [draftSource,setDraftSource] = useState(sourceSignature);
+  const [draftModules,setDraftModules] = useState(moduleSignatures);
   const [view, setView] = useState<"entry" | "report">(records.length ? "report" : "entry");
   const [selectedId, setSelectedId] = useState(records[0]?.id ?? "");
   const [status, setStatus] = useState("");
@@ -62,7 +68,9 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
   const [confirmation, setConfirmation] = useState<{message: string; action: () => void} | null>(null);
   const selected = records.find(record => record.id === selectedId) ?? records[0];
   const analysis = selected ? analyzeFinanceReview(selected, records) : null;
-  const latestCutoff=[dashboardAsOf ?? "",latestWeeklyReview(records)?.end ?? ""].sort().at(-1)!;
+  const lastReportUpdate=moduleUpdates.findLastIndex(row=>row.reviewId===selected?.id && !row.module);
+  const reportHasPendingModules=moduleUpdates.some((row,index)=>index>lastReportUpdate && row.reviewId===selected?.id && Boolean(row.module));
+  const latestCutoff=[dashboardAsOf ?? "",latestWeeklyReview(records)?.end ?? "",...moduleUpdates.filter(row=>row.published).map(row=>row.asOf)].sort().at(-1)!;
   const canPublish = draft.type==="week" && draft.end<=today && draft.end>=latestCutoff;
   const publish=canPublish && syncDashboard;
   const followsSource = liveFocus && draft.end===today;
@@ -133,6 +141,7 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
     confirmOrRun(hasDraft, "切换会清空当前未保存的输入，是否继续？", () => {
       setDraft(makeDraft(type, end, monthStartDay));
       setDraftSource(sourceSignature);setInvestmentsConfirmed(false);setGoalsConfirmed(false);
+      setDraftModules(moduleSignatures);
       resetIncome();
       setLedgerLinked(false);
       setLedgerConfirmed(false);
@@ -147,10 +156,9 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
       if (incomePending) throw new Error("收入录入尚未保存，请先点击保存收入或取消修改。");
       if (incomeLinked && !ledgerLinked && !incomeConfirmed) throw new Error("请先核对本期工资和其他收入。");
       if (ledgerLinked && (ledgerSource.unassigned.length || !ledgerConfirmed)) throw new Error("请先确认日期收支分类完整，并核对本期全部收支。");
-      if (draft.accounts && !accountsConfirmed) throw new Error("请先核对本期期末账户余额并勾选确认。");
       if(publish && draftSource!==sourceSignature) throw new Error("当前模块已变化，请重新带入当前模块并核对后保存。");
-      if(publish && (!investmentsConfirmed || !goalsConfirmed)) throw new Error("请核对逐账户投资和目标余额后勾选确认。");
-      if(publish && (!draft.focus || Object.values(draft.focus.checks).some(value=>!value))) throw new Error("请核对大花费项目、账单订阅、资产负债并勾选确认。");
+      const pending=[...(draft.accounts&&!accountsConfirmed?["账户余额"]:[]),...(publish ? [!investmentsConfirmed&&"投资账户",!goalsConfirmed&&"目标余额",!draft.focus?.checks.projects&&"大花费项目",!draft.focus?.checks.bills&&"账单与订阅",!draft.focus?.checks.balance&&"资产负债"].filter(Boolean) : [])];
+      if(pending.length) throw new Error(`以下模块尚未确认：${pending.join("、")}。可分别点击该模块的“保存并更新”，或勾选核对后全部保存。`);
       const budget = draft.type === "month" ? draft.budget ?? {mode: budgetMode, amounts: Object.fromEntries(plan.rows.map(row => [row.id, row[budgetMode]]))} : undefined;
       const record = parseFinanceReview({...draft, budget, savedAt: new Date().toISOString()});
       confirmOrRun(records.some(item => item.id === record.id), "该周期已有记录，是否用本次数据更新？", () => {
@@ -160,6 +168,7 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
         // Keep the committed snapshot; parent props still contain pre-save balances in this callback.
         setDraft(structuredClone(record));
         if(publish) setDraftSource(receipt.sourceSignature);
+        if(publish && receipt.moduleSignatures) setDraftModules(receipt.moduleSignatures);
         resetIncome();
         setLedgerLinked(false);
         setLedgerConfirmed(false);
@@ -169,6 +178,33 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
         setSaveResult({title:publish ? "保存并更新完毕" : "历史报告保存完毕",message});
       });
     } catch (error) {failSave(error);}
+  }
+  function saveModule(module:ReviewModule) {
+    try {
+      if(!canPublish) throw new Error("仅最新周复盘可以更新模块；历史或未来期间请保存历史报告。");
+      if(module==="income" && incomePending) throw new Error("收入明细尚未保存，请先点击保存收入。");
+      const receipt=onSaveModule(draft,module,module==="income" ? moduleSignatures.income : draftModules[module]);
+      setDraft(current=>mergeReviewModule(current,receipt.patch));
+      setLiveFocus(false);
+      setDraftModules(current=>({...current,[module]:receipt.moduleSignature}));
+      if(draftSource===sourceSignature) setDraftSource(receipt.sourceSignature);
+      if(module==="accounts") setAccountsConfirmed(true);
+      if(module==="investments") setInvestmentsConfirmed(true);
+      if(module==="goals") setGoalsConfirmed(true);
+      if(module==="income") setIncomeConfirmed(true);
+      const message=`${reviewModuleLabels[module]}已写回对应模块并保存到本机，更新前后历史已保留。其他未保存输入保持不变；跨电脑使用请确认云同步成功。`;
+      setStatus(message);setSaveResult({title:"保存并更新完毕",message});
+    } catch(error) {failSave(error);}
+  }
+  function handleModuleSave(event:MouseEvent<HTMLButtonElement>) {
+    const scope=event.currentTarget.dataset.reviewSave as ReviewModule;
+    const section=event.currentTarget.closest("[data-review-module]");
+    const invalid=section?.querySelector<HTMLInputElement>('input:invalid:not([type="checkbox"]),select:invalid,textarea:invalid');
+    if(invalid) {failSave(new Error(`${invalid.getAttribute("aria-label") || invalid.labels?.[0]?.textContent || reviewModuleLabels[scope]}：${invalid.validationMessage}`),invalid);return;}
+    saveModule(scope);
+  }
+  function moduleButton(module:ReviewModule) {
+    return draft.type==="week" ? <button type="button" className="primary-button" disabled={!canPublish} data-review-save={module} onClick={handleModuleSave}>保存并更新{reviewModuleLabels[module]}</button> : null;
   }
   async function importFile(file: File) {
     try {
@@ -230,6 +266,7 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
       const fresh=makeDraft(draft.type,draft.end,draft.monthStartDay ?? 1);
       setDraft({...draft,accounts:fresh.accounts,investments:fresh.investments,goals:fresh.goals,focus:fresh.focus,balances:fresh.balances});
       setDraftSource(sourceSignature);setLiveFocus(false);setAccountsConfirmed(false);setInvestmentsConfirmed(false);setGoalsConfirmed(false);
+      setDraftModules(moduleSignatures);
     });
   }
   function updateInvestments(value:ReviewInvestments) {
@@ -313,12 +350,13 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
       </div>
       <p className="review-caption">{draft.start} 至 {draft.end} · 人民币 · 填该日期范围内的发生额，不填跨期累计数。没有发生填 0，空白保留为待补。</p>
       {draft.type==="month"&&<label className="field"><span>月度起算日</span><select aria-label="月度起算日" value={draft.monthStartDay ?? 1} onChange={event=>resetDraft(draft.type,draft.end,Number(event.target.value) as 1|10)}><option value="10">每月10日至下月9日</option><option value="1">自然月（保留旧口径）</option></select></label>}
-      <section className="review-income" aria-label="复盘收入录入">
+      <section className="review-income" aria-label="复盘收入录入" data-review-module="income">
         <div className="review-toolbar"><h3>本期收入 · 工资与其他到账</h3><span className="review-caption">{draft.start} 至 {draft.end}</span></div>
         {incomeMonths.length>1&&<label className="field"><span>到账月份</span><select aria-label="复盘收入月份" value={incomeMonth?.id ?? ""} onChange={event=>{const next=event.target.value;confirmOrRun(incomePending,"切换月份会放弃尚未保存的收入输入，是否继续？",()=>{setIncomeMonthId(next);setIncomePending(false);});}}>{incomeMonths.map(month=><option key={month.id} value={month.id}>{month.id}</option>)}</select></label>}
         {incomeMonth ? <DatedLedgerEditor key={`${draft.start}:${draft.end}:${incomeMonth.id}:${incomeEditorRevision}`} embedded range={{start:draft.start,end:draft.end}} flow="income" month={incomeMonth} entries={datedEntries} onSave={saveIncome} onDelete={onDeleteIncome} onDirtyChange={setIncomePending}/> : <p>该日期尚无月份账本。<button type="button" className="secondary-button" onClick={()=>onOpenModule("income")}>前往收入添加月份</button></p>}
         <div className="review-toolbar"><span className="review-caption">账本已登记：工资 {reviewMoney(incomeRows.filter(row=>row.categoryId==="salary").reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100)} · 其他收入 {reviewMoney(incomeRows.filter(row=>row.categoryId==="otherIncome").reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100)}</span><div className="data-actions"><button type="button" className="secondary-button" disabled={boundLedger||incomeLinked} onClick={bindIncome}>带入本期收入</button>{!boundLedger&&(incomeLinked||draft.incomeLedger)&&<button type="button" className="secondary-button" onClick={()=>{setIncomeLinked(false);setIncomeConfirmed(false);setDraft({...draft,incomeLedger:undefined});}}>收入改为手填</button>}</div></div>
         {incomeLinked&&!ledgerLinked&&<label className="review-ledger-confirm"><input type="checkbox" required checked={incomeConfirmed} onChange={event=>setIncomeConfirmed(event.target.checked)}/>已核对本期工资和其他收入，未到账不算收入</label>}
+        <div className="data-actions">{moduleButton("income")}</div>
       </section>
       {draft.type!=="quarter"&&<section className="review-cycle" aria-label="十号账期累计"><h3>10号账期 · 每周收支</h3><p>{cycle.start} 至 {cycle.limit} · 截至 {cycle.end}</p>
         <p>已登记收入 {reviewMoney(cycleSource.income)} · 支出 {reviewMoney(cycleSource.spending)} · 结余 {reviewMoney(cycleSource.income-cycleSource.spending)}</p>
@@ -335,20 +373,21 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
         {ledgerLinked&&<label className="review-ledger-confirm"><input type="checkbox" required checked={ledgerConfirmed} onChange={event=>setLedgerConfirmed(event.target.checked)}/>已核对本期全部收支，含未发生的分类；剩余未标日期金额不属于本期</label>}
       </section>
       {draft.type === "month" && <label className="field"><span>月预算口径</span><select value={draft.budget?.mode ?? budgetMode} onChange={event => {setBudgetMode(event.target.value as BudgetMonthMode);setDraft({...draft,budget:undefined});}}><option value="normal">普通月</option><option value="trip">出差月</option></select></label>}
-      <div className="table-wrap"><table className="review-table">
+      <section data-review-module="spending" aria-label="复盘支出录入"><div className="table-wrap"><table className="review-table">
         <thead><tr><th>项目</th><th>本期金额</th><th>发生事项／变化原因（可选）</th></tr></thead>
         <tbody>{reviewCategories.map(row => <tr key={row.id}><th scope="row">{row.name}<small>{row.id === "investment" ? "净划入，取回填负数" : row.id === "emergency" ? "净转入，取用填负数" : "实际净支出，扣除退款"}</small></th>
           <td><input type="number" step="0.01" required readOnly={boundLedger&&row.flow==="expense"} aria-label={`${row.name}本期金额`} value={draft.amounts[row.id] ?? ""} onChange={event => setDraft({...draft, amounts:{...draft.amounts,[row.id]:numeric(event.target.value)}})}/></td>
           <td><input type="text" aria-label={`${row.name}本期事项`} placeholder={row.id === "learning" ? "课程、书籍、工具名称及用途" : undefined} value={draft.notes[row.id] ?? ""} onChange={event => setDraft({...draft, notes:{...draft.notes,[row.id]:event.target.value}})}/></td></tr>)}</tbody>
       </table></div>
       <p className="review-caption">应急&学习金在预算中合并，在复盘中分开：应急填净转入，学习填实际支出与用途。微信充值、自有账户互转、基金预留不记消费；实际付款只记一次。</p>
-      <ReviewInvestmentsEditor value={draft.investments} onChange={updateInvestments} confirmed={investmentsConfirmed} onConfirm={setInvestmentsConfirmed} onOpen={()=>onOpenModule("investment")}/>
+      <div className="data-actions">{moduleButton("spending")}</div></section>
+      <ReviewInvestmentsEditor value={draft.investments} onChange={updateInvestments} confirmed={investmentsConfirmed} onConfirm={setInvestmentsConfirmed} onOpen={()=>onOpenModule("investment")} saveAction={moduleButton("investments")}/>
       <ReviewFocusChecklist focus={draft.focus} live={followsSource} onChange={focus=>{
         setLiveFocus(false);
         const total=(rows:Array<{amount:number}>)=>rows.reduce((s,r)=>s+Math.round(r.amount*100),0)/100;
         setDraft({...draft,focus,balances:{...draft.balances,otherAssets:total(focus.assets),debt:total(focus.debts)}});
-      }} onRefresh={refreshFocus} onOpen={onOpenModule} onUseBalances={useFocusBalances}/>
-      <section aria-labelledby="review-accounts-title" className="review-accounts">
+      }} onRefresh={refreshFocus} onOpen={onOpenModule} onUseBalances={useFocusBalances} saveAction={key=>moduleButton(key)}/>
+      <section aria-labelledby="review-accounts-title" className="review-accounts" data-review-module="accounts">
         <div className="review-toolbar"><h3 id="review-accounts-title">本期账户余额</h3><button className="secondary-button" type="button" disabled={!accounts.length} onClick={loadAccounts}>带入账户管理余额</button></div>
         {draft.accounts ? <>
           <p className="review-caption">截至 {draft.end} · 带入值仅供核对，并非本期已确认余额。证券账户、他人资金或已另计的余额请取消计入现金。</p>
@@ -360,11 +399,12 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
             <tfoot><tr><th>个人现金合计</th><td colSpan={3}>{draft.balances.cash === null ? "待补余额" : reviewMoney(draft.balances.cash)}</td></tr></tfoot>
           </table></div>
           <div className="review-account-options">
-            <label><input type="checkbox" required checked={accountsConfirmed} onChange={event => setAccountsConfirmed(event.target.checked)}/>已核对本期期末账户余额</label>
+            <label><input type="checkbox" checked={accountsConfirmed} onChange={event => setAccountsConfirmed(event.target.checked)}/>已核对本期期末账户余额</label>
+            {moduleButton("accounts")}
           </div>
         </> : <p className="review-caption">本期尚无账户明细，可带入核对；不带入时保留手填现金合计。</p>}
       </section>
-      {draft.goals&&<details className="review-method"><summary>目标管理 · 本期期末余额</summary><div className="table-wrap"><table className="review-table"><thead><tr><th>目标</th><th>当前余额</th></tr></thead><tbody>{draft.goals.map(row=><tr key={row.id}><th>{row.name}</th><td><input aria-label={`${row.name}复盘目标余额`} type="number" min="0" step="0.01" required value={Number.isFinite(row.current)?row.current:""} onChange={event=>{setGoalsConfirmed(false);setDraft({...draft,goals:draft.goals!.map(item=>item.id===row.id?{...item,current:event.target.value===""?NaN:Number(event.target.value)}:item)});}}/></td></tr>)}</tbody></table></div><label><input type="checkbox" checked={goalsConfirmed} onChange={event=>setGoalsConfirmed(event.target.checked)}/>已核对目标余额（不重复计入个人现金）</label></details>}
+      {draft.goals&&<details className="review-method" data-review-module="goals"><summary>目标管理 · 本期期末余额</summary><div className="table-wrap"><table className="review-table"><thead><tr><th>目标</th><th>当前余额</th></tr></thead><tbody>{draft.goals.map(row=><tr key={row.id}><th>{row.name}</th><td><input aria-label={`${row.name}复盘目标余额`} type="number" min="0" step="0.01" required value={Number.isFinite(row.current)?row.current:""} onChange={event=>{setGoalsConfirmed(false);setDraft({...draft,goals:draft.goals!.map(item=>item.id===row.id?{...item,current:event.target.value===""?NaN:Number(event.target.value)}:item)});}}/></td></tr>)}</tbody></table></div><label><input type="checkbox" checked={goalsConfirmed} onChange={event=>setGoalsConfirmed(event.target.checked)}/>已核对目标余额（不重复计入个人现金）</label><div className="data-actions">{moduleButton("goals")}</div></details>}
       <h3>期末个人资产与负债</h3>
       <div className="review-fields balances">{Object.entries(balanceLabels).map(([key,label]) => <label className="field" key={key}><span>{label} · 明细合计</span><input type="number" min="0" step="0.01" required readOnly={key === "cash" ? Boolean(draft.accounts) : key==="investments" ? Boolean(draft.investments) : Boolean(draft.focus)} aria-label={label} value={Number.isFinite(draft.balances[key as keyof typeof draft.balances]) ? draft.balances[key as keyof typeof draft.balances]! : ""} onChange={event => setDraft({...draft,balances:{...draft.balances,[key]:numeric(event.target.value)}})}/></label>)}</div>
       <p className="review-caption">现金及存款含微信、应急与本人持有的专项现金；证券账户总资产含其中现金和持仓，两边不重复。已交给家人的钱不计个人资产。</p>
@@ -373,11 +413,12 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
         {draft.type==="week"&&<label className="field"><span>保存范围</span><select aria-label="复盘保存范围" value={publish?"dashboard":"history"} onChange={event=>setSyncDashboard(event.target.value==="dashboard")}><option value="dashboard" disabled={!canPublish}>更新本期看板并保留历史</option><option value="history">仅保存历史报告</option></select></label>}
         {!canPublish&&draft.type==="week"&&<p>本期早于已有最新一期或属于未来日期，仅保存历史报告，不覆盖当前看板。</p>}
         {draft.type==="week"&&<p className="review-caption">账本已记录的金额须先补日期，避免再次记账。投资与应急划拨不计消费，期末余额直接替换，不再加减收支。预算和计划不变。</p>}
-        <button className="primary-button" type="submit">{publish?"保存、更新看板并分析":"保存历史报告并分析"}</button>
+        <button className="primary-button" type="submit">{publish?"全部保存并更新看板":"保存历史报告并分析"}</button>
         {draft.type !== "week" && <button className="secondary-button" type="button" onClick={aggregate}>从已有记录汇总</button>}
       </div>
     </form>}
     {view === "report" && (!selected || !analysis ? <p>尚无复盘记录。</p> : <section aria-label="周期对比报告">
+      {reportHasPendingModules&&<p className="review-status" role="status">本期有模块已单独更新；此报告仍是上次全部保存的版本。</p>}
       <div className="review-toolbar">
         <label className="field"><span>报告期间</span><select aria-label="报告期间" value={selected.id} onChange={event => setSelectedId(event.target.value)}>{records.map(record => <option key={record.id} value={record.id}>{reviewTypeNames[record.type]} · {record.start} 至 {record.end}</option>)}</select></label>
         <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => {setDraft({...selected});resetIncome();setLiveFocus(false);setLedgerLinked(false);setLedgerConfirmed(false);setAccountsConfirmed(false);setInvestmentsConfirmed(false);setGoalsConfirmed(false);setDraftSource("");setView("entry");setStatus("");})}>修订本期</button>

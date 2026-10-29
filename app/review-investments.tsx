@@ -1,8 +1,9 @@
 import {compareReviewInvestments, reviewHoldingCny, reviewInvestmentTotal, reviewMoney, type FinanceReview, type ReviewInvestments} from "./finance-review-model";
+import type {ReactNode} from "react";
 
-export function ReviewInvestmentsEditor({value,onChange,confirmed,onConfirm,onOpen}:{value?:ReviewInvestments;onChange:(value:ReviewInvestments)=>void;confirmed:boolean;onConfirm:(value:boolean)=>void;onOpen:()=>void}) {
+export function ReviewInvestmentsEditor({value,onChange,confirmed,onConfirm,onOpen,saveAction}:{value?:ReviewInvestments;onChange:(value:ReviewInvestments)=>void;confirmed:boolean;onConfirm:(value:boolean)=>void;onOpen:()=>void;saveAction?:ReactNode}) {
   const number=(raw:string)=>raw.trim()==="" ? NaN : Number(raw);
-  return <section className="review-accounts" aria-label="逐账户投资核对">
+  return <section className="review-accounts" aria-label="逐账户投资核对" data-review-module="investments">
     <div className="review-toolbar"><h3>投资账户 · 期末明细</h3><button type="button" className="secondary-button" onClick={onOpen}>前往投资管理</button></div>
     {!value ? <p>旧报告未保存投资明细，需重新带入当前模块后核对。</p> : <>
       <div className="review-fields">{(["fxUsd","fxHkd"] as const).map(key=><label className="field" key={key}><span>{key==="fxUsd"?"美元兑人民币":"港币兑人民币"}</span><input aria-label={`复盘${key==="fxUsd"?"美元":"港币"}汇率`} type="number" step="0.01" min="0.01" required value={Number.isFinite(value[key])?value[key]:""} onChange={event=>onChange({...value,[key]:number(event.target.value)})}/></label>)}</div>
@@ -11,6 +12,7 @@ export function ReviewInvestmentsEditor({value,onChange,confirmed,onConfirm,onOp
         <td>{Number.isFinite(reviewHoldingCny(row,value))?reviewMoney(reviewHoldingCny(row,value)):"待补"}</td><td><input aria-label={`${row.name}投资变化说明`} value={row.note ?? ""} onChange={event=>onChange({...value,holdings:value.holdings.map(item=>item.id===row.id?{...item,note:event.target.value}:item)})}/></td></tr>)}</tbody></table></div>
       <p>证券合计：{Number.isFinite(reviewInvestmentTotal(value))?reviewMoney(reviewInvestmentTotal(value)):"待补"} · 原币金额，证券现金如已含在账户总额中不再另计。</p>
       <label className="review-ledger-confirm"><input type="checkbox" checked={confirmed} onChange={event=>onConfirm(event.target.checked)}/>已核对所有投资账户及汇率</label>
+      <div className="data-actions">{saveAction}</div>
     </>}
   </section>;
 }

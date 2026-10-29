@@ -1,12 +1,14 @@
 import {reviewFocusLabels, reviewMoney, type ReviewFocus, type ReviewFocusKey} from "./finance-review-model";
+import type {ReactNode} from "react";
 
-export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, onOpen, onUseBalances}: {
+export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, onOpen, onUseBalances,saveAction}: {
   focus?: ReviewFocus;
   live: boolean;
   onChange: (focus: ReviewFocus) => void;
   onRefresh: () => void;
   onOpen: (module: "fundBuckets" | "reminders" | "balance") => void;
   onUseBalances: () => void;
+  saveAction?: (key:ReviewFocusKey)=>ReactNode;
 }) {
   const total = (rows: Array<{amount:number}>) => rows.reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100;
   const summaries = focus ? {
@@ -24,7 +26,7 @@ export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, 
     <div className="review-toolbar"><h3>关键事项核对</h3><button type="button" className="secondary-button" onClick={onRefresh}>刷新关键事项</button></div>
     {!focus ? <p className="review-caption">本期尚无项目、账单及资产负债明细快照。</p> : <>
       <p className="review-caption">{live ? "当前模块实时联动；有变化的项目会重新标记为待核对，已填说明保留。" : "历史／修订快照，不自动替换为当前模块数据。"}登记金额不计入本期消费。</p>
-      {(Object.keys(reviewFocusLabels) as ReviewFocusKey[]).map(key => <div className="review-focus-check" key={key}>
+      {(Object.keys(reviewFocusLabels) as ReviewFocusKey[]).map(key => <div className="review-focus-check" key={key} data-review-module={key}>
         <details><summary><strong>{reviewFocusLabels[key]}</strong><span>{summaries![key]}</span></summary>
           <div className="table-wrap"><table className="review-table">
             {key === "projects" && <><thead><tr><th>项目</th><th>目标</th><th>实际</th><th>截止日期</th></tr></thead><tbody>{focus.projects.map(row => <tr key={row.id}><th>{row.name}</th><td>{amount(key,"projects",row,"目标",row.target)}</td><td>{amount(key,"projects",row,"实际",row.current)}</td><td><input type="date" aria-label={`${row.name}复盘截止日期`} value={row.dueDate} onChange={event=>edit(key,"projects",row.id,{dueDate:event.target.value})}/></td></tr>)}</tbody></>}
@@ -39,6 +41,7 @@ export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, 
             {key === "balance" && <button type="button" className="secondary-button" onClick={onUseBalances}>带入补录资产与负债合计</button>}
           </div>
           <label className="field"><span>{reviewFocusLabels[key]}变化说明（可选）</span><input type="text" value={focus.notes[key] ?? ""} onChange={event=>onChange({...focus,notes:{...focus.notes,[key]:event.target.value}})}/></label>
+          <div className="data-actions">{saveAction?.(key)}</div>
         </details>
         <label className="review-focus-confirm"><input type="checkbox" aria-label={`${reviewFocusLabels[key]}已核对`} checked={focus.checks[key]} onChange={event=>onChange({...focus,checks:{...focus.checks,[key]:event.target.checked}})}/>{focus.checks[key] ? "已核对" : "待核对"}</label>
       </div>)}

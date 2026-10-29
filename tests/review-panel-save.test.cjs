@@ -6,6 +6,7 @@ const ts=require('typescript');
 const {loadModel}=require('../scripts/finance-review.cjs');
 const m=loadModel('finance-review-model');
 const d=loadModel('review-dashboard-sync');
+const modules=loadModel('review-module-sync');
 const compiled=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../app/finance-review-panel.tsx'),'utf8'),{
   compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}
 }).outputText;
@@ -34,6 +35,12 @@ function harness(fail=false) {
     return require(name);
   });
   function updateProps(){props={records:state.financeReviews,plan:{mode:'normal',rows:[]},accounts:state.accounts,
+    moduleUpdates:state.reviewUpdates ?? [],moduleSignatures:Object.fromEntries(Object.keys(modules.reviewModuleLabels).map(key=>[key,modules.reviewModuleSignature(state,key)])),
+    onSaveModule:(draft,module,signature)=>{
+      if(fail)throw new Error('Storage quota exceeded');
+      const result=modules.commitReviewModule(state,draft,module,signature,'2026-10-29T01:00:00Z','2026-10-29');state=result.data;
+      return {patch:result.patch,moduleSignature:modules.reviewModuleSignature(state,module),sourceSignature:d.dashboardSourceSignature(state)};
+    },
     investments:{holdings:state.holdings,fxUsd:7,fxHkd:1},goals:state.goals,dashboardAsOf:state.dashboardAsOf,
     sourceSignature:d.dashboardSourceSignature(state),focusSource:{projects:[],bills:[],assets:[],debts:[],holdings:state.holdings[0].value},
     ledgerMonths:state.monthlyRecords,datedEntries:[],onSaveIncome:()=>{},onDeleteIncome:()=>{},onOpenModule:()=>{},
@@ -46,7 +53,7 @@ function harness(fail=false) {
   function nodes(){const result=[];function walk(n){if(Array.isArray(n)){n.forEach(walk);return;}if(!n||typeof n!=='object')return;result.push(n);walk(n.props?.children);}walk(tree);return result;}
   function find(predicate){const n=nodes().find(predicate);assert.ok(n,'Expected UI control');return n;}
   function input(label,value){find(n=>n.type==='input'&&n.props['aria-label']===label).props.onChange({target:{value}});render();}
-  function button(text){find(n=>n.type==='button'&&n.props.children===text).props.onClick();render();}
+  function button(text){const node=find(n=>n.type==='button'&&(Array.isArray(n.props.children)?n.props.children.join(''):n.props.children)===text);node.props.onClick({currentTarget:{closest:()=>null,dataset:{reviewSave:node.props['data-review-save']}}});render();}
   function prepare(){
     input('本期外部收入','0');
     for(const row of m.reviewCategories)input(`${row.name}本期金额`,'0');
@@ -107,4 +114,36 @@ test('history-only saves explicitly distinguish reports from dashboard updates',
   assert.equal(h.state().accounts[0].balance,100);
   assert.equal(h.state().financeReviews[0].accounts[0].balance,450.5);
   assert.equal(h.state().reviewUpdates[0].published,false);
+});
+
+test('account module saves with empty spending and unchecked investment/goals, retaining other inputs',()=>{
+  const h=harness();
+  h.input('Test bank复盘期末余额','2357');
+  h.input('日常使用本期金额','99');
+  h.button('保存并更新账户余额');h.refresh();
+  assert.equal(h.state().accounts[0].balance,2357);
+  assert.equal(h.state().holdings[0].value,200);
+  assert.equal(h.state().financeReviews.length,0);
+  assert.equal(h.state().reviewUpdates[0].module,'accounts');
+  assert.equal(h.find(n=>n.props?.['aria-label']==='日常使用本期金额').props.value,99);
+  assert.equal(h.find(n=>n.props?.['aria-label']==='现金及存款').props.value,2357);
+  assert.equal(h.find(n=>n.props?.id==='review-result-title').props.children,'保存并更新完毕');
+});
+
+test('total save identifies the exact unconfirmed modules instead of blaming a confirmed account',()=>{
+  const h=harness();
+  h.input('Test bank复盘期末余额','2357');h.button('保存并更新账户余额');h.refresh();
+  h.submit();
+  const message=h.find(n=>n.props?.id==='review-result-message').props.children;
+  assert.match(message,/投资账户、目标余额、大花费项目、账单与订阅、资产负债/);
+  assert.doesNotMatch(message,/账户余额/);
+  assert.equal(h.state().accounts[0].balance,2357);
+});
+
+test('module persistence failure keeps the edited amount and does not create history or success',()=>{
+  const h=harness(true);h.input('Test bank复盘期末余额','2357');h.button('保存并更新账户余额');
+  assert.equal(h.state().accounts[0].balance,100);
+  assert.equal(h.state().reviewUpdates,undefined);
+  assert.equal(h.find(n=>n.props?.['aria-label']==='Test bank复盘期末余额').props.value,2357);
+  assert.equal(h.find(n=>n.props?.id==='review-result-title').props.children,'未保存，请检查');
 });
