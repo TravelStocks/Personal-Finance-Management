@@ -26,7 +26,7 @@ const numeric = (value: string) => value.trim() === "" ? null : Number(value);
 const change = (value: number | null) => value === null ? "无基准" : `${value > 0 ? "+" : ""}${reviewMoney(value)}`;
 
 type AccountSource = Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance"> & {includedInPersonal?:boolean};
-export default function FinanceReviewPanel({records, plan, accounts, investments, goals, dashboardAsOf, sourceSignature, focusSource, ledgerMonths, datedEntries, onSaveIncome, onDeleteIncome, onOpenModule, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; investments:ReviewInvestments; goals:ReviewGoal[]; dashboardAsOf?:string; sourceSignature:string; focusSource: ReviewFocusSource; ledgerMonths:LedgerMonth[]; datedEntries:DatedEntry[]; onSaveIncome:(entry:DatedEntry,previousId:string|undefined,mode:EntryMode)=>void; onDeleteIncome:(id:string)=>void; onOpenModule:(module:"fundBuckets" | "reminders" | "balance" | "income" | "spending" | "investment")=>void; onChange: (records: FinanceReview[], update?:{record:FinanceReview;publish:boolean;sourceSignature:string}) => void}) {
+export default function FinanceReviewPanel({records, plan, accounts, investments, goals, dashboardAsOf, sourceSignature, focusSource, ledgerMonths, datedEntries, onSaveIncome, onDeleteIncome, onOpenModule, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; investments:ReviewInvestments; goals:ReviewGoal[]; dashboardAsOf?:string; sourceSignature:string; focusSource: ReviewFocusSource; ledgerMonths:LedgerMonth[]; datedEntries:DatedEntry[]; onSaveIncome:(entry:DatedEntry,previousId:string|undefined,mode:EntryMode)=>void; onDeleteIncome:(id:string)=>void; onOpenModule:(module:"fundBuckets" | "reminders" | "balance" | "income" | "spending" | "investment")=>void; onChange: (records: FinanceReview[], update?:{record:FinanceReview;publish:boolean;sourceSignature:string}) => {sourceSignature:string}}) {
   const today = useFinanceToday();
   function makeDraft(type?: ReviewType, end = reviewToday(), monthStartDay:1|10 = 10) {
     const previous = records.filter(record => record.accounts && record.end <= end).sort((a,b) => b.end.localeCompare(a.end))[0];
@@ -56,6 +56,9 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
   const [budgetMode, setBudgetMode] = useState<BudgetMonthMode>(plan.mode);
   const fileInput = useRef<HTMLInputElement>(null);
   const confirmDialog = useRef<HTMLDialogElement>(null);
+  const resultDialog = useRef<HTMLDialogElement>(null);
+  const invalidField = useRef<HTMLInputElement | null>(null);
+  const [saveResult,setSaveResult] = useState<{title:string;message:string;hasField?:boolean} | null>(null);
   const [confirmation, setConfirmation] = useState<{message: string; action: () => void} | null>(null);
   const selected = records.find(record => record.id === selectedId) ?? records[0];
   const analysis = selected ? analyzeFinanceReview(selected, records) : null;
@@ -94,8 +97,31 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
     if (confirmation) confirmDialog.current?.showModal();
     else confirmDialog.current?.close();
   }, [confirmation]);
+  useEffect(() => {
+    if(saveResult) resultDialog.current?.showModal();
+    else resultDialog.current?.close();
+  },[saveResult]);
+  function failSave(error:unknown, field?:HTMLInputElement) {
+    const message=error instanceof Error ? error.message : "操作失败，请重试。";
+    setStatus(message);
+    invalidField.current=field ?? null;
+    setSaveResult({title:"未保存，请检查",message,hasField:Boolean(field)});
+  }
+  function closeSaveResult() {
+    const field=invalidField.current;
+    invalidField.current=null;
+    resultDialog.current?.close();
+    setSaveResult(null);
+    if(field?.isConnected) {
+      for(let parent=field.parentElement;parent;parent=parent.parentElement) {
+        if(parent instanceof HTMLDetailsElement) parent.open=true;
+      }
+      field.scrollIntoView({block:"center"});
+      field.focus({preventScroll:true});
+    }
+  }
   function runAction(action: () => void) {
-    try {action();} catch (error) {setStatus(error instanceof Error ? error.message : "操作失败");}
+    try {action();} catch (error) {failSave(error);}
   }
   function confirmOrRun(required: boolean, message: string, action: () => void) {
     if (required) setConfirmation({message, action});
@@ -128,18 +154,21 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
       const budget = draft.type === "month" ? draft.budget ?? {mode: budgetMode, amounts: Object.fromEntries(plan.rows.map(row => [row.id, row[budgetMode]]))} : undefined;
       const record = parseFinanceReview({...draft, budget, savedAt: new Date().toISOString()});
       confirmOrRun(records.some(item => item.id === record.id), "该周期已有记录，是否用本次数据更新？", () => {
-        onChange(upsertFinanceReview(records, record), {record,publish,sourceSignature:draftSource});
+        const receipt=onChange(upsertFinanceReview(records, record), {record,publish,sourceSignature:draftSource});
         setSelectedId(record.id);
         setView("report");
-        setDraft(makeDraft(draft.type, draft.end, draft.monthStartDay ?? 1));
+        // Keep the committed snapshot; parent props still contain pre-save balances in this callback.
+        setDraft(structuredClone(record));
+        if(publish) setDraftSource(receipt.sourceSignature);
         resetIncome();
         setLedgerLinked(false);
         setLedgerConfirmed(false);
-        setLiveFocus(draft.end === today);
-        setAccountsConfirmed(false);
-        setStatus(publish ? "本期看板已更新：收支、账户、逐账户投资、资产负债、项目、账单及目标余额；更新前后完整数据已留存。跨电脑使用前请确认云端保存成功。" : "历史报告已保存，修订前数据已留存；当前看板未覆盖。跨电脑使用前请确认云端保存成功。");
+        setLiveFocus(false);
+        const message=publish ? "本期收支、账户、投资及其他模块已更新，更新前后的历史已保存到本机。跨电脑使用前请确认云端保存成功。" : "历史报告已保存到本机，当前看板未覆盖。跨电脑使用前请确认云端保存成功。";
+        setStatus(message);
+        setSaveResult({title:publish ? "保存并更新完毕" : "历史报告保存完毕",message});
       });
-    } catch (error) {setStatus(error instanceof Error ? error.message : "保存失败");}
+    } catch (error) {failSave(error);}
   }
   async function importFile(file: File) {
     try {
@@ -244,6 +273,10 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
   }
 
   return <div className="finance-review">
+    <dialog ref={resultDialog} className="review-confirm" aria-labelledby="review-result-title" aria-describedby="review-result-message" onCancel={event=>{event.preventDefault();closeSaveResult();}}>
+      <h3 id="review-result-title">{saveResult?.title}</h3><p id="review-result-message">{saveResult?.message}</p>
+      <div className="data-actions"><button type="button" className="primary-button" autoFocus onClick={closeSaveResult}>{saveResult?.hasField ? "前往检查" : "知道了"}</button></div>
+    </dialog>
     <dialog ref={confirmDialog} className="review-confirm" aria-labelledby="review-confirm-title" onCancel={event => {event.preventDefault();setConfirmation(null);}}>
       <h3 id="review-confirm-title">确认更新</h3><p>{confirmation?.message}</p>
       <div className="data-actions"><button type="button" className="secondary-button" autoFocus onClick={() => setConfirmation(null)}>取消</button><button type="button" className="primary-button" onClick={() => {const action=confirmation?.action;setConfirmation(null);if (action) runAction(action);}}>确认</button></div>
@@ -261,7 +294,16 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
       </div>
     </div>
     {status && <p className="review-status" role="status">{status}</p>}
-    {view === "entry" && <form onSubmit={event => {event.preventDefault(); save();}}>
+    {view === "entry" && <form noValidate onSubmit={event => {
+      event.preventDefault();
+      const invalid=event.currentTarget.querySelector<HTMLInputElement>("input:invalid,select:invalid,textarea:invalid");
+      if(invalid) {
+        const label=invalid.getAttribute("aria-label") || invalid.labels?.[0]?.textContent?.trim() || "复盘字段";
+        failSave(new Error(`${label}：${invalid.type==="checkbox" ? "请勾选确认。" : invalid.validationMessage}`),invalid);
+        return;
+      }
+      save();
+    }}>
       <div className="review-toolbar"><span>当前看板截至：{dashboardAsOf || "尚未整期更新"}</span><button type="button" className="secondary-button" onClick={refreshDashboard}>重新带入当前模块</button></div>
       {draftSource!==sourceSignature&&<p role="alert">当前模块已变化，更新看板前须重新带入并核对。</p>}
       <div className="review-fields">

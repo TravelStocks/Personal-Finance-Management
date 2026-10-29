@@ -3576,6 +3576,7 @@ export default function FinanceDashboard() {
                         setReminders(next.reminders);setFundBuckets(next.fundBuckets);setGoals(next.goals);
                       }
                       setSaveStatus("本期数据与更新前后历史已保存到本机");
+                      return {sourceSignature:dashboardSourceSignature(next)};
                     }}/>
                     <ReviewUpdateHistory updates={reviewUpdates} onExport={exportReviewUpdate}/>
                   </Module>
