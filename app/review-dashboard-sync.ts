@@ -2,6 +2,7 @@ import {newReviewDraft, parseFinanceReview, reviewInvestmentTotal, reviewToday, 
 import {mergeReviewModule, normalizeReviewModule, reviewModuleLabels, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
 import {syncWeeklyReview} from "./review-ledger-sync";
 import type {DatedEntry, LedgerMonth} from "./dated-ledger-model";
+import {addParentSupport, mergeManualGoals, type GoalBalance} from "./goal-sync-model";
 
 export type ReviewUpdate = {id:string; reviewId:string; asOf:string; savedAt:string; published:boolean; module?:ReviewModule; moduleDraft?:ReviewModulePatch; before:Record<string,unknown>; after:Record<string,unknown>};
 export type DashboardState = {
@@ -11,7 +12,7 @@ export type DashboardState = {
   balanceAssets:Array<{id:string;name:string;amount:number}>; liabilities:Array<{id:string;name:string;amount:number}>;
   reminders:Array<{id:string;name:string;amount:number;date:string;kind:string}>;
   fundBuckets:Array<{id:string;name:string;target:number;current:number;dueDate:string}>;
-  goals:Array<{id:string;name:string;current:number}>;
+  goals:GoalBalance[];
   dashboardAsOf?:string; reviewUpdates?:ReviewUpdate[]; selectedMonth?:string;
 };
 const total=(rows:Array<{amount:number}>)=>rows.reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100;
@@ -81,6 +82,9 @@ export function commitReviewUpdate<T extends DashboardState>(state:T, records:Fi
       reminders:merge(state.reminders,focus.bills),fundBuckets:merge(state.fundBuckets,focus.projects),goals:merge(state.goals,record.goals),
       dashboardAsOf:record.end,
     };
+    next.goals=addParentSupport(mergeManualGoals(state.goals,record.goals,next.accounts),record.id,record.amounts.parents);
+    record.goals=next.goals.map(({id,name,current})=>({id,name,current}));
+    next.financeReviews=records.map(row=>row.id===record.id ? record : row);
   }
   const snapshot=(value:DashboardState)=>{
     const copy={...value} as Record<string,unknown>;

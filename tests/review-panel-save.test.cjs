@@ -63,7 +63,7 @@ function harness(fail=false) {
     find(n=>n.type===investmentComponent).props.onConfirm(true);render();
     const focus=find(n=>n.type===focusComponent);
     focus.props.onChange({...focus.props.focus,checks:{projects:true,bills:true,balance:true}});render();
-    for(const label of ['已核对本期期末账户余额','已核对目标余额（不重复计入个人现金）']) {
+    for(const label of ['已核对本期期末账户余额']) {
       const node=find(n=>n.type==='label'&&Array.isArray(n.props.children)&&n.props.children.includes(label));
       node.props.children[0].props.onChange({target:{checked:true}});render();
     }
@@ -135,7 +135,7 @@ test('total save identifies the exact unconfirmed modules instead of blaming a c
   h.input('Test bank复盘期末余额','2357');h.button('保存并更新账户余额');h.refresh();
   h.submit();
   const message=h.find(n=>n.props?.id==='review-result-message').props.children;
-  assert.match(message,/投资账户、目标余额、大花费项目、账单与订阅、资产负债/);
+  assert.match(message,/投资账户、大花费项目、账单与订阅、资产负债/);
   assert.doesNotMatch(message,/账户余额/);
   assert.equal(h.state().accounts[0].balance,2357);
 });

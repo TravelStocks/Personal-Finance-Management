@@ -12,6 +12,7 @@ import ReviewOverview from "./review-overview";
 import ReviewUpdateHistory from "./review-update-history";
 import {commitReviewUpdate, dashboardSourceSignature, parseReviewUpdates, type ReviewUpdate} from "./review-dashboard-sync";
 import {commitReviewModule, reviewModuleLabels, reviewModuleSignature, type ReviewModule} from "./review-module-sync";
+import {goalKind, goalBalanceSource, syncAccountGoals, parseParentReviewAmounts} from "./goal-sync-model";
 import {changeDatedEntry, parseDatedEntries, preserveDatedSalaries, type DatedEntry, type EntryMode} from "./dated-ledger-model";
 import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, reviewInvestmentTotal, type FinanceReview} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
@@ -84,6 +85,7 @@ type Goal = {
   current: number;
   monthly: number;
   actualMonthly: number;
+  parentReviewAmounts?: Record<string,number>;
 };
 
 type FutureCapability = {
@@ -606,16 +608,6 @@ function isTotalSavingsAccount(account: Account) {
   return !isSalaryMainAccount && !isExcludedWallet && (isBankCard || isYuEBao);
 }
 
-function goalKind(goal: Goal): GoalKind {
-  const text = goal.name.toLowerCase();
-  if (text.includes("旅游") || text.includes("旅行")) return "travel";
-  if (text.includes("学习") || text.includes("教育") || text.includes("成长")) return "learning";
-  if (text.includes("父母") || text.includes("爸妈") || text.includes("孝敬")) return "parent";
-  if (text.includes("伴侣") || text.includes("情侣") || text.includes("共同")) return "partner";
-  if (text.includes("应急") || text.includes("紧急")) return "emergency";
-  return "other";
-}
-
 function summarizeGoals(goals: Goal[]) {
   const summary = {
     travelCurrent: 0,
@@ -700,6 +692,7 @@ function normalizeGoals(value: unknown) {
         current: typeof goal.current === "number" ? goal.current : 0,
         monthly,
         actualMonthly: typeof goal.actualMonthly === "number" ? goal.actualMonthly : monthly,
+        ...(goal.parentReviewAmounts===undefined ? {} : {parentReviewAmounts:parseParentReviewAmounts(goal.parentReviewAmounts)}),
       };
     })
     .filter((item): item is Goal => item !== null);
@@ -1075,7 +1068,7 @@ export default function FinanceDashboard() {
   const [liabilities, setLiabilities] = useState<Liability[]>(initialLiabilities);
   const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
-  const plannedGoals = goalsWithEmergencyBudget(goals, annualBudgetPlan);
+  const plannedGoals = syncAccountGoals(goalsWithEmergencyBudget(goals, annualBudgetPlan),accounts);
   const [fundBuckets, setFundBuckets] = useState<FundBucket[]>(initialFundBuckets);
   const [futureCapabilities, setFutureCapabilities] = useState<FutureCapability[]>(initialFutureCapabilities);
   const [cashflowHiddenBuiltinIds, setCashflowHiddenBuiltinIds] = useState<CashflowBuiltinId[]>([]);
@@ -1129,7 +1122,7 @@ export default function FinanceDashboard() {
       balanceAssets,
       liabilities,
       reminders,
-      goals: goalsWithEmergencyBudget(goals, annualBudgetPlan),
+      goals: syncAccountGoals(goalsWithEmergencyBudget(goals, annualBudgetPlan),accounts),
       fundBuckets,
       futureCapabilities,
       cashflowHiddenBuiltinIds,
@@ -3480,6 +3473,7 @@ export default function FinanceDashboard() {
                           <MonthSelector records={monthlyRecords} selectedMonth={selectedMonth} onChange={setSelectedMonth} />
                           <EditableGoalsTable
                             goals={plannedGoals}
+                            accounts={accounts}
                             addGoal={addGoal}
                             deleteGoal={deleteGoal}
                             updateGoal={updateGoal}
@@ -3562,7 +3556,7 @@ export default function FinanceDashboard() {
 
                 {moduleId === "periodReview" && (
                   <Module title="周期复盘" desc="本期实际收支与期末余额；整期更新、历史版本及逐账户变化。">
-                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} investments={{holdings,fxUsd,fxHkd}} goals={goals.map(({id,name,current})=>({id,name,current}))} dashboardAsOf={dashboardAsOf} sourceSignature={dashboardSourceSignature(getPersistedFinanceData())}
+                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} investments={{holdings,fxUsd,fxHkd}} goals={plannedGoals.map(({id,name,current})=>({id,name,current}))} dashboardAsOf={dashboardAsOf} sourceSignature={dashboardSourceSignature(getPersistedFinanceData())}
                       moduleUpdates={reviewUpdates} moduleSignatures={Object.fromEntries((Object.keys(reviewModuleLabels) as ReviewModule[]).map(key=>[key,reviewModuleSignature(getPersistedFinanceData(),key)])) as Record<ReviewModule,string>}
                       onSaveModule={(draft,module,signature)=>{
                         const {data:next,patch}=commitReviewModule(getPersistedFinanceData(),draft,module,signature);
@@ -3572,7 +3566,7 @@ export default function FinanceDashboard() {
                         setBalanceAssets(next.balanceAssets);setLiabilities(next.liabilities);setReminders(next.reminders);setFundBuckets(next.fundBuckets);setGoals(next.goals);
                         setMonthlyRecords(next.monthlyRecords);if(next.selectedMonth)setSelectedMonth(next.selectedMonth);
                         setSaveStatus(`${reviewModuleLabels[module]}已更新并保存到本机`);
-                        return {patch,moduleSignature:reviewModuleSignature(next,module),sourceSignature:dashboardSourceSignature(next)};
+                        return {patch,moduleSignature:reviewModuleSignature(next,module),sourceSignature:dashboardSourceSignature(next),goalsSignature:reviewModuleSignature(next,"goals")};
                       }} ledgerMonths={monthlyRecords} datedEntries={datedEntries} onSaveIncome={saveDatedEntry} onDeleteIncome={deleteDatedEntry}
                       focusSource={{
                         projects:fundBuckets.map(({id,name,target,current,dueDate})=>({id,name,target,current,dueDate})),
@@ -3589,7 +3583,7 @@ export default function FinanceDashboard() {
                         setReminders(next.reminders);setFundBuckets(next.fundBuckets);setGoals(next.goals);
                       }
                       setSaveStatus("本期数据与更新前后历史已保存到本机");
-                      return {sourceSignature:dashboardSourceSignature(next),moduleSignatures:Object.fromEntries((Object.keys(reviewModuleLabels) as ReviewModule[]).map(key=>[key,reviewModuleSignature(next,key)])) as Record<ReviewModule,string>};
+                      return {sourceSignature:dashboardSourceSignature(next),record:update ? next.financeReviews?.find(row=>row.id===update.record.id) : undefined,moduleSignatures:Object.fromEntries((Object.keys(reviewModuleLabels) as ReviewModule[]).map(key=>[key,reviewModuleSignature(next,key)])) as Record<ReviewModule,string>};
                     }}/>
                     <ReviewUpdateHistory updates={reviewUpdates} onExport={exportReviewUpdate}/>
                   </Module>
@@ -4964,11 +4958,13 @@ function EditableReminderTable({
 
 function EditableGoalsTable({
   goals,
+  accounts,
   updateGoal,
   addGoal,
   deleteGoal,
 }: {
   goals: Goal[];
+  accounts: Account[];
   updateGoal: (id: string, patch: Partial<Goal>) => void;
   addGoal: () => void;
   deleteGoal: (id: string) => void;
@@ -5001,7 +4997,7 @@ function EditableGoalsTable({
               <tr key={item.id}>
                 <td><TableTextInput ariaLabel={`${item.name} 名称`} value={item.name} onChange={(value) => updateGoal(item.id, { name: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 目标金额`} value={item.target} onChange={(value) => updateGoal(item.id, { target: value })} /></td>
-                <td><TableNumberInput ariaLabel={`${item.name} 当前金额`} value={item.current} onChange={(value) => updateGoal(item.id, { current: value })} /></td>
+                <td>{goalBalanceSource(item,goals,accounts).mode==="accounts" ? <span className="calculated-cell">{money(item.current)}<small>{goalBalanceSource(item,goals,accounts).label}</small></span> : <TableNumberInput ariaLabel={`${item.name} 当前金额`} value={item.current} onChange={(value) => updateGoal(item.id, { current: value })} />}</td>
                 <td><TableNumberInput ariaLabel={`${item.name} 每月预期准备`} value={item.monthly} onChange={(value) => updateGoal(item.id, { monthly: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 本月实际投入`} value={item.actualMonthly} onChange={(value) => updateGoal(item.id, { actualMonthly: value })} /></td>
                 <td className="calculated-cell">{percent(item.target ? item.current / item.target : 0)}</td>

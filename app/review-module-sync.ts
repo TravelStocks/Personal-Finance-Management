@@ -1,6 +1,7 @@
 import {newReviewDraft, newReviewFocus, parseFinanceReview, reviewAccountCash, reviewInvestmentTotal, reviewPeriod, reviewToday, type ReviewDraft, type ReviewFocus} from "./finance-review-model";
 import type {DashboardState, ReviewUpdate} from "./review-dashboard-sync";
 import {syncWeeklyReview} from "./review-ledger-sync";
+import {addParentSupport, mergeManualGoals, syncAccountGoals} from "./goal-sync-model";
 
 export const reviewModuleLabels = {income:"收入",spending:"支出",accounts:"账户余额",investments:"投资账户",projects:"大花费项目",bills:"账单与订阅",balance:"资产负债",goals:"目标余额"} as const;
 export type ReviewModule = keyof typeof reviewModuleLabels;
@@ -61,7 +62,7 @@ export function normalizeReviewModule(draft:ReviewDraft, module:ReviewModule):Re
 export function reviewModuleSignature(state:DashboardState,module:ReviewModule):string {
   const entries=state.datedEntries ?? [];
   const values={accounts:state.accounts,investments:[state.holdings,state.fxUsd,state.fxHkd],projects:state.fundBuckets,bills:state.reminders,
-    balance:[state.balanceAssets,state.liabilities],goals:state.goals,
+    balance:[state.balanceAssets,state.liabilities],goals:[state.goals,state.accounts],
     income:[state.monthlyRecords.map(({id,salary,otherIncome})=>({id,salary,otherIncome})),entries.filter(row=>row.flow==="income")],
     spending:[state.monthlyRecords.map(({id,budgets})=>({id,budgets})),entries.filter(row=>row.flow==="expense")]};
   return JSON.stringify(values[module]);
@@ -83,7 +84,7 @@ export function commitReviewModule<T extends DashboardState>(state:T,draft:Revie
   const cutoff=[state.dashboardAsOf ?? "",...(state.financeReviews ?? []).filter(row=>row.type==="week").map(row=>row.end),...(state.reviewUpdates ?? []).filter(row=>row.published).map(row=>row.asOf)].sort().at(-1)!;
   if(draft.type!=="week" || draft.end<cutoff || draft.end>today || reviewPeriod("week",draft.end).start!==draft.start) throw new Error("仅当前最新周复盘可更新模块；历史和未来期间请保存历史报告。");
   if(sourceSignature!==reviewModuleSignature(state,module)) throw new Error(`${reviewModuleLabels[module]}已在其他位置修改，请重新带入并核对后保存。`);
-  const patch=normalizeReviewModule(draft,module);
+  const patch=normalizeReviewModule(module==="goals" && draft.goals ? {...draft,goals:mergeManualGoals(state.goals,draft.goals,state.accounts)} : draft,module);
   const sameIds=(a:Array<{id:string}>,b:Array<{id:string}>)=>{
     if(a.length!==b.length || a.some(row=>!b.some(other=>row.id===other.id))) throw new Error(`${reviewModuleLabels[module]}清单已变化，请重新带入当前模块。`);
   };
@@ -97,7 +98,7 @@ export function commitReviewModule<T extends DashboardState>(state:T,draft:Revie
   } else if(module==="projects") next.fundBuckets=merge(state.fundBuckets,patch.focus!.projects!);
   else if(module==="bills") next.reminders=merge(state.reminders,patch.focus!.bills!);
   else if(module==="balance") {next.balanceAssets=merge(state.balanceAssets,patch.focus!.assets!);next.liabilities=merge(state.liabilities,patch.focus!.debts!);}
-  else if(module==="goals") next.goals=merge(state.goals,patch.goals!);
+  else if(module==="goals") next.goals=mergeManualGoals(state.goals,merge(state.goals,patch.goals!),state.accounts);
   else {
     const income=(state.datedEntries ?? []).filter(row=>row.flow==="income"&&row.date>=draft.start&&row.date<=draft.end).reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100;
     if(module==="income") {
@@ -105,9 +106,11 @@ export function commitReviewModule<T extends DashboardState>(state:T,draft:Revie
     } else {
       const valid={...newReviewDraft("week",draft.end),income,amounts:patch.amounts!,notes:patch.notes!,balances:{cash:0,investments:0,otherAssets:0,debt:0}};
       next.monthlyRecords=syncWeeklyReview(state.monthlyRecords,state.datedEntries ?? [],parseFinanceReview(valid));
+      next.goals=addParentSupport(state.goals,`week:${draft.start}`,patch.amounts!.parents!);
     }
     next.selectedMonth=draft.end.slice(0,7);
   }
+  if(module==="accounts" || module==="spending" || module==="goals") next.goals=syncAccountGoals(next.goals,next.accounts);
   const snapshot=(data:DashboardState)=>{const copy={...data};delete copy.reviewUpdates;return structuredClone(copy);};
   const update:ReviewUpdate={id:`${now}:${(state.reviewUpdates ?? []).length}`,reviewId:`${draft.type}:${draft.start}`,asOf:draft.end,savedAt:now,published:true,module,moduleDraft:patch,before:snapshot(state),after:snapshot(next)};
   next={...next,reviewUpdates:[...(state.reviewUpdates ?? []),update]};
