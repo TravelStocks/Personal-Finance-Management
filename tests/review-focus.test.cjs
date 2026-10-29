@@ -38,6 +38,7 @@ test('confirmed snapshots compare stable IDs, amounts and dates without inventin
   const a=m.analyzeFinanceReview(current,[previous]);
   assert.equal(a.highlights.length,4);
   assert.match(a.highlights.find(row=>row.id==='projects').summary,/-¥200.00/);
+  assert.match(a.highlights.find(row=>row.id==='projects').details.join(' '),/实际 ¥200.00 → ¥400.00/);
   assert.match(a.highlights.find(row=>row.id==='bills').details.join(' '),/登记金额 ¥20.00 → ¥30.00/);
   assert.match(a.highlights.find(row=>row.id==='balance').details.join(' '),/不一致/);
   assert.ok(a.actions.length<=3);
@@ -83,4 +84,36 @@ test('quarter rollup takes only the final context and does not reuse an earlier 
   assert.notEqual(quarter.focus,months[2].focus);
   delete months[2].focus;
   assert.equal(m.aggregateFinanceReviews(months,'quarter','2026-09-30').focus,undefined);
+});
+
+test('project actual input updates the existing current field and preserves other values',()=>{
+  const ts=require('typescript');
+  const fs=require('node:fs');
+  const path=require('node:path');
+  const exported={};
+  const compiled=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../app/finance-review-focus.tsx'),'utf8'),{
+    compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}
+  }).outputText;
+  new Function('exports','require',compiled)(exported,name=>name==='./finance-review-model'?m:require(name));
+  const focus=checked();
+  let changed;
+  const tree=exported.default({focus,live:true,onChange:value=>{changed=value;},onRefresh:()=>{},onOpen:()=>{},onUseBalances:()=>{}});
+  const inputs=[];
+  function walk(node){
+    if(Array.isArray(node)){node.forEach(walk);return;}
+    if(!node || typeof node!=='object')return;
+    if(node.type==='input')inputs.push(node);
+    walk(node.props?.children);
+  }
+  walk(tree);
+  const actual=inputs.find(node=>node.props['aria-label']==='测试旅行复盘实际');
+  assert.ok(actual);
+  assert.equal(actual.props.value,200);
+  actual.props.onChange({target:{value:'450.50'}});
+  assert.deepEqual(changed.projects[0],{...focus.projects[0],current:450.5});
+  assert.equal(changed.checks.projects,false);
+  assert.equal(focus.projects[0].current,200);
+  const bill=inputs.find(node=>node.props['aria-label']==='测试订阅复盘金额');
+  bill.props.onChange({target:{value:'35'}});
+  assert.equal(changed.bills[0].amount,35);
 });

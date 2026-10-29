@@ -2684,7 +2684,7 @@ export default function FinanceDashboard() {
       title: "大花费项目覆盖",
       tone: liquidAfterBuckets < 0 ? ("red" as Tone) : urgentFundBucketGap > 0 ? ("amber" as Tone) : ("green" as Tone),
       summary: `大花费项目缺口 ${money(fundBucketGapTotal)}，未分配现金 ${money(liquidAfterBuckets)}`,
-      detail: `手动项目已准备 ${money(fundBucketPreparedTotal)} / 目标 ${money(fundBucketTargetTotal)}；投资待投金 ${money(totals.investmentReserve)} 单独锁定。`,
+      detail: `手动项目实际 ${money(fundBucketPreparedTotal)} / 目标 ${money(fundBucketTargetTotal)}；投资待投金 ${money(totals.investmentReserve)} 单独锁定。`,
       action:
         liquidAfterBuckets < 0
           ? "资金标签超过可动用现金，需要减少已锁定金额或重新分配账户用途。"
@@ -2720,7 +2720,7 @@ export default function FinanceDashboard() {
     `1. 净资产与现金：总资产 ${money(totals.totalAssets)}，净资产 ${money(totals.netWorth)}，可提取现金 ${money(liquidity.liquidCash)}，扣除专项后可自由动用 ${money(liquidAfterBuckets)}。`,
     `2. 收支：收入 ${money(actualIncome)}，生活支出 ${money(totals.spendingActual)}，资产/责任分配 ${money(totals.assetOutflow)}，当月余额 ${money(totals.monthlySurplus)}。`,
     `3. 家庭责任：父母 ${money(totals.parentAllocation)}，伴侣 ${money(totals.partnerAllocation)}，合计占收入 ${percent((totals.parentAllocation + totals.partnerAllocation) / Math.max(actualIncome, 1))}。`,
-    `4. 大花费项目：目标 ${money(fundBucketTargetTotal)}，已准备 ${money(fundBucketPreparedTotal)}，缺口 ${money(fundBucketGapTotal)}，其中两个月内缺口 ${money(urgentFundBucketGap)}。`,
+    `4. 大花费项目：目标 ${money(fundBucketTargetTotal)}，实际 ${money(fundBucketPreparedTotal)}，缺口 ${money(fundBucketGapTotal)}，其中两个月内缺口 ${money(urgentFundBucketGap)}。`,
     `5. 投资：投资市值 ${money(totals.investmentValue)}，待投资金 ${money(totals.investmentReserve)}，计划覆盖 ${investmentReserveCoverage.toFixed(1)} 个月，浮动盈亏 ${money(totals.investmentPnL)}。`,
     `6. 应急与负债：应急覆盖 ${totals.emergencyCoverage.toFixed(1)} 个月，总负债 ${money(totals.totalDebt)}，负债率 ${percent(totals.debtRatio)}。`,
     `7. 学习用途：已归类学习净支出 ${reviewMoney(monthlyLearning.total)}；${monthlyLearning.rows.length ? monthlyLearning.rows.map(row => `${row.name} ${reviewMoney(row.actual)}（${row.note?.trim() || "用途待补"}）`).join("；") : "暂无已归类明细，不能据此判断没有学习支出"}。${monthlyLearning.unassigned !== 0 ? `另有 ${reviewMoney(monthlyLearning.unassigned)} 支出待归类。` : ""}`,
@@ -2755,7 +2755,7 @@ export default function FinanceDashboard() {
     { id: "usshare-plan", name: "美股账本分配", amount: usSharePlan, flow: "资产分配", source: "账本投资分配，非当前预测预算" },
     { id: "hkshare-plan", name: "港股账本分配", amount: hkSharePlan, flow: "资产分配", source: "账本投资分配，非当前预测预算" },
     { id: "investment-reserve", name: "投资待投金", amount: totals.investmentReserve, flow: "大花费项目", source: "账户用途自动识别：A股待投 + 美股待投" },
-    { id: "fund-bucket-gap", name: "大花费项目缺口", amount: fundBucketGapTotal, flow: "大花费项目", source: "大花费项目目标 - 已准备金额" },
+    { id: "fund-bucket-gap", name: "大花费项目缺口", amount: fundBucketGapTotal, flow: "大花费项目", source: "大花费项目目标 - 实际金额" },
     { id: "liquid-after-buckets", name: "可自由动用现金", amount: liquidAfterBuckets, flow: "安全垫", source: "可提取账户 - 专项账户占用 - 项目追加锁定（关联后去重）" },
     { id: "monthly-surplus", name: "当月余额", amount: totals.monthlySurplus, flow: "结余", source: "收入 - 实际支出 - 实际资产分配" },
   ];
@@ -5030,7 +5030,7 @@ function EditableFundBucketTable({
     <>
       <TableToolbar
         title="大花费项目底表"
-        meta={`目标 ${money(target)} / 已准备 ${money(current)} / 每月还需 ${money(monthlyNeed)} / 项目后现金 ${money(liquidAfterBuckets)}`}
+        meta={`目标 ${money(target)} / 实际 ${money(current)} / 每月还需 ${money(monthlyNeed)} / 项目后现金 ${money(liquidAfterBuckets)}`}
         action={<button className="secondary-button" type="button" onClick={addFundBucket}>新增大花费项目</button>}
       />
       <div className="auto-bucket-row">
@@ -5045,7 +5045,7 @@ function EditableFundBucketTable({
               <th>类型</th>
               <th>截止日期</th>
               <th>目标</th>
-              <th>已准备</th>
+              <th>实际</th>
               <th>资金所在账户</th>
               <th>缺口</th>
               <th>每月需补</th>
@@ -5068,7 +5068,7 @@ function EditableFundBucketTable({
                 </td>
                 <td><TableDateInput ariaLabel={`${item.name} 截止日期`} value={item.dueDate} onChange={(value) => updateFundBucket(item.id, { dueDate: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 目标`} value={item.target} onChange={(value) => updateFundBucket(item.id, { target: value })} /></td>
-                <td><TableNumberInput ariaLabel={`${item.name} 已准备`} value={item.current} onChange={(value) => updateFundBucket(item.id, { current: value })} /></td>
+                <td><TableNumberInput ariaLabel={`${item.name} 实际`} value={item.current} onChange={(value) => updateFundBucket(item.id, { current: value })} /></td>
                 <td><select aria-label={`${item.name} 资金所在账户`} value={item.fundingAccountId ?? ""} onChange={event => updateFundBucket(item.id, {fundingAccountId: event.target.value})}>
                   <option value="">未关联（另占通用现金）</option>
                   {item.fundingAccountId && !accounts.some(account => account.id === item.fundingAccountId) && <option value={item.fundingAccountId}>原账户已删除，待核对</option>}
@@ -5109,8 +5109,8 @@ function LiquiditySummary({liquidity}: {liquidity: ReturnType<typeof calculateLi
         {!liquidity.deductions.length && <tr><td colSpan={3}>暂无已识别专项占用</td></tr>}
       </tbody></table></div>
     </details>
-    {liquidity.unlinkedCount > 0 && <p className="table-subtext">{liquidity.unlinkedCount} 个已准备项目尚未关联账户，暂按额外占用扣减；若钱已在专项账户中，当前可动用金额可能偏低。</p>}
-    {liquidity.overallocated > 0 && <p className="negative" role="alert">关联项目超过账户余额 {money(liquidity.overallocated)}，请核对准备金额。</p>}
+    {liquidity.unlinkedCount > 0 && <p className="table-subtext">{liquidity.unlinkedCount} 个项目的实际金额尚未关联账户，暂按额外占用扣减；若钱已在专项账户中，当前可动用金额可能偏低。</p>}
+    {liquidity.overallocated > 0 && <p className="negative" role="alert">关联项目超过账户余额 {money(liquidity.overallocated)}，请核对实际金额。</p>}
     {liquidity.available < 0 && <p className="negative" role="alert">资金占用超出可提取余额 {money(-liquidity.available)}。</p>}
   </section>;
 }

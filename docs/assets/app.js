@@ -9664,7 +9664,7 @@ function Ie(e, t) {
 	let n = je(e), r = t ? je(t) : null, i = e.focus, a = t?.focus, o = (e, t) => t === void 0 ? "无上期基准" : `较上期 ${be(P([e, -t]))}`, s = (t) => t ? (I(t).getTime() - I(e.end).getTime()) / he : null, c = (e) => P(e.map((e) => Math.max(0, P([e.target, -e.current])))), l = {
 		projects: i?.checks.projects && a?.checks.projects ? Fe(i.projects, a.projects, [
 			["target", "目标"],
-			["current", "已准备"],
+			["current", "实际"],
 			["dueDate", "截止日期"]
 		]) : [],
 		bills: i?.checks.bills && a?.checks.bills ? Fe(i.bills, a.bills, [
@@ -9905,7 +9905,7 @@ function Be({ focus: e, live: t, onChange: n, onRefresh: r, onOpen: i, onUseBala
 		step: "0.01",
 		required: !0,
 		value: Number.isFinite(i) ? i : "",
-		onChange: (i) => l(e, t, n.id, { [r === "目标" ? "target" : r === "已准备" ? "current" : "amount"]: u(i.target.value) })
+		onChange: (i) => l(e, t, n.id, { [r === "目标" ? "target" : r === "实际" ? "current" : "amount"]: u(i.target.value) })
 	});
 	return /* @__PURE__ */ (0, b.jsxs)("section", {
 		className: "review-focus-entry",
@@ -9933,12 +9933,12 @@ function Be({ focus: e, live: t, onChange: n, onRefresh: r, onOpen: i, onUseBala
 							t === "projects" && /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)("thead", { children: /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 								/* @__PURE__ */ (0, b.jsx)("th", { children: "项目" }),
 								/* @__PURE__ */ (0, b.jsx)("th", { children: "目标" }),
-								/* @__PURE__ */ (0, b.jsx)("th", { children: "已准备" }),
+								/* @__PURE__ */ (0, b.jsx)("th", { children: "实际" }),
 								/* @__PURE__ */ (0, b.jsx)("th", { children: "截止日期" })
 							] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.projects.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 								/* @__PURE__ */ (0, b.jsx)("th", { children: e.name }),
 								/* @__PURE__ */ (0, b.jsx)("td", { children: d(t, "projects", e, "目标", e.target) }),
-								/* @__PURE__ */ (0, b.jsx)("td", { children: d(t, "projects", e, "已准备", e.current) }),
+								/* @__PURE__ */ (0, b.jsx)("td", { children: d(t, "projects", e, "实际", e.current) }),
 								/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)("input", {
 									type: "date",
 									"aria-label": `${e.name}复盘截止日期`,
@@ -14382,7 +14382,7 @@ function Un() {
 			title: "大花费项目覆盖",
 			tone: Ba < 0 ? "red" : Ra > 0 ? "amber" : "green",
 			summary: `大花费项目缺口 ${U(La)}，未分配现金 ${U(Ba)}`,
-			detail: `手动项目已准备 ${U(Fa)} / 目标 ${U(Ia)}；投资待投金 ${U(J.investmentReserve)} 单独锁定。`,
+			detail: `手动项目实际 ${U(Fa)} / 目标 ${U(Ia)}；投资待投金 ${U(J.investmentReserve)} 单独锁定。`,
 			action: Ba < 0 ? "资金标签超过可动用现金，需要减少已锁定金额或重新分配账户用途。" : Ra > 0 ? "两个月内到期的大花费项目仍有缺口，优先补齐搬家、分期和近期旅行。" : "大花费项目结构健康，按截止日期继续补齐缺口。"
 		},
 		{
@@ -14405,7 +14405,7 @@ function Un() {
 		`1. 净资产与现金：总资产 ${U(J.totalAssets)}，净资产 ${U(J.netWorth)}，可提取现金 ${U(q.liquidCash)}，扣除专项后可自由动用 ${U(Ba)}。`,
 		`2. 收支：收入 ${U(Lr)}，生活支出 ${U(J.spendingActual)}，资产/责任分配 ${U(J.assetOutflow)}，当月余额 ${U(J.monthlySurplus)}。`,
 		`3. 家庭责任：父母 ${U(J.parentAllocation)}，伴侣 ${U(J.partnerAllocation)}，合计占收入 ${rn((J.parentAllocation + J.partnerAllocation) / Math.max(Lr, 1))}。`,
-		`4. 大花费项目：目标 ${U(Ia)}，已准备 ${U(Fa)}，缺口 ${U(La)}，其中两个月内缺口 ${U(Ra)}。`,
+		`4. 大花费项目：目标 ${U(Ia)}，实际 ${U(Fa)}，缺口 ${U(La)}，其中两个月内缺口 ${U(Ra)}。`,
 		`5. 投资：投资市值 ${U(J.investmentValue)}，待投资金 ${U(J.investmentReserve)}，计划覆盖 ${Ha.toFixed(1)} 个月，浮动盈亏 ${U(J.investmentPnL)}。`,
 		`6. 应急与负债：应急覆盖 ${J.emergencyCoverage.toFixed(1)} 个月，总负债 ${U(J.totalDebt)}，负债率 ${rn(J.debtRatio)}。`,
 		`7. 学习用途：已归类学习净支出 ${F(Ja.total)}；${Ja.rows.length ? Ja.rows.map((e) => `${e.name} ${F(e.actual)}（${e.note?.trim() || "用途待补"}）`).join("；") : "暂无已归类明细，不能据此判断没有学习支出"}。${Ja.unassigned === 0 ? "" : `另有 ${F(Ja.unassigned)} 支出待归类。`}`,
@@ -14536,7 +14536,7 @@ function Un() {
 			name: "大花费项目缺口",
 			amount: La,
 			flow: "大花费项目",
-			source: "大花费项目目标 - 已准备金额"
+			source: "大花费项目目标 - 实际金额"
 		},
 		{
 			id: "liquid-after-buckets",
@@ -17316,7 +17316,7 @@ function fr({ accounts: e, buckets: t, updateFundBucket: n, addFundBucket: r, de
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
 		/* @__PURE__ */ (0, b.jsx)($n, {
 			title: "大花费项目底表",
-			meta: `目标 ${U(c)} / 已准备 ${U(l)} / 每月还需 ${U(s)} / 项目后现金 ${U(o)}`,
+			meta: `目标 ${U(c)} / 实际 ${U(l)} / 每月还需 ${U(s)} / 项目后现金 ${U(o)}`,
 			action: /* @__PURE__ */ (0, b.jsx)("button", {
 				className: "secondary-button",
 				type: "button",
@@ -17337,7 +17337,7 @@ function fr({ accounts: e, buckets: t, updateFundBucket: n, addFundBucket: r, de
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "类型" }),
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "截止日期" }),
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "目标" }),
-					/* @__PURE__ */ (0, b.jsx)("th", { children: "已准备" }),
+					/* @__PURE__ */ (0, b.jsx)("th", { children: "实际" }),
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "资金所在账户" }),
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "缺口" }),
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "每月需补" }),
@@ -17367,7 +17367,7 @@ function fr({ accounts: e, buckets: t, updateFundBucket: n, addFundBucket: r, de
 						onChange: (e) => n(r.id, { target: e })
 					}) }),
 					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(Jn, {
-						ariaLabel: `${r.name} 已准备`,
+						ariaLabel: `${r.name} 实际`,
 						value: r.current,
 						onChange: (e) => n(r.id, { current: e })
 					}) }),
@@ -17476,7 +17476,7 @@ function pr({ liquidity: e }) {
 			}),
 			e.unlinkedCount > 0 && /* @__PURE__ */ (0, b.jsxs)("p", {
 				className: "table-subtext",
-				children: [e.unlinkedCount, " 个已准备项目尚未关联账户，暂按额外占用扣减；若钱已在专项账户中，当前可动用金额可能偏低。"]
+				children: [e.unlinkedCount, " 个项目的实际金额尚未关联账户，暂按额外占用扣减；若钱已在专项账户中，当前可动用金额可能偏低。"]
 			}),
 			e.overallocated > 0 && /* @__PURE__ */ (0, b.jsxs)("p", {
 				className: "negative",
@@ -17484,7 +17484,7 @@ function pr({ liquidity: e }) {
 				children: [
 					"关联项目超过账户余额 ",
 					U(e.overallocated),
-					"，请核对准备金额。"
+					"，请核对实际金额。"
 				]
 			}),
 			e.available < 0 && /* @__PURE__ */ (0, b.jsxs)("p", {

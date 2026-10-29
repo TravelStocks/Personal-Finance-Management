@@ -361,7 +361,7 @@ export function reviewHighlights(current: FinanceReview, previous?: FinanceRevie
   const daysUntil = (date: string) => date ? (dateValue(date).getTime() - dateValue(current.end).getTime()) / dayMs : null;
   const projectGap = (rows: ReviewFocusSource["projects"]) => sum(rows.map(row => Math.max(0, sum([row.target, -row.current]))));
   const changes = {
-    projects: focus?.checks.projects && before?.checks.projects ? focusItemChanges(focus.projects, before.projects, [["target","目标"],["current","已准备"],["dueDate","截止日期"]]) : [],
+    projects: focus?.checks.projects && before?.checks.projects ? focusItemChanges(focus.projects, before.projects, [["target","目标"],["current","实际"],["dueDate","截止日期"]]) : [],
     bills: focus?.checks.bills && before?.checks.bills ? focusItemChanges(focus.bills, before.bills, [["amount","登记金额"],["date","提醒日期"],["kind","类型"]]) : [],
     balance: focus?.checks.balance && before?.checks.balance ? [
       ...focusItemChanges(focus.assets,before.assets,[["amount","补录资产"]]),
