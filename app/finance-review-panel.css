@@ -1,4 +1,7 @@
 .finance-review {min-width:0;}
+#finance-periodReview {min-width:0;}
+#finance-periodReview .module-body {grid-template-columns:minmax(0,1fr);}
+#finance-periodReview .module-body > .review-method {min-width:0;max-width:100%;}
 .finance-review .period-tabs button {min-width:88px;min-height:40px;padding:8px 12px;}
 .review-confirm {width:min(440px,calc(100vw - 32px));border:1px solid var(--line);border-radius:8px;padding:20px;color:var(--ink);background:white;}
 .review-confirm::backdrop {background:rgba(12,25,40,.35);}

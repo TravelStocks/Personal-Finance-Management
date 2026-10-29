@@ -8,7 +8,10 @@ function loadModel(name) {
     compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022},
   }).outputText;
   const exported = {};
-  new Function('exports', compiled)(exported);
+  new Function('exports', 'require', compiled)(exported, name => {
+    if (name.startsWith('./') && /^[a-z-]+$/.test(name.slice(2))) return loadModel(name.slice(2));
+    return require(name);
+  });
   return exported;
 }
 const model = loadModel('finance-review-model');

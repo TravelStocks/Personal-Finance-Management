@@ -9,9 +9,10 @@ import FinanceReviewPanel from "./finance-review-panel";
 import DatedLedgerEditor from "./dated-ledger-editor";
 import WeeklyLedgerView from "./weekly-ledger-view";
 import ReviewOverview from "./review-overview";
-import {syncWeeklyReview} from "./review-ledger-sync";
+import ReviewUpdateHistory from "./review-update-history";
+import {commitReviewUpdate, dashboardSourceSignature, parseReviewUpdates, type ReviewUpdate} from "./review-dashboard-sync";
 import {changeDatedEntry, parseDatedEntries, preserveDatedSalaries, type DatedEntry, type EntryMode} from "./dated-ledger-model";
-import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, type FinanceReview} from "./finance-review-model";
+import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, reviewInvestmentTotal, type FinanceReview} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
 import {financeBackupSignature, financeDataOnly, financeSaveConflict, hasPendingFinanceSave, markFinanceCloudSaved, writeLocalFinanceData} from "./finance-save-model";
 import {applySalaryFromMonth, confirmedMonthlySalary, migrateSalarySettings, salarySettingsVersion} from "./salary-model";
@@ -45,6 +46,7 @@ type Account = {
   balance: number;
   purpose: string;
   liquid: boolean;
+  includedInPersonal?: boolean;
 };
 
 type MonthRecord = {
@@ -161,6 +163,8 @@ type ReportRow = {
 };
 
 type PersistedFinanceData = {
+  reviewUpdates?: ReviewUpdate[];
+  dashboardAsOf?: string;
   salarySettingsVersion?: number;
   annualBudgetPlan?: AnnualBudgetPlan;
   financeReviews?: FinanceReview[];
@@ -1042,6 +1046,8 @@ export default function FinanceDashboard() {
   const currentDate = useFinanceToday();
   const [annualBudgetPlan, setAnnualBudgetPlan] = useState<AnnualBudgetPlan>(initialAnnualBudgetPlan);
   const [financeReviews, setFinanceReviews] = useState<FinanceReview[]>([]);
+  const [reviewUpdates,setReviewUpdates] = useState<ReviewUpdate[]>([]);
+  const [dashboardAsOf,setDashboardAsOf] = useState<string | undefined>();
   const [datedEntries, setDatedEntries] = useState<DatedEntry[]>([]);
   const [monthlyCashPlan, setMonthlyCashPlan] = useState<MonthlyCashPlan>(initialMonthlyCashPlan);
   const [ledgerOpen, setLedgerOpen] = useState(false);
@@ -1100,6 +1106,8 @@ export default function FinanceDashboard() {
       salarySettingsVersion,
       annualBudgetPlan,
       financeReviews,
+      reviewUpdates,
+      dashboardAsOf,
       datedEntries,
       monthlyCashPlan,
       period,
@@ -1155,10 +1163,13 @@ export default function FinanceDashboard() {
   }
 
   function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
+    const restoredUpdates=parseReviewUpdates(saved.reviewUpdates);
     const restoredReviews = saved.financeReviews === undefined ? undefined : parseFinanceReviews(saved.financeReviews);
     const restoredEntries = parseDatedEntries(saved.datedEntries);
     const restoredPlan = normalizeAnnualBudgetPlan(saved.annualBudgetPlan);
     const salaryData = migrateSalarySettings(Array.isArray(saved.monthlyRecords) ? saved.monthlyRecords : initialMonthRecords, restoredPlan.salary, saved.salarySettingsVersion);
+    setReviewUpdates(restoredUpdates);
+    setDashboardAsOf(saved.dashboardAsOf);
     setAnnualBudgetPlan({...restoredPlan, salary: salaryData.salary});
     if (restoredReviews) setFinanceReviews(restoredReviews);
     setMonthlyCashPlan({...normalizeMonthlyCashPlan(saved.monthlyCashPlan), income: salaryData.salary});
@@ -1177,9 +1188,9 @@ export default function FinanceDashboard() {
     if (typeof saved.learningSaving === "number") setLearningSaving(saved.learningSaving);
     if (typeof saved.emergencyFund === "number") setEmergencyFund(saved.emergencyFund);
     const savedBalanceAssets = normalizeBalanceAssets(saved.balanceAssets);
-    if (savedBalanceAssets.length > 0) setBalanceAssets(savedBalanceAssets);
+    if (Array.isArray(saved.balanceAssets)) setBalanceAssets(savedBalanceAssets);
     const savedLiabilities = normalizeLiabilities(saved.liabilities);
-    if (savedLiabilities.length > 0) {
+    if (Array.isArray(saved.liabilities)) {
       setLiabilities(savedLiabilities);
     } else if (
       typeof saved.houseDebt === "number" ||
@@ -1192,7 +1203,7 @@ export default function FinanceDashboard() {
     if (Array.isArray(saved.goals)) setGoals(normalizeGoals(saved.goals));
     if (Array.isArray(saved.fundBuckets)) {
       const savedFundBuckets = normalizeFundBuckets(saved.fundBuckets);
-      if (savedFundBuckets.length > 0) setFundBuckets(savedFundBuckets);
+      setFundBuckets(savedFundBuckets);
     }
     if (Array.isArray(saved.futureCapabilities)) setFutureCapabilities(saved.futureCapabilities);
     if (Array.isArray(saved.cashflowHiddenBuiltinIds)) {
@@ -1339,6 +1350,8 @@ export default function FinanceDashboard() {
     savedDataReady,
     annualBudgetPlan,
     financeReviews,
+    reviewUpdates,
+    dashboardAsOf,
     datedEntries,
     monthlyCashPlan,
     period,
@@ -1426,6 +1439,12 @@ export default function FinanceDashboard() {
     anchor.click();
     URL.revokeObjectURL(url);
     setSaveStatus("备份文件已导出");
+  }
+  function exportReviewUpdate(update:ReviewUpdate,side:"before"|"after") {
+    const data={...update[side],reviewUpdates} as PersistedFinanceData;
+    const url=URL.createObjectURL(new Blob([JSON.stringify(getCloudSyncBackup({data}),null,2)],{type:"application/json"}));
+    const anchor=document.createElement("a");anchor.href=url;anchor.download=`finance-${update.asOf}-${side}-${update.id.replace(/[^a-zA-Z0-9-]/g,"_")}.json`;anchor.click();
+    window.setTimeout(()=>URL.revokeObjectURL(url),1000);
   }
 
   async function importBackup(file: File) {
@@ -1587,42 +1606,43 @@ export default function FinanceDashboard() {
   const cashPlanTotals = annualPlanTotals[annualBudgetPlan.mode];
   const budgetModeName = annualBudgetPlan.mode === "normal" ? "普通月" : "出差月";
   const cashflowScenario = calculateCashflowScenario(annualBudgetPlan, cashflowCustomItems);
-  const liquidity = calculateLiquidity(accounts.map(account => ({...account, reserve: cashReservePurpose(account)})), fundBuckets);
-  const emergencyAccounts = accounts.filter(account => cashReservePurpose(account) === "应急储备");
+  const personalAccounts = accounts.filter(account=>account.includedInPersonal!==false);
+  const liquidity = calculateLiquidity(personalAccounts.map(account => ({...account, reserve: cashReservePurpose(account)})), fundBuckets);
+  const emergencyAccounts = personalAccounts.filter(account => cashReservePurpose(account) === "应急储备");
 
   const totals = (() => {
-    const accountTotal = accounts.reduce((sum, item) => sum + item.balance, 0);
-    const totalSavingsAccounts = accounts.filter(isTotalSavingsAccount);
+    const accountTotal = personalAccounts.reduce((sum, item) => sum + item.balance, 0);
+    const totalSavingsAccounts = personalAccounts.filter(isTotalSavingsAccount);
     const totalSavingsAccountTotal = totalSavingsAccounts.reduce((sum, item) => sum + item.balance, 0);
-    const aShareInvestmentReserve = accounts
+    const aShareInvestmentReserve = personalAccounts
       .filter((item) => investmentReserveKind(item) === "aShare")
       .reduce((sum, item) => sum + item.balance, 0);
-    const usShareInvestmentReserve = accounts
+    const usShareInvestmentReserve = personalAccounts
       .filter((item) => investmentReserveKind(item) === "usShare")
       .reduce((sum, item) => sum + item.balance, 0);
     const investmentReserve = aShareInvestmentReserve + usShareInvestmentReserve;
-    const accountTravelSavings = accounts.filter(isTravelSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
-    const accountLearningSavings = accounts.filter(isLearningSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
+    const accountTravelSavings = personalAccounts.filter(isTravelSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
+    const accountLearningSavings = personalAccounts.filter(isLearningSavingsAccount).reduce((sum, item) => sum + item.balance, 0);
     const accountSpecialSavings = accountTravelSavings + accountLearningSavings;
     const goalSummary = summarizeGoals(plannedGoals);
-    const travelSavings = accounts.some(isTravelSavingsAccount) ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
+    const travelSavings = personalAccounts.some(isTravelSavingsAccount) || dashboardAsOf ? accountTravelSavings : goalSummary.hasTravel ? goalSummary.travelCurrent : travelSaving;
     const learningSavings =
-      accounts.some(isLearningSavingsAccount) ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
-    const currentEmergencyFund = emergencyAccounts.length ? emergencyAccounts.reduce((sum, account) => sum + account.balance, 0) : goalSummary.hasEmergency ? goalSummary.emergencyCurrent : emergencyFund;
+      personalAccounts.some(isLearningSavingsAccount) || dashboardAsOf ? accountLearningSavings : goalSummary.hasLearning ? goalSummary.learningCurrent : learningSaving;
+    const currentEmergencyFund = emergencyAccounts.length ? emergencyAccounts.reduce((sum, account) => sum + account.balance, 0) : dashboardAsOf ? 0 : goalSummary.hasEmergency ? goalSummary.emergencyCurrent : emergencyFund;
     const parentSavings = goalSummary.parentCurrent;
     const partnerSavings = goalSummary.partnerCurrent;
-    const otherSavings = goalSummary.otherCurrent;
+    const otherSavings = dashboardAsOf ? 0 : goalSummary.otherCurrent;
     const familyFund = partnerSavings;
     const totalSavings = travelSavings + learningSavings + otherSavings;
-    const savingsOutsideAccounts = Math.max(0, totalSavings - accountSpecialSavings);
+    const savingsOutsideAccounts = dashboardAsOf ? 0 : Math.max(0, totalSavings - accountSpecialSavings);
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings - (emergencyAccounts.length ? currentEmergencyFund : 0);
-    const liquidAccountTotal = accounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
+    const liquidAccountTotal = personalAccounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
     const spendingActual = budgets.reduce((sum, item) => sum + item.actual, 0);
     const spendingPlan = budgets.reduce((sum, item) => sum + item.plan, 0);
     const budgetRemaining = spendingPlan - spendingActual;
     const fixedSpending = budgets.filter((item) => item.fixed).reduce((sum, item) => sum + item.plan, 0);
     const requiredSpending = budgets.filter((item) => item.required).reduce((sum, item) => sum + item.plan, 0);
-    const investmentValue = holdings.reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
+    const investmentValue = reviewInvestmentTotal({holdings,fxUsd,fxHkd});
     const investmentCost = holdings.reduce((sum, item) => sum + toCny(item.cost, item.currency, fxUsd, fxHkd), 0);
     const aShareValue = holdings.filter((item) => item.market === "A股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
     const usShareValue = holdings.filter((item) => item.market === "美股").reduce((sum, item) => sum + toCny(item.value, item.currency, fxUsd, fxHkd), 0);
@@ -2304,7 +2324,7 @@ export default function FinanceDashboard() {
     familyFundBreakdown,
   ];
 
-  const currentCashflowItems = accounts
+  const currentCashflowItems = personalAccounts
     .filter((item) => item.balance !== 0)
     .map((item) => ({
       label: item.name.trim() || "未命名账户",
@@ -2395,7 +2415,7 @@ export default function FinanceDashboard() {
     color: record.id === selectedMonth ? palette[1] : palette[index % palette.length],
     detail: record.id === selectedMonth ? "当前月" : "月度",
   }));
-  const accountChartData = accounts
+  const accountChartData = personalAccounts
     .map((item, index) => ({ item, index }))
     .sort((left, right) => right.item.balance - left.item.balance || left.index - right.index)
     .map(({ item }, index) => ({
@@ -2964,7 +2984,7 @@ export default function FinanceDashboard() {
           <div className="section-title">
             <div>
               <h2 id="finance-overview-title">账户与收支总览</h2>
-              <p>{activeMonth.label}账本 · 账户与持仓为当前模块余额，复盘期末余额单列。</p>
+              <p>{activeMonth.label}账本 · {dashboardAsOf ? `最近整期更新截至 ${dashboardAsOf}` : "尚未整期更新"} · 账户与持仓为当前模块余额。</p>
             </div>
             <span className="pill good">公开页已脱敏</span>
           </div>
@@ -3539,24 +3559,25 @@ export default function FinanceDashboard() {
                 )}
 
                 {moduleId === "periodReview" && (
-                  <Module title="周期复盘" desc="本期实际发生额与上期同类周期比较；记录与账本明细分别保存。">
-                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} ledgerMonths={monthlyRecords} datedEntries={datedEntries} onSaveIncome={saveDatedEntry} onDeleteIncome={deleteDatedEntry}
+                  <Module title="周期复盘" desc="本期实际收支与期末余额；整期更新、历史版本及逐账户变化。">
+                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} investments={{holdings,fxUsd,fxHkd}} goals={goals.map(({id,name,current})=>({id,name,current}))} dashboardAsOf={dashboardAsOf} sourceSignature={dashboardSourceSignature(getPersistedFinanceData())} ledgerMonths={monthlyRecords} datedEntries={datedEntries} onSaveIncome={saveDatedEntry} onDeleteIncome={deleteDatedEntry}
                       focusSource={{
                         projects:fundBuckets.map(({id,name,target,current,dueDate})=>({id,name,target,current,dueDate})),
                         bills:reminders.map(({id,name,amount,date,kind})=>({id,name,amount,date,kind})),
                         assets:balanceAssets.map(({id,name,amount})=>({id,name,amount})),
                         debts:liabilities.map(({id,name,amount})=>({id,name,amount})), holdings:totals.investmentValue,
-                      }} onOpenModule={navigateToSection} onChange={(records, updatedAccounts, syncRecord) => {
-                      const nextMonths = syncRecord ? syncWeeklyReview(monthlyRecords,datedEntries,syncRecord) : monthlyRecords;
-                      const nextAccounts = updatedAccounts ? accounts.map(account => {
-                        const updated = updatedAccounts.find(row => row.id === account.id);
-                        return updated ? {...account, balance: updated.balance} : account;
-                      }) : accounts;
-                      persistLocalFinanceData({...getPersistedFinanceData(), financeReviews: records, accounts: nextAccounts, monthlyRecords:nextMonths,selectedMonth:syncRecord?.end.slice(0,7) ?? selectedMonth});
-                      setFinanceReviews(records);
-                      if(syncRecord) {setMonthlyRecords(nextMonths);setSelectedMonth(syncRecord.end.slice(0,7));}
-                      if (updatedAccounts) setAccounts(nextAccounts);
+                      }} onOpenModule={navigateToSection} onChange={(records, update) => {
+                      const next=commitReviewUpdate(getPersistedFinanceData(),records,update ?? {publish:false});
+                      persistLocalFinanceData(next);
+                      setFinanceReviews(next.financeReviews ?? []);setReviewUpdates(next.reviewUpdates ?? []);setDashboardAsOf(next.dashboardAsOf);
+                      if(update?.publish) {
+                        setMonthlyRecords(next.monthlyRecords);setSelectedMonth(next.selectedMonth!);setAccounts(next.accounts);
+                        setHoldings(next.holdings);setFxUsd(next.fxUsd);setFxHkd(next.fxHkd);setBalanceAssets(next.balanceAssets);setLiabilities(next.liabilities);
+                        setReminders(next.reminders);setFundBuckets(next.fundBuckets);setGoals(next.goals);
+                      }
+                      setSaveStatus("本期数据与更新前后历史已保存到本机");
                     }}/>
+                    <ReviewUpdateHistory updates={reviewUpdates} onExport={exportReviewUpdate}/>
                   </Module>
                 )}
 
@@ -4537,6 +4558,7 @@ function EditableAccountsTable({
               <th>余额</th>
               <th>用途</th>
               <th>可提取</th>
+              <th>计入个人现金</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -4590,6 +4612,7 @@ function EditableAccountsTable({
                 <td><TableNumberInput ariaLabel={`${item.name} 余额`} value={item.balance} onChange={(value) => updateAccount(item.id, { balance: value })} /></td>
                 <td><TableTextInput ariaLabel={`${item.name} 用途`} value={item.purpose} onChange={(value) => updateAccount(item.id, { purpose: value })} /></td>
                 <td><TableCheckbox ariaLabel={`${item.name} 可提取`} checked={item.liquid} onChange={(value) => updateAccount(item.id, { liquid: value })} /></td>
+                <td><TableCheckbox ariaLabel={`${item.name} 计入个人现金`} checked={item.includedInPersonal!==false} onChange={(value) => updateAccount(item.id, { includedInPersonal: value })} /></td>
                 <td>
                   <button className="danger-button compact" disabled={accounts.length <= 1} type="button" onClick={() => deleteAccount(item.id)}>
                     删除

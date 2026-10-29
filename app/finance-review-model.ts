@@ -25,6 +25,23 @@ export type ReviewAccount = {
   note: string;
 };
 export type ReviewAccountDraft = Omit<ReviewAccount, "balance"> & {balance: number | null};
+export type ReviewHolding = {id:string; name:string; market:"A股"|"美股"|"港股"; currency:"CNY"|"USD"|"HKD"; cost:number; value:number; note?:string};
+export type ReviewInvestments = {holdings:ReviewHolding[]; fxUsd:number; fxHkd:number};
+export type ReviewGoal = {id:string; name:string; current:number};
+export function reviewHoldingCny(row: ReviewHolding, fx: ReviewInvestments) {
+  return Math.round(row.value * (row.currency === "USD" ? fx.fxUsd : row.currency === "HKD" ? fx.fxHkd : 1) * 100) / 100;
+}
+export function reviewInvestmentTotal(value: ReviewInvestments) {
+  return value.holdings.reduce((total,row)=>total+Math.round(reviewHoldingCny(row,value)*100),0)/100;
+}
+export function compareReviewInvestments(current: FinanceReview, previous?: FinanceReview) {
+  const now=current.investments, prior=previous?.investments;
+  return [...new Set([...(now?.holdings ?? []).map(row=>row.id),...(prior?.holdings ?? []).map(row=>row.id)])].map(id=>{
+    const a=now?.holdings.find(row=>row.id===id), b=prior?.holdings.find(row=>row.id===id);
+    const value=a&&now ? reviewHoldingCny(a,now) : null, before=b&&prior ? reviewHoldingCny(b,prior) : null;
+    return {id,name:a?.name ?? b!.name,current:value,previous:before,delta:value!==null&&before!==null ? Math.round((value-before)*100)/100 : null,note:a?.note ?? ""};
+  });
+}
 export const reviewFocusLabels = {projects: "大花费项目", bills: "账单与订阅", balance: "资产负债明细"};
 export type ReviewFocusKey = keyof typeof reviewFocusLabels;
 export type ReviewFocusSource = {
@@ -77,6 +94,8 @@ export type FinanceReview = {
   focus?: ReviewFocus;
   ledger?: ReviewLedgerRow[];
   incomeLedger?: ReviewLedgerRow[];
+  investments?: ReviewInvestments;
+  goals?: ReviewGoal[];
 };
 export type ReviewDraft = Omit<FinanceReview, "id" | "savedAt" | "income" | "amounts" | "balances" | "accounts"> & {
   income: number | null;
@@ -91,8 +110,8 @@ export function reviewAccountCash(accounts: ReviewAccountDraft[]): number | null
   if (accounts.some(row => row.balance === null || !Number.isFinite(row.balance) || row.balance < 0)) return null;
   return sum(accounts.filter(row => row.included).map(row => row.balance!));
 }
-export function withReviewAccounts(draft: ReviewDraft, source: Array<Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance">>, previous?: ReviewAccountDraft[]): ReviewDraft {
-  const accounts = source.map(row => ({...row, included: previous?.find(item => item.id === row.id)?.included ?? true, note: ""}));
+export function withReviewAccounts(draft: ReviewDraft, source: Array<Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance"> & {includedInPersonal?:boolean}>, previous?: ReviewAccountDraft[]): ReviewDraft {
+  const accounts = source.map(row => ({...row, included: row.includedInPersonal ?? previous?.find(item => item.id === row.id)?.included ?? true, note: ""}));
   return {...draft, accounts, balances: {...draft.balances, cash: reviewAccountCash(accounts)}};
 }
 export function compareReviewAccounts(current: FinanceReview, previous?: FinanceReview) {
@@ -234,6 +253,28 @@ export function parseFinanceReview(value: unknown): FinanceReview {
     balances: Object.fromEntries(Object.entries(balanceLabels).map(([key, label]) => [key, amount(inputBalances[key], label, true)])) as ReviewBalances,
     summary: typeof input.summary === "string" ? input.summary : "", ...(budget ? {budget} : {}), ...(accounts ? {accounts} : {}),
     ...(input.focus === undefined ? {} : {focus: parseReviewFocus(input.focus)})};
+  if (input.investments !== undefined) {
+    const raw=object(input.investments), ids=new Set<string>();
+    if (!Array.isArray(raw.holdings)) throw new Error("投资明细须为列表");
+    const fxUsd=amount(raw.fxUsd,"美元汇率",true), fxHkd=amount(raw.fxHkd,"港币汇率",true);
+    if (fxUsd<=0 || fxHkd<=0) throw new Error("汇率须大于0");
+    record.investments={fxUsd,fxHkd,holdings:raw.holdings.map(value=>{
+      const row=object(value);
+      if (typeof row.id!=="string" || !row.id || ids.has(row.id) || typeof row.name!=="string" || !row.name.trim() || !["A股","美股","港股"].includes(String(row.market)) || !["CNY","USD","HKD"].includes(String(row.currency))) throw new Error("投资账户名称、编号、市场及币种须完整且不重复");
+      ids.add(row.id);
+      return {id:row.id,name:row.name,market:row.market as ReviewHolding["market"],currency:row.currency as ReviewHolding["currency"],cost:amount(row.cost,"投资成本",true),value:amount(row.value,"投资期末金额",true),note:typeof row.note==="string"?row.note:""};
+    })};
+    if (reviewInvestmentTotal(record.investments)!==record.balances.investments) throw new Error("证券账户总资产须等于逐账户明细折人民币合计");
+  }
+  if (input.goals!==undefined) {
+    const ids=new Set<string>();
+    if (!Array.isArray(input.goals)) throw new Error("目标余额须为列表");
+    record.goals=input.goals.map(value=>{
+      const row=object(value);
+      if (typeof row.id!=="string"||!row.id||ids.has(row.id)||typeof row.name!=="string") throw new Error("目标编号须完整且不重复");
+      ids.add(row.id);return {id:row.id,name:row.name,current:amount(row.current,"目标余额",true)};
+    });
+  }
   function parseLedger(value:unknown) {
     if (!Array.isArray(value)) throw new Error("日期收支快照须为列表");
     const ids = new Set<string>();
@@ -423,6 +464,7 @@ export function financeReviewReport(current: FinanceReview, records: FinanceRevi
     ...Object.entries(balanceLabels).map(([key, label]) => {const field = key as keyof ReviewBalances; return `| ${label} | ${reviewMoney(current.balances[field])} | ${previous ? reviewMoney(previous.balances[field]) : "无基准"} | ${signed(previous ? sum([current.balances[field], -previous.balances[field]]) : null)} |`;}), "",
     ...(analysis.accountRows.length ? ["## 账户余额对比", "| 账户 | 本期期末 | 上期期末 | 余额变化 | 计入个人现金 | 本期说明 |", "|---|---:|---:|---:|---|---|",
       ...analysis.accountRows.map(row => `| ${cell(row.name)} | ${row.current === null ? "未记录" : reviewMoney(row.current)} | ${row.previous === null ? "无基准" : reviewMoney(row.previous)} | ${signed(row.delta)} | ${row.included === null ? "未记录" : row.included ? "是" : "否"} | ${cell([row.status, row.note].filter(Boolean).join("；"))} |`), ""] : []),
+    ...(current.investments ? ["## 逐账户投资变化（人民币）", "余额变化包含净投入、市值和汇率变化，不直接等于投资收益。", "| 账户 | 本期 | 上期 | 余额变化 | 说明 |", "|---|---:|---:|---:|---|", ...compareReviewInvestments(current,previous).map(row=>`| ${cell(row.name)} | ${row.current===null?"未记录":reviewMoney(row.current)} | ${row.previous===null?"无基准":reviewMoney(row.previous)} | ${signed(row.delta)} | ${cell(row.note)} |`), ""] : []),
     ...(current.summary ? [`本期补充：${cell(current.summary)}`, ""] : []),
     "## 学习用途", `本期学习净支出 ${reviewMoney(current.amounts.learning)}；${cell(rows.find(row=>row.id==="learning")?.note || "未填写学习事项，暂不能判断学了什么。")}`, "",
     "## 下期动作", ...analysis.actions.map(action => `- ${action}`), "",
@@ -446,6 +488,7 @@ export function aggregateFinanceReviews(records: FinanceReview[], type: "month" 
       notes: Object.fromEntries(reviewCategories.map(category => [category.id, source.filter(row => row.notes[category.id]).map(row => `${row.start}：${row.notes[category.id]}`).join("；")])),
       balances: source[source.length - 1].balances, accounts: source[source.length - 1].accounts,
       focus: source[source.length - 1].focus,
+      investments: source[source.length - 1].investments, goals: source[source.length - 1].goals,
       ...(source.every(row=>row.ledger) ? {ledger:source.flatMap(row=>row.ledger!)} : {}),
       ...(!source.every(row=>row.ledger) && source.every(row=>reviewIncomeRows(row)) ? {incomeLedger:source.flatMap(row=>reviewIncomeRows(row)!)} : {}),
       summary: `由 ${source.length} 条无重叠、连续覆盖的${sourceType === "week" ? "周" : "月"}记录汇总；期末余额及账户快照取最后一期，不累加。`});
