@@ -24,7 +24,7 @@ const numeric = (value: string) => value.trim() === "" ? null : Number(value);
 const change = (value: number | null) => value === null ? "无基准" : `${value > 0 ? "+" : ""}${reviewMoney(value)}`;
 
 type AccountSource = Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance">;
-export default function FinanceReviewPanel({records, plan, accounts, focusSource, ledgerMonths, datedEntries, onSaveIncome, onDeleteIncome, onOpenModule, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; focusSource: ReviewFocusSource; ledgerMonths:LedgerMonth[]; datedEntries:DatedEntry[]; onSaveIncome:(entry:DatedEntry,previousId:string|undefined,mode:EntryMode)=>void; onDeleteIncome:(id:string)=>void; onOpenModule:(module:"fundBuckets" | "reminders" | "balance" | "income" | "spending")=>void; onChange: (records: FinanceReview[], accounts?: ReviewAccount[]) => void}) {
+export default function FinanceReviewPanel({records, plan, accounts, focusSource, ledgerMonths, datedEntries, onSaveIncome, onDeleteIncome, onOpenModule, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; focusSource: ReviewFocusSource; ledgerMonths:LedgerMonth[]; datedEntries:DatedEntry[]; onSaveIncome:(entry:DatedEntry,previousId:string|undefined,mode:EntryMode)=>void; onDeleteIncome:(id:string)=>void; onOpenModule:(module:"fundBuckets" | "reminders" | "balance" | "income" | "spending")=>void; onChange: (records: FinanceReview[], accounts?: ReviewAccount[], syncRecord?:FinanceReview) => void}) {
   const today = useFinanceToday();
   function makeDraft(type?: ReviewType, end = reviewToday(), monthStartDay:1|10 = 10) {
     const previous = records.filter(record => record.accounts && record.end <= end).sort((a,b) => b.end.localeCompare(a.end))[0];
@@ -44,6 +44,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   const [incomeEditorRevision,setIncomeEditorRevision] = useState(0);
   const [accountsConfirmed, setAccountsConfirmed] = useState(false);
   const [syncAccounts, setSyncAccounts] = useState(true);
+  const [syncLedger,setSyncLedger] = useState(true);
   const [view, setView] = useState<"entry" | "report">(records.length ? "report" : "entry");
   const [selectedId, setSelectedId] = useState(records[0]?.id ?? "");
   const [status, setStatus] = useState("");
@@ -116,7 +117,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
       const budget = draft.type === "month" ? draft.budget ?? {mode: budgetMode, amounts: Object.fromEntries(plan.rows.map(row => [row.id, row[budgetMode]]))} : undefined;
       const record = parseFinanceReview({...draft, budget, savedAt: new Date().toISOString()});
       confirmOrRun(records.some(item => item.id === record.id), "该周期已有记录，是否用本次数据更新？", () => {
-        onChange(upsertFinanceReview(records, record), canSyncAccounts && syncAccounts ? record.accounts : undefined);
+        onChange(upsertFinanceReview(records, record), canSyncAccounts && syncAccounts ? record.accounts : undefined, draft.type==="week"&&syncLedger ? record : undefined);
         setSelectedId(record.id);
         setView("report");
         setDraft(makeDraft(draft.type, draft.end, draft.monthStartDay ?? 1));
@@ -125,7 +126,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
         setLedgerConfirmed(false);
         setLiveFocus(draft.end === today);
         setAccountsConfirmed(false);
-        setStatus(`复盘已记录${canSyncAccounts && syncAccounts && record.accounts ? "，余额已同步到账户管理" : "，当前账户余额未改动"}；跨电脑使用前请保存完整版本到云端。`);
+        setStatus(`复盘已记录${draft.type==="week"&&syncLedger ? "，本周支出已同步到账本" : ""}${canSyncAccounts && syncAccounts && record.accounts ? "，余额已同步到账户管理" : "，当前账户余额未改动"}；跨电脑使用前请保存完整版本到云端。`);
       });
     } catch (error) {setStatus(error instanceof Error ? error.message : "保存失败");}
   }
@@ -191,6 +192,9 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   }
 
   function bindLedger() {
+    if(ledgerMonths.some(month=>month.budgets.some(row=>row.reviewPeriod&&row.actual!==0&&row.reviewPeriod.start<=draft.end&&row.reviewPeriod.end>=draft.start))) {
+      setStatus("本期已有未标具体日期的周复盘汇总。请修订原复盘或补齐日期后核对，不能用仅有日期的明细覆盖这些金额。");return;
+    }
     confirmOrRun(draft.income!==null || reviewCategories.some(row=>row.flow==="expense"&&draft.amounts[row.id]!==null), "将替换本期收入和消费金额，投资与应急划拨、事项说明保持不变。是否继续？", ()=>{
       setDraft(linkDatedReview(draft,ledgerSource.rows));
       setIncomeLinked(false);
@@ -292,6 +296,8 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
       <p className="review-caption">现金及存款含微信、应急与本人持有的专项现金；证券账户总资产含其中现金和持仓，两边不重复。已交给家人的钱不计个人资产。</p>
       <label className="field"><span>本期补充事项（可选）</span><textarea rows={2} value={draft.summary} onChange={event => setDraft({...draft,summary:event.target.value})}/></label>
       <div className="review-toolbar">
+        {draft.type==="week"&&<label className="review-ledger-confirm"><input type="checkbox" checked={syncLedger} onChange={event=>setSyncLedger(event.target.checked)}/>同步本周未入账支出到账本（同周替换，不重复新增）</label>}
+        {draft.type==="week"&&<p className="review-caption">已在旧月度累计记过的金额请先补日期再同步，避免重复。收入须与到账明细一致；仅投资和应急划拨不计消费。取消同步仅保存报告，不撤销之前已同步的账目。</p>}
         <button className="primary-button" type="submit">保存并分析</button>
         {draft.type !== "week" && <button className="secondary-button" type="button" onClick={aggregate}>从已有记录汇总</button>}
       </div>

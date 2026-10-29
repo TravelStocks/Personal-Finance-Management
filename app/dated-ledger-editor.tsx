@@ -15,7 +15,7 @@ export default function DatedLedgerEditor({flow,month,entries,onSave,onDelete,em
 }) {
   const today = useFinanceToday();
   const name = flow==="income" ? "收入" : "支出";
-  const categories = flow==="income" ? [{id:"salary",name:"工资到账"},{id:"otherIncome",name:"其他到账"}] : month.budgets;
+  const categories = flow==="income" ? [{id:"salary",name:"工资到账"},{id:"otherIncome",name:"其他到账"}] : month.budgets.filter(row=>!row.reviewPeriod);
   function categoryGroup(id:string) {
     const budget = month.budgets.find(row=>row.id===id);
     return budget ? getSpendingGroup(budget) : "unassigned";

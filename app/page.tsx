@@ -7,6 +7,8 @@ import { calculateAnnualBudgetPlan, calculateCashflowScenario, initialAnnualBudg
 import {calculateLiquidity} from "./liquidity-model";
 import FinanceReviewPanel from "./finance-review-panel";
 import DatedLedgerEditor from "./dated-ledger-editor";
+import WeeklyLedgerView from "./weekly-ledger-view";
+import {syncWeeklyReview} from "./review-ledger-sync";
 import {changeDatedEntry, parseDatedEntries, preserveDatedSalaries, type DatedEntry, type EntryMode} from "./dated-ledger-model";
 import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, type FinanceReview} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
@@ -3083,7 +3085,7 @@ export default function FinanceDashboard() {
                     <EditableNumber label="每月工资规划（元）" value={annualBudgetPlan.salary} onChange={value => updateAnnualBudgetPlan({...annualBudgetPlan, salary:value})}/>
                     <DataChartLayout
                       data={
-                        <><DatedLedgerEditor key={`income-${activeMonth.id}`} flow="income" month={activeMonth} entries={datedEntries} onSave={saveDatedEntry} onDelete={deleteDatedEntry}/>
+                        <><WeeklyLedgerView records={financeReviews} flow="income"/><DatedLedgerEditor key={`income-${activeMonth.id}`} flow="income" month={activeMonth} entries={datedEntries} onSave={saveDatedEntry} onDelete={deleteDatedEntry}/>
                         <EditableMonthlyIncomeTable
                           records={monthlyRecords}
                           selectedMonth={selectedMonth}
@@ -3122,6 +3124,7 @@ export default function FinanceDashboard() {
                             onChange={setSelectedMonth}
                             onDeleteSelectedMonth={() => deleteMonthRecord(selectedMonth)}
                           />
+                          <WeeklyLedgerView records={financeReviews} flow="expense"/>
                           <DatedLedgerEditor key={`spending-${activeMonth.id}`} flow="expense" month={activeMonth} entries={datedEntries} onSave={saveDatedEntry} onDelete={deleteDatedEntry}/>
                           <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} addDetailedBudgets={addDetailedBudgets} updateBudget={updateBudget} />
                           <LearningUsage budgets={budgets} monthLabel={activeMonth.label} allowance={annualBudgetPlan.rows.find(row => row.id === "learning")?.[annualBudgetPlan.mode] ?? 0}/>
@@ -3544,13 +3547,15 @@ export default function FinanceDashboard() {
                         bills:reminders.map(({id,name,amount,date,kind})=>({id,name,amount,date,kind})),
                         assets:balanceAssets.map(({id,name,amount})=>({id,name,amount})),
                         debts:liabilities.map(({id,name,amount})=>({id,name,amount})), holdings:totals.investmentValue,
-                      }} onOpenModule={navigateToSection} onChange={(records, updatedAccounts) => {
+                      }} onOpenModule={navigateToSection} onChange={(records, updatedAccounts, syncRecord) => {
+                      const nextMonths = syncRecord ? syncWeeklyReview(monthlyRecords,datedEntries,syncRecord) : monthlyRecords;
                       const nextAccounts = updatedAccounts ? accounts.map(account => {
                         const updated = updatedAccounts.find(row => row.id === account.id);
                         return updated ? {...account, balance: updated.balance} : account;
                       }) : accounts;
-                      persistLocalFinanceData({...getPersistedFinanceData(), financeReviews: records, accounts: nextAccounts});
+                      persistLocalFinanceData({...getPersistedFinanceData(), financeReviews: records, accounts: nextAccounts, monthlyRecords:nextMonths,selectedMonth:syncRecord?.end.slice(0,7) ?? selectedMonth});
                       setFinanceReviews(records);
+                      if(syncRecord) {setMonthlyRecords(nextMonths);setSelectedMonth(syncRecord.end.slice(0,7));}
                       if (updatedAccounts) setAccounts(nextAccounts);
                     }}/>
                   </Module>
@@ -5773,6 +5778,10 @@ function EditableBudgetTable({
       />
       <label className="spending-reference-toggle"><input type="checkbox" checked={showReference} onChange={event => setShowReference(event.target.checked)}/>细项参考额度</label>
       <p className="spending-detail-note">日常使用账户单笔超过 10 元以咔皮记录核对；小额支付另做汇总。旧汇总与新细项不重复录入，未覆盖的小额支出不自动视为 0。学习填写课程、书籍、工具或会员名称。</p>
+      <p className="spending-detail-note">投资基金、应急储备属于划拨，不计消费；应急&学习金在此仅统计学习消费。周复盘汇总由对应复盘修订，不能在此重复新增。</p>
+      {[...spendingGroups.slice(0,2),{id:"investment",name:"投资基金"},...spendingGroups.slice(2),{id:"unassigned",name:"待归类（保留原始记录）"}].map(group=><details key={group.id} className="review-method">
+      <summary>{group.name} · {group.id==="investment" ? "划拨，不计消费" : `${reviewMoney(budgets.filter(row=>getSpendingGroup(row)===group.id).reduce((sum,row)=>sum+Math.round(row.actual*100),0)/100)} · ${budgets.filter(row=>getSpendingGroup(row)===group.id).length} 项`}</summary>
+      {group.id==="investment"&&<p className="spending-detail-note">投资净投入保留在周期复盘中，不重复加入消费金额。</p>}
       <div className="table-wrap spreadsheet-wrap">
         <table className={`spreadsheet-table spending-detail-table${showReference ? " with-reference" : ""}`}>
           <thead>
@@ -5789,24 +5798,24 @@ function EditableBudgetTable({
             </tr>
           </thead>
           <tbody>
-            {budgets.map((item) => (
+            {budgets.filter(item=>getSpendingGroup(item)===group.id).map((item) => (
               <tr key={item.id}>
                 <td>
-                  <TableTextInput ariaLabel={`${item.name} 分类`} value={item.name} onChange={(value) => updateBudget(item.id, { name: value })} />
+                  {item.reviewPeriod ? <span>{item.name}<small>{item.reviewPeriod.start} 至 {item.reviewPeriod.end}</small></span> : <TableTextInput ariaLabel={`${item.name} 分类`} value={item.name} onChange={(value) => updateBudget(item.id, { name: value })} />}
                 </td>
-                <td><select className="table-input" aria-label={`${item.name} 所属大类`} value={getSpendingGroup(item)} onChange={event => updateBudget(item.id, {group: event.target.value as Budget["group"]})}><option value="unassigned">待归类</option>{spendingGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select></td>
+                <td><select className="table-input" disabled={Boolean(item.reviewPeriod)} aria-label={`${item.name} 所属大类`} value={getSpendingGroup(item)} onChange={event => updateBudget(item.id, {group: event.target.value as Budget["group"]})}><option value="unassigned">待归类</option>{spendingGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select></td>
                 {showReference && <td>
                   <TableNumberInput ariaLabel={`${item.name} 预算`} value={item.plan} onChange={(value) => updateBudget(item.id, { plan: value })} />
                 </td>}
                 <td>
-                  <TableNumberInput ariaLabel={`${item.name} 实际`} step={0.01} min={-100000000} value={item.actual} onChange={(value) => updateBudget(item.id, { actual: value })} />
+                  {item.reviewPeriod ? reviewMoney(item.actual) : <TableNumberInput ariaLabel={`${item.name} 实际`} step={0.01} min={-100000000} value={item.actual} onChange={(value) => updateBudget(item.id, { actual: value })} />}
                 </td>
                 {showReference && <td className="calculated-cell">{reviewMoney(item.plan - item.actual)}</td>}
                 <td className="spending-purpose"><TableTextInput ariaLabel={`${item.name} 具体用途`} value={item.note ?? ""} onChange={value => updateBudget(item.id, {note: value})}/></td>
                 <td><TableCheckbox ariaLabel={`${item.name} 必须`} checked={item.required} onChange={(value) => updateBudget(item.id, { required: value })} /></td>
                 <td><TableCheckbox ariaLabel={`${item.name} 固定`} checked={item.fixed} onChange={(value) => updateBudget(item.id, { fixed: value })} /></td>
                 <td>
-                  <button className="danger-button compact" disabled={budgets.length <= 1} type="button" onClick={() => deleteBudget(item.id)}>
+                  <button className="danger-button compact" disabled={budgets.length <= 1||Boolean(item.reviewPeriod)} type="button" onClick={() => deleteBudget(item.id)}>
                     删除
                   </button>
                 </td>
@@ -5814,7 +5823,7 @@ function EditableBudgetTable({
             ))}
           </tbody>
         </table>
-      </div>
+      </div></details>)}
     </>
   );
 }

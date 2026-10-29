@@ -9,6 +9,7 @@ export type SpendingBudget = {
   id: string; name: string; plan: number; actual: number; required: boolean; fixed: boolean;
   group?: SpendingGroup | "unassigned";
   note?: string;
+  reviewPeriod?: {id:string;start:string;end:string};
 };
 export function getSpendingGroup(row: SpendingBudget): SpendingGroup | "unassigned" {
   return spendingGroups.some(group => group.id === row.group) ? row.group as SpendingGroup : "unassigned";
