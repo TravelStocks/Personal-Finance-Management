@@ -1,10 +1,11 @@
 "use client";
-import {useState} from "react";
-import {calculateAnnualAccumulation, calculateAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan, type BudgetMonthMode} from "./annual-budget-model";
+import type {ReactNode} from "react";
+import {calculateAnnualAccumulation, calculateAnnualBudgetPlan, normalizeAnnualBudgetPlan, updateAnnualBudgetAmount, type AnnualBudgetPlan, type BudgetMonthMode} from "./annual-budget-model";
 import "./annual-budget-plan.css";
 
 const money = (value: number) => `¥${value.toLocaleString("zh-CN", {maximumFractionDigits: 2})}`;
 type NumericKey = Exclude<keyof AnnualBudgetPlan, "mode" | "rows" | "bonusAfterTax" | "allocationVersion">;
+type AllocationSaveControls = {saveAction: ReactNode; saveStatus: string};
 
 function AnnualAccumulation({plan, onChange}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void}) {
   const totals = calculateAnnualBudgetPlan(plan);
@@ -54,11 +55,9 @@ function AnnualAccumulation({plan, onChange}: {plan: AnnualBudgetPlan; onChange:
   </section>;
 }
 
-export function AnnualBudgetAllocationTable({plan, onChange, titleId}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void; titleId: string}) {
-  const [editing, setEditing] = useState(false);
+export function AnnualBudgetAllocationTable({plan, onChange, titleId, saveAction, saveStatus}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void; titleId: string} & AllocationSaveControls) {
   const totals = calculateAnnualBudgetPlan(plan);
-  const editAmount = (id: string, mode: BudgetMonthMode, value: string) => onChange(normalizeAnnualBudgetPlan({...plan,
-    rows: plan.rows.map(row => row.id === id ? {...row, [mode]: Number(value)} : row)}));
+  const editAmount = (id: string, mode: BudgetMonthMode, value: string) => onChange(updateAnnualBudgetAmount(plan, id, mode, Number(value)));
   const renderRow = (row: typeof totals.rows[number]) => <tr key={row.id} data-budget-row={row.id}>
     <th scope="row">{row.name}{["small", "daily", "emergencyLearning"].includes(row.id) && <small>{row.note}</small>}</th>
     {(["normal", "trip"] as const).map(mode => <td key={mode} className={plan.mode === mode ? "selected-column" : ""}>
@@ -66,28 +65,29 @@ export function AnnualBudgetAllocationTable({plan, onChange, titleId}: {plan: An
         <strong>{money(row[mode])}</strong>
         {(["emergency", "learning"] as const).map(id => {
           const part = totals.rows.find(item => item.id === id)!;
-          return editing ? <label className="annual-combined-edit" key={id}><span>{id === "emergency" ? "应急" : "学习"}</span><input type="number" min="0" step="50" aria-label={`${part.name}${mode === "normal" ? "不出差月份" : "出差月份"}预算`} value={part[mode]} onChange={event => editAmount(id, mode, event.target.value)}/></label> : <small className="annual-combined-part" key={id}>{id === "emergency" ? "应急" : "学习"} {money(part[mode])}</small>;
+          return <label className="annual-combined-edit" key={id}><span>{id === "emergency" ? "应急" : "学习"}</span><input type="number" min="0" max="100000000" step="0.01" inputMode="decimal" aria-label={`${part.name}${mode === "normal" ? "不出差月份" : "出差月份"}预算`} value={part[mode]} onChange={event => editAmount(id, mode, event.target.value)}/></label>;
         })}
-      </> : editing ? <input type="number" min="0" step="50" aria-label={`${row.name}${mode === "normal" ? "不出差月份" : "出差月份"}预算`}
-        value={row[mode]} onChange={event => editAmount(row.id, mode, event.target.value)}/> : money(row[mode])}</td>)}
+      </> : <input type="number" min="0" max="100000000" step="0.01" inputMode="decimal" aria-label={`${row.name}${mode === "normal" ? "不出差月份" : "出差月份"}预算`}
+        value={row[mode]} onChange={event => editAmount(row.id, mode, event.target.value)}/>}</td>)}
     <td>{money(row.annual)}</td>
   </tr>;
   return <section className="annual-allocation" aria-labelledby={titleId}>
     <div className="annual-subheading annual-table-heading"><div><h3 id={titleId}>完整月度与年度分配表</h3>
       <p>全年预算 = 不出差月份金额 × {totals.normalMonths} + 出差月份金额 × {plan.awayMonths}。<span className="annual-mobile-hint">左右滑动表格查看金额列。</span></p></div>
-      <button type="button" aria-pressed={editing} onClick={() => setEditing(value => !value)}>{editing ? "完成编辑" : "编辑分配金额"}</button></div>
-    <div className="annual-table-scroll" tabIndex={0} role="region" aria-label="完整分配表横向滚动区域"><table className="annual-budget-table" aria-labelledby={titleId}>
+      {saveAction}</div>
+    <div className="annual-table-scroll" tabIndex={0} role="region" aria-label="完整分配表横向滚动区域"><table className="annual-budget-table annual-allocation-table" aria-labelledby={titleId}>
       <thead><tr><th scope="col">项目</th><th scope="col">不出差月份</th><th scope="col">出差月份</th><th scope="col">全年预算</th></tr></thead>
       <tbody>
         {totals.allocationRows.map(renderRow)}
       </tbody>
       <tfoot><tr><th scope="row">全部资金分配</th><td>{money(totals.normal.totalOutflow)}</td><td>{money(totals.trip.totalOutflow)}</td><td>{money(totals.annualOutflow)}</td></tr></tfoot>
     </table></div>
+    <p className="annual-budget-note" role="status">{saveStatus}</p>
     <p className="annual-budget-note">小额支付普通月{money(totals.rows.find(row => row.id === "small")?.normal ?? 0)}、出差月{money(totals.rows.find(row => row.id === "small")?.trip ?? 0)}。日常使用承接其余生活消费；投资与应急基金合计全年{money(totals.annualSaving)}，其余消费及消费预留合计{money(totals.annualConsumption)}。账户间转账不算消费，基金支付不重复记账。</p>
   </section>;
 }
 
-export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void}) {
+export default function AnnualBudgetPlanner({plan, onChange, saveAction, saveStatus}: {plan: AnnualBudgetPlan; onChange: (plan: AnnualBudgetPlan) => void} & AllocationSaveControls) {
   const totals = calculateAnnualBudgetPlan(plan);
   const covered = totals.annualSurplus >= 0 && !totals.assumptionsConflict;
   const update = (key: NumericKey, value: string) => onChange(normalizeAnnualBudgetPlan({...plan, [key]: Number(value)}));
@@ -139,7 +139,7 @@ export default function AnnualBudgetPlanner({plan, onChange}: {plan: AnnualBudge
       <div className="annual-budget-legend">{annualSlices.map(slice => <span key={slice.label}><i className={slice.className}/>{slice.label}<b>{money(slice.amount)}</b></span>)}</div>
     </div>
 
-    <AnnualBudgetAllocationTable plan={plan} onChange={onChange} titleId="annual-allocation-title"/>
+    <AnnualBudgetAllocationTable plan={plan} onChange={onChange} titleId="annual-allocation-title" saveAction={saveAction} saveStatus={saveStatus}/>
 
     <section className="annual-months" aria-label="月份类型现金流对比">
       <div className="annual-subheading"><h3>同一套安排，两种月份现金流</h3><p>点击月份类型，下方总览卡片和预算图表同步切换。</p></div>

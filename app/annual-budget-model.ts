@@ -100,6 +100,11 @@ export function normalizeAnnualBudgetPlan(value: unknown): AnnualBudgetPlan {
   return result;
 }
 
+export function updateAnnualBudgetAmount(plan: AnnualBudgetPlan, id: string, mode: BudgetMonthMode, amount: number) {
+  if (!Number.isFinite(amount) || amount < 0 || amount > 100000000 || !plan.rows.some(row => row.id === id)) return plan;
+  return normalizeAnnualBudgetPlan({...plan, rows: plan.rows.map(row => row.id === id ? {...row, [mode]: amount} : row)});
+}
+
 export function calculateAnnualAccumulation(plan: AnnualBudgetPlan, bonusAfterTax = plan.bonusAfterTax ?? 0) {
   const totals = calculateAnnualBudgetPlan(plan);
   const bonus = round(bonusAfterTax);

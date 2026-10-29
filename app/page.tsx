@@ -2925,7 +2925,9 @@ export default function FinanceDashboard() {
           </section>
         )}
 
-        <AnnualBudgetPlanner plan={annualBudgetPlan} onChange={updateAnnualBudgetPlan} />
+        <AnnualBudgetPlanner plan={annualBudgetPlan} onChange={updateAnnualBudgetPlan}
+          saveAction={<button type="button" disabled={!savedDataReady || cloudSyncing} onClick={() => void saveCurrentData()}>保存分配预算</button>}
+          saveStatus={`${saveStatus} · ${cloudStatus}`} />
         <details className="finance-ledger" open={ledgerOpen} onToggle={event => setLedgerOpen(event.currentTarget.open)}>
           <summary>查看账本、资产与历史记录 <span>按已保存的月份查看实际数据</span></summary>
           <p className="ledger-context">预算汇总与上方年度方案和所选月份类型同步。账户余额、资产和历史收支按已录入数据计算；核算当前净资产前，请更新公司借款及各账户余额。</p>
@@ -3211,7 +3213,9 @@ export default function FinanceDashboard() {
                             <Stat label={`${budgetModeName}现金余量`} value={money(cashPlanTotals.surplus)} />
                             <Stat label="全年全部分配" value={money(annualPlanTotals.annualOutflow)} />
                           </div>
-                          <AnnualBudgetAllocationTable plan={annualBudgetPlan} onChange={updateAnnualBudgetPlan} titleId="module-annual-allocation-title"/>
+                          <AnnualBudgetAllocationTable plan={annualBudgetPlan} onChange={updateAnnualBudgetPlan} titleId="module-annual-allocation-title"
+                            saveAction={<button type="button" disabled={!savedDataReady || cloudSyncing} onClick={() => void saveCurrentData()}>保存分配预算</button>}
+                            saveStatus={`${saveStatus} · ${cloudStatus}`}/>
                           <details>
                             <summary>查看历史月份预算与实际支出</summary>
                             <p className="ledger-context">以下是已保存月份的账本数据，年度分配表用于当前计划；历史预算金额可在这里单独维护。</p>
