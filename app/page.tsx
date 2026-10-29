@@ -6,6 +6,8 @@ import AnnualBudgetPlanner, {AnnualBudgetAllocationTable} from "./annual-budget-
 import { calculateAnnualBudgetPlan, calculateCashflowScenario, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
 import {calculateLiquidity} from "./liquidity-model";
 import FinanceReviewPanel from "./finance-review-panel";
+import DatedLedgerEditor from "./dated-ledger-editor";
+import {changeDatedEntry, parseDatedEntries, preserveDatedSalaries, type DatedEntry, type EntryMode} from "./dated-ledger-model";
 import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, type FinanceReview} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
 import {financeBackupSignature, financeDataOnly, financeSaveConflict, hasPendingFinanceSave, markFinanceCloudSaved, writeLocalFinanceData} from "./finance-save-model";
@@ -159,6 +161,7 @@ type PersistedFinanceData = {
   salarySettingsVersion?: number;
   annualBudgetPlan?: AnnualBudgetPlan;
   financeReviews?: FinanceReview[];
+  datedEntries?: DatedEntry[];
   monthlyCashPlan?: MonthlyCashPlan;
   period?: Period;
   selectedMonth?: string;
@@ -1036,6 +1039,7 @@ export default function FinanceDashboard() {
   const currentDate = useFinanceToday();
   const [annualBudgetPlan, setAnnualBudgetPlan] = useState<AnnualBudgetPlan>(initialAnnualBudgetPlan);
   const [financeReviews, setFinanceReviews] = useState<FinanceReview[]>([]);
+  const [datedEntries, setDatedEntries] = useState<DatedEntry[]>([]);
   const [monthlyCashPlan, setMonthlyCashPlan] = useState<MonthlyCashPlan>(initialMonthlyCashPlan);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [activeModules, setActiveModules] = useState<ModuleId[]>([]);
@@ -1093,6 +1097,7 @@ export default function FinanceDashboard() {
       salarySettingsVersion,
       annualBudgetPlan,
       financeReviews,
+      datedEntries,
       monthlyCashPlan,
       period,
       selectedMonth,
@@ -1148,6 +1153,7 @@ export default function FinanceDashboard() {
 
   function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
     const restoredReviews = saved.financeReviews === undefined ? undefined : parseFinanceReviews(saved.financeReviews);
+    const restoredEntries = parseDatedEntries(saved.datedEntries);
     const restoredPlan = normalizeAnnualBudgetPlan(saved.annualBudgetPlan);
     const salaryData = migrateSalarySettings(Array.isArray(saved.monthlyRecords) ? saved.monthlyRecords : initialMonthRecords, restoredPlan.salary, saved.salarySettingsVersion);
     setAnnualBudgetPlan({...restoredPlan, salary: salaryData.salary});
@@ -1155,7 +1161,8 @@ export default function FinanceDashboard() {
     setMonthlyCashPlan({...normalizeMonthlyCashPlan(saved.monthlyCashPlan), income: salaryData.salary});
     if (saved.period) setPeriod(saved.period);
     if (saved.selectedMonth) setSelectedMonth(saved.selectedMonth);
-    setMonthlyRecords(salaryData.records);
+    setMonthlyRecords(preserveDatedSalaries(salaryData.records, saved.monthlyRecords ?? initialMonthRecords, restoredEntries));
+    setDatedEntries(restoredEntries);
     if (Array.isArray(saved.accounts)) setAccounts(saved.accounts);
     if (Array.isArray(saved.holdings)) setHoldings(saved.holdings);
     if (typeof saved.fxUsd === "number") setFxUsd(saved.fxUsd);
@@ -1329,6 +1336,7 @@ export default function FinanceDashboard() {
     savedDataReady,
     annualBudgetPlan,
     financeReviews,
+    datedEntries,
     monthlyCashPlan,
     period,
     selectedMonth,
@@ -1889,6 +1897,10 @@ export default function FinanceDashboard() {
   }
 
   function deleteMonthRecord(monthId: string) {
+    if (datedEntries.some(row=>row.date.startsWith(monthId+"-"))) {
+      window.alert("该月份有日期收支明细，请先处理明细，避免丢失已登记的收支。");
+      return;
+    }
     setMonthlyRecords((records) => {
       if (records.length <= 1) return records;
 
@@ -1905,7 +1917,7 @@ export default function FinanceDashboard() {
 
   function updateAnnualBudgetPlan(plan: AnnualBudgetPlan) {
     if (plan.salary !== annualBudgetPlan.salary) {
-      setMonthlyRecords(records => applySalaryFromMonth(records, plan.salary, reviewToday().slice(0,7)));
+      setMonthlyRecords(records => preserveDatedSalaries(applySalaryFromMonth(records, plan.salary, reviewToday().slice(0,7)),records,datedEntries));
       setMonthlyCashPlan(current => ({...current, income: plan.salary}));
     }
     setAnnualBudgetPlan(plan);
@@ -1965,6 +1977,10 @@ export default function FinanceDashboard() {
   }
 
   function deleteBudget(id: string) {
+    if (datedEntries.some(row=>row.flow==="expense"&&row.categoryId===id&&row.date.startsWith(selectedMonth+"-"))) {
+      window.alert("该分类有日期收支明细，请先修改明细分类或删除对应明细。");
+      return;
+    }
     setMonthlyRecords((records) =>
       records.map((record) =>
         record.id === selectedMonth && record.budgets.length > 1
@@ -1976,6 +1992,19 @@ export default function FinanceDashboard() {
 
   function addDetailedBudgets() {
     setMonthlyRecords(records => records.map(record => record.id === selectedMonth ? {...record, budgets: addSpendingDetailPresets(record.budgets)} : record));
+  }
+
+  function saveDatedEntry(entry:DatedEntry, previousId:string|undefined, mode:EntryMode, group?:Budget["group"]) {
+    const next = changeDatedEntry(monthlyRecords,datedEntries,entry,previousId,mode,group === "unassigned" ? undefined : group);
+    persistLocalFinanceData({...getPersistedFinanceData(),monthlyRecords:next.records,datedEntries:next.entries});
+    setMonthlyRecords(next.records);
+    setDatedEntries(next.entries);
+  }
+  function deleteDatedEntry(id:string) {
+    const next = changeDatedEntry(monthlyRecords,datedEntries,null,id);
+    persistLocalFinanceData({...getPersistedFinanceData(),monthlyRecords:next.records,datedEntries:next.entries});
+    setMonthlyRecords(next.records);
+    setDatedEntries(next.entries);
   }
 
   function updateHolding(id: string, patch: Partial<Holding>) {
@@ -3054,6 +3083,7 @@ export default function FinanceDashboard() {
                     <EditableNumber label="每月工资规划（元）" value={annualBudgetPlan.salary} onChange={value => updateAnnualBudgetPlan({...annualBudgetPlan, salary:value})}/>
                     <DataChartLayout
                       data={
+                        <><DatedLedgerEditor key={`income-${activeMonth.id}`} flow="income" month={activeMonth} entries={datedEntries} onSave={saveDatedEntry} onDelete={deleteDatedEntry}/>
                         <EditableMonthlyIncomeTable
                           records={monthlyRecords}
                           selectedMonth={selectedMonth}
@@ -3061,7 +3091,7 @@ export default function FinanceDashboard() {
                           addMonthRecord={addMonthRecord}
                           deleteMonthRecord={deleteMonthRecord}
                           updateMonthRecord={updateMonthRecord}
-                        />
+                        /></>
                       }
                       charts={
                         <div className="chart-grid two">
@@ -3092,6 +3122,7 @@ export default function FinanceDashboard() {
                             onChange={setSelectedMonth}
                             onDeleteSelectedMonth={() => deleteMonthRecord(selectedMonth)}
                           />
+                          <DatedLedgerEditor key={`spending-${activeMonth.id}`} flow="expense" month={activeMonth} entries={datedEntries} onSave={saveDatedEntry} onDelete={deleteDatedEntry}/>
                           <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} addDetailedBudgets={addDetailedBudgets} updateBudget={updateBudget} />
                           <LearningUsage budgets={budgets} monthLabel={activeMonth.label} allowance={annualBudgetPlan.rows.find(row => row.id === "learning")?.[annualBudgetPlan.mode] ?? 0}/>
                         </>
@@ -3507,7 +3538,7 @@ export default function FinanceDashboard() {
 
                 {moduleId === "periodReview" && (
                   <Module title="周期复盘" desc="本期实际发生额与上期同类周期比较；记录与账本明细分别保存。">
-                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts}
+                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} ledgerMonths={monthlyRecords} datedEntries={datedEntries}
                       focusSource={{
                         projects:fundBuckets.map(({id,name,target,current,dueDate})=>({id,name,target,current,dueDate})),
                         bills:reminders.map(({id,name,amount,date,kind})=>({id,name,amount,date,kind})),

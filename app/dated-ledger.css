@@ -1,0 +1,12 @@
+.dated-ledger {min-width:0;border-block:1px solid var(--line);padding:12px 0 20px;margin:16px 0;}
+.dated-ledger h3 {font-size:18px;margin:0;}
+.dated-entry-fields {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.dated-entry-fields .field {min-width:0;}
+.dated-ledger summary {cursor:pointer;font-weight:600;}
+.dated-ledger .data-actions {flex-wrap:wrap;}
+.review-ledger {border-block:1px solid var(--line);padding:0 0 16px;margin:16px 0;}
+.review-ledger h3 {margin:0;}
+.review-ledger .review-ledger-confirm {display:flex;gap:8px;align-items:center;margin-top:12px;font-size:14px;}
+.review-ledger-confirm input {width:18px;height:18px;flex:none;accent-color:var(--blue);}
+@media(max-width:700px){.dated-entry-fields {grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:450px){.dated-entry-fields {grid-template-columns:1fr;}}

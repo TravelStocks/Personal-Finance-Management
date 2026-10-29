@@ -56,6 +56,10 @@ export function syncReviewFocus(focus: ReviewFocus | undefined, source: ReviewFo
   next.notes = {...focus.notes};
   return next;
 }
+export type ReviewLedgerRow = {
+  id:string; date:string; flow:"income" | "expense"; categoryId:string; amount:number; note:string; name:string;
+  group:Exclude<ReviewCategory,"investment" | "emergency"> | "income" | "unassigned";
+};
 export type FinanceReview = {
   id: string;
   type: ReviewType;
@@ -70,6 +74,7 @@ export type FinanceReview = {
   budget?: ReviewBudget;
   accounts?: ReviewAccount[];
   focus?: ReviewFocus;
+  ledger?: ReviewLedgerRow[];
 };
 export type ReviewDraft = Omit<FinanceReview, "id" | "savedAt" | "income" | "amounts" | "balances" | "accounts"> & {
   income: number | null;
@@ -212,7 +217,7 @@ export function parseFinanceReview(value: unknown): FinanceReview {
     const values = object(supplied.amounts);
     budget = {mode: supplied.mode as ReviewBudget["mode"], amounts: Object.fromEntries(reviewCategories.map(row => [row.id, amount(values[row.id], `${row.name}月预算`, true)])) as ReviewBudget["amounts"]};
   }
-  return {id: `${type}:${start}`, type, start, end,
+  const record:FinanceReview = {id: `${type}:${start}`, type, start, end,
     savedAt: typeof input.savedAt === "string" && Number.isFinite(Date.parse(input.savedAt)) ? input.savedAt : new Date().toISOString(),
     income: amount(input.income, "本期外部收入"),
     amounts: Object.fromEntries(reviewCategories.map(row => [row.id, amount(inputAmounts[row.id], row.name)])) as FinanceReview["amounts"],
@@ -220,6 +225,21 @@ export function parseFinanceReview(value: unknown): FinanceReview {
     balances: Object.fromEntries(Object.entries(balanceLabels).map(([key, label]) => [key, amount(inputBalances[key], label, true)])) as ReviewBalances,
     summary: typeof input.summary === "string" ? input.summary : "", ...(budget ? {budget} : {}), ...(accounts ? {accounts} : {}),
     ...(input.focus === undefined ? {} : {focus: parseReviewFocus(input.focus)})};
+  if (input.ledger !== undefined) {
+    if (!Array.isArray(input.ledger)) throw new Error("日期收支快照须为列表");
+    const ids = new Set<string>();
+    record.ledger = input.ledger.map(value=> {
+      const row = object(value);
+      dateValue(row.date);
+      if (typeof row.id!=="string" || !row.id || ids.has(row.id) || String(row.date)<start || String(row.date)>end) throw new Error("日期收支快照重复或不属于本期");
+      ids.add(row.id);
+      if ((row.flow!=="income" || row.group!=="income") && (row.flow!=="expense" || !reviewCategories.some(category=>category.flow==="expense"&&category.id===row.group))) throw new Error("日期收支快照分类未确认");
+      if (typeof row.name!=="string" || typeof row.categoryId!=="string") throw new Error("日期收支快照分类缺失");
+      return {id:row.id,date:row.date as string,flow:row.flow as ReviewLedgerRow["flow"],group:row.group as ReviewLedgerRow["group"],categoryId:row.categoryId,name:row.name,amount:amount(row.amount,"明细金额"),note:typeof row.note==="string" ? row.note : ""};
+    });
+    if (sum(record.ledger.filter(row=>row.group==="income").map(row=>row.amount))!==record.income || reviewCategories.filter(row=>row.flow==="expense").some(category=>sum(record.ledger!.filter(row=>row.group===category.id).map(row=>row.amount))!==record.amounts[category.id])) throw new Error("复盘收支与日期明细不一致，请重新带入或改为手填");
+  }
+  return record;
 }
 export function upsertFinanceReview(records: FinanceReview[], record: FinanceReview) {
   return [...records.filter(item => item.id !== record.id), record].sort((a, b) => b.end.localeCompare(a.end) || a.id.localeCompare(b.id));
@@ -304,12 +324,14 @@ export function analyzeFinanceReview(current: FinanceReview, records: FinanceRev
   const totals = reviewTotals(current);
   const prior = previous ? reviewTotals(previous) : null;
   const rows = reviewCategories.map(row => ({...row, amount: current.amounts[row.id], previous: previous?.amounts[row.id] ?? null,
-    delta: previous ? sum([current.amounts[row.id], -previous.amounts[row.id]]) : null, note: current.notes[row.id] || ""}));
+    delta: previous ? sum([current.amounts[row.id], -previous.amounts[row.id]]) : null,
+    note: current.notes[row.id] || (current.ledger ?? []).filter(entry=>entry.group===row.id&&entry.note.trim()).map(entry=>`${entry.date} ${entry.name} ${reviewMoney(entry.amount)}：${entry.note}`).join("；")}));
   const contiguous = previous ? dateValue(current.start).getTime() - dateValue(previous.end).getTime() === dayMs : false;
   const netWorthDelta = prior ? sum([totals.netWorth, -prior.netWorth]) : null;
   // A missing interval cannot be reconciled using just the current period's income and spending.
   const unexplained = contiguous && netWorthDelta !== null ? sum([netWorthDelta, -totals.surplus]) : null;
   const notices = ["投资基金填净投入，应急基金填净转入；二者不计消费。其他七项填实际净支出，不填充值或预算预留。"];
+  if (current.ledger) notices.push("收支来自保存时核对的日期明细快照，不含未标日期的月度余额；后续账本修改不自动改写本报告。");
   const accountRows = compareReviewAccounts(current, previous);
   if (current.accounts) notices.push("账户余额按复盘时的快照比较；余额变化本身不等于消费，具体原因以本期变动说明和账单为准。账户计入范围变化须另行核对。");
   notices.push("预算中的应急&学习金合并展示；复盘仍区分应急净转入与学习实际消费，学习用途据备注判断。");
@@ -345,6 +367,8 @@ export function financeReviewReport(current: FinanceReview, records: FinanceRevi
     `收入 ${reviewMoney(totals.income)} · 实际消费 ${reviewMoney(totals.spending)} · 收支结余 ${reviewMoney(totals.surplus)}`,
     `期末净资产 ${reviewMoney(totals.netWorth)} · 较上期余额 ${signed(analysis.netWorthDelta)}`,
     `日均消费 ${reviewMoney(totals.spending / totals.days)}${prior ? `；上期 ${reviewMoney(prior.spending / prior.days)}` : ""}`, "",
+    ...(current.ledger ? ["## 日期收支快照", "仅按本期日期汇总已核对的实际收支；月度未标日期金额、股票浮盈、自有账户划拨不计入。",
+      "| 日期 | 收支 | 分类 | 金额 | 事项 / 用途 |", "|---|---|---|---:|---|", ...current.ledger.map(row=>`| ${row.date} | ${row.flow === "income" ? "收入" : "支出"} | ${cell(row.name)} | ${reviewMoney(row.amount)} | ${cell(row.note || "未填写")} |`), ""] : []),
     "## 本期关键变化", ...analysis.highlights.flatMap(row => [`### ${row.title} · ${row.state}`, row.summary, ...row.details.map(detail=>`- ${cell(detail)}`), ""]),
     "| 项目 | 本期发生额 | 上期发生额 | 变化 | 本期事项 |", "|---|---:|---:|---:|---|",
     ...rows.map(row => `| ${row.name}${row.flow === "transfer" ? "（划拨）" : ""} | ${reviewMoney(row.amount)} | ${row.previous === null ? "无基准" : reviewMoney(row.previous)} | ${signed(row.delta)} | ${cell(row.note || "未填写事项")} |`), "",
@@ -354,7 +378,7 @@ export function financeReviewReport(current: FinanceReview, records: FinanceRevi
     ...(analysis.accountRows.length ? ["## 账户余额对比", "| 账户 | 本期期末 | 上期期末 | 余额变化 | 计入个人现金 | 本期说明 |", "|---|---:|---:|---:|---|---|",
       ...analysis.accountRows.map(row => `| ${cell(row.name)} | ${row.current === null ? "未记录" : reviewMoney(row.current)} | ${row.previous === null ? "无基准" : reviewMoney(row.previous)} | ${signed(row.delta)} | ${row.included === null ? "未记录" : row.included ? "是" : "否"} | ${cell([row.status, row.note].filter(Boolean).join("；"))} |`), ""] : []),
     ...(current.summary ? [`本期补充：${cell(current.summary)}`, ""] : []),
-    "## 学习用途", `本期学习净支出 ${reviewMoney(current.amounts.learning)}；${cell(current.notes.learning || "未填写学习事项，暂不能判断学了什么。")}`, "",
+    "## 学习用途", `本期学习净支出 ${reviewMoney(current.amounts.learning)}；${cell(rows.find(row=>row.id==="learning")?.note || "未填写学习事项，暂不能判断学了什么。")}`, "",
     "## 下期动作", ...analysis.actions.map(action => `- ${action}`), "",
     "## 数据口径", ...analysis.notices.map(note => `- ${note}`), "",
   ].join("\n");
@@ -376,6 +400,7 @@ export function aggregateFinanceReviews(records: FinanceReview[], type: "month" 
       notes: Object.fromEntries(reviewCategories.map(category => [category.id, source.filter(row => row.notes[category.id]).map(row => `${row.start}：${row.notes[category.id]}`).join("；")])),
       balances: source[source.length - 1].balances, accounts: source[source.length - 1].accounts,
       focus: source[source.length - 1].focus,
+      ...(source.every(row=>row.ledger) ? {ledger:source.flatMap(row=>row.ledger!)} : {}),
       summary: `由 ${source.length} 条无重叠、连续覆盖的${sourceType === "week" ? "周" : "月"}记录汇总；期末余额及账户快照取最后一期，不累加。`});
   }
   throw new Error("现有记录没有完整、连续覆盖该周期，或有跨月/跨季的周记录。请补填本周期实际汇总，不能按天摊分实际消费。");
