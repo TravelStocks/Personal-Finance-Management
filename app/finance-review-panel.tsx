@@ -5,7 +5,9 @@ import type {AnnualBudgetPlan, BudgetMonthMode} from "./annual-budget-model";
 import ReviewFocusChecklist from "./finance-review-focus";
 import {newReviewFocus, syncReviewFocus, reviewFocusMatchesSource, type ReviewFocusSource} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
-import {datedReviewSource, linkDatedReview, type DatedEntry, type LedgerMonth} from "./dated-ledger-model";
+import {datedReviewSource, linkDatedReview, linkReviewIncome, type DatedEntry, type LedgerMonth, type EntryMode} from "./dated-ledger-model";
+import DatedLedgerEditor from "./dated-ledger-editor";
+import {reviewPeriod, reviewIncomeRows, weeklyLedgerTotals} from "./finance-review-model";
 import {aggregateFinanceReviews, analyzeFinanceReview, balanceLabels, financeReviewReport, newReviewDraft, parseFinanceReview, parseFinanceReviews, reviewAccountCash, reviewCategories, reviewMoney, reviewToday, reviewTypeNames, upsertFinanceReview, withReviewAccounts, type FinanceReview, type ReviewAccount, type ReviewAccountDraft, type ReviewDraft, type ReviewType} from "./finance-review-model";
 import "./finance-review-panel.css";
 import "./dated-ledger.css";
@@ -22,11 +24,11 @@ const numeric = (value: string) => value.trim() === "" ? null : Number(value);
 const change = (value: number | null) => value === null ? "无基准" : `${value > 0 ? "+" : ""}${reviewMoney(value)}`;
 
 type AccountSource = Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance">;
-export default function FinanceReviewPanel({records, plan, accounts, focusSource, ledgerMonths, datedEntries, onOpenModule, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; focusSource: ReviewFocusSource; ledgerMonths:LedgerMonth[]; datedEntries:DatedEntry[]; onOpenModule:(module:"fundBuckets" | "reminders" | "balance" | "income" | "spending")=>void; onChange: (records: FinanceReview[], accounts?: ReviewAccount[]) => void}) {
+export default function FinanceReviewPanel({records, plan, accounts, focusSource, ledgerMonths, datedEntries, onSaveIncome, onDeleteIncome, onOpenModule, onChange}: {records: FinanceReview[]; plan: AnnualBudgetPlan; accounts: AccountSource[]; focusSource: ReviewFocusSource; ledgerMonths:LedgerMonth[]; datedEntries:DatedEntry[]; onSaveIncome:(entry:DatedEntry,previousId:string|undefined,mode:EntryMode)=>void; onDeleteIncome:(id:string)=>void; onOpenModule:(module:"fundBuckets" | "reminders" | "balance" | "income" | "spending")=>void; onChange: (records: FinanceReview[], accounts?: ReviewAccount[]) => void}) {
   const today = useFinanceToday();
-  function makeDraft(type?: ReviewType, end = reviewToday()) {
+  function makeDraft(type?: ReviewType, end = reviewToday(), monthStartDay:1|10 = 10) {
     const previous = records.filter(record => record.accounts && record.end <= end).sort((a,b) => b.end.localeCompare(a.end))[0];
-    const blank = {...newReviewDraft(type, end), focus:newReviewFocus(focusSource)};
+    const blank = {...newReviewDraft(type, end, monthStartDay), focus:newReviewFocus(focusSource)};
     return accounts.length ? withReviewAccounts(blank, accounts, previous?.accounts) : blank;
   }
   const [draft, setDraft] = useState<ReviewDraft>(() => makeDraft());
@@ -34,6 +36,12 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   const [ledgerLinked,setLedgerLinked] = useState(false);
   const [ledgerConfirmed,setLedgerConfirmed] = useState(false);
   const [ledgerSeen,setLedgerSeen] = useState("");
+  const [incomeLinked,setIncomeLinked] = useState(false);
+  const [incomeConfirmed,setIncomeConfirmed] = useState(false);
+  const [incomeSeen,setIncomeSeen] = useState("");
+  const [incomePending,setIncomePending] = useState(false);
+  const [incomeMonthId,setIncomeMonthId] = useState("");
+  const [incomeEditorRevision,setIncomeEditorRevision] = useState(0);
   const [accountsConfirmed, setAccountsConfirmed] = useState(false);
   const [syncAccounts, setSyncAccounts] = useState(true);
   const [view, setView] = useState<"entry" | "report">(records.length ? "report" : "entry");
@@ -50,6 +58,19 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   const ledgerSource = datedReviewSource(ledgerMonths,datedEntries,draft.start,draft.end);
   const ledgerSignature = JSON.stringify(ledgerSource);
   const boundLedger = Boolean(draft.ledger) || ledgerLinked;
+  const incomeRows = ledgerSource.rows.filter(row=>row.flow==="income");
+  const incomeSignature = JSON.stringify(incomeRows);
+  const boundIncome = boundLedger || incomeLinked || Boolean(draft.incomeLedger);
+  const incomeMonths = ledgerMonths.filter(month=>month.id>=draft.start.slice(0,7)&&month.id<=draft.end.slice(0,7));
+  const incomeMonth = incomeMonths.find(month=>month.id===incomeMonthId) ?? incomeMonths.at(-1);
+  const cycle = reviewPeriod("month",draft.end,10);
+  const cycleSource = datedReviewSource(ledgerMonths,datedEntries,cycle.start,cycle.end);
+  const cycleWeeks = weeklyLedgerTotals(cycleSource.rows,cycle.start,cycle.end);
+  if (incomeLinked && !ledgerLinked && incomeSeen!==incomeSignature) {
+    setIncomeSeen(incomeSignature);
+    setIncomeConfirmed(false);
+    setDraft(current=>linkReviewIncome(current,incomeRows));
+  }
   if (ledgerLinked && ledgerSignature!==ledgerSeen) {
     setLedgerSeen(ledgerSignature);
     setLedgerConfirmed(false);
@@ -59,7 +80,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   if (followsSource && (!draft.focus || !reviewFocusMatchesSource(draft.focus, focusSource))) {
     setDraft(current=>({...current, focus: syncReviewFocus(current.focus, focusSource)}));
   }
-  const hasDraft = draft.income !== null || Object.values(draft.amounts).some(value => value !== null) || Object.values(draft.balances).some(value => value !== null) || Boolean(draft.summary) || Object.values(draft.notes).some(Boolean) || Object.values(draft.focus?.checks ?? {}).some(Boolean) || Object.values(draft.focus?.notes ?? {}).some(Boolean);
+  const hasDraft = incomePending || draft.income !== null || Object.values(draft.amounts).some(value => value !== null) || Object.values(draft.balances).some(value => value !== null) || Boolean(draft.summary) || Object.values(draft.notes).some(Boolean) || Object.values(draft.focus?.checks ?? {}).some(Boolean) || Object.values(draft.focus?.notes ?? {}).some(Boolean);
 
   useEffect(() => {
     if (confirmation) confirmDialog.current?.showModal();
@@ -73,9 +94,11 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
     else runAction(action);
   }
 
-  function resetDraft(type = draft.type, end = draft.end) {
+  function resetIncome() {setIncomeLinked(false);setIncomeConfirmed(false);setIncomePending(false);setIncomeMonthId("");setIncomeEditorRevision(value=>value+1);}
+  function resetDraft(type = draft.type, end = draft.end, monthStartDay:1|10 = type===draft.type&&type==="month" ? draft.monthStartDay ?? 1 : 10) {
     confirmOrRun(hasDraft, "切换会清空当前未保存的输入，是否继续？", () => {
-      setDraft(makeDraft(type, end));
+      setDraft(makeDraft(type, end, monthStartDay));
+      resetIncome();
       setLedgerLinked(false);
       setLedgerConfirmed(false);
       setLiveFocus(end === today);
@@ -86,6 +109,8 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   }
   function save() {
     try {
+      if (incomePending) throw new Error("收入录入尚未保存，请先点击保存收入或取消修改。");
+      if (incomeLinked && !ledgerLinked && !incomeConfirmed) throw new Error("请先核对本期工资和其他收入。");
       if (ledgerLinked && (ledgerSource.unassigned.length || !ledgerConfirmed)) throw new Error("请先确认日期收支分类完整，并核对本期全部收支。");
       if (draft.accounts && !accountsConfirmed) throw new Error("请先核对本期期末账户余额并勾选确认。");
       const budget = draft.type === "month" ? draft.budget ?? {mode: budgetMode, amounts: Object.fromEntries(plan.rows.map(row => [row.id, row[budgetMode]]))} : undefined;
@@ -94,7 +119,8 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
         onChange(upsertFinanceReview(records, record), canSyncAccounts && syncAccounts ? record.accounts : undefined);
         setSelectedId(record.id);
         setView("report");
-        setDraft(makeDraft(draft.type, draft.end));
+        setDraft(makeDraft(draft.type, draft.end, draft.monthStartDay ?? 1));
+        resetIncome();
         setLedgerLinked(false);
         setLedgerConfirmed(false);
         setLiveFocus(draft.end === today);
@@ -119,9 +145,10 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   function aggregate() {
     try {
       if (draft.type === "week") return;
-      const aggregated = aggregateFinanceReviews(records, draft.type, draft.end);
+      const aggregated = aggregateFinanceReviews(records, draft.type, draft.end, draft.monthStartDay ?? 1);
       confirmOrRun(hasDraft, "汇总将替换当前输入，是否继续？", () => {
         setDraft(aggregated);
+        resetIncome();
         setLedgerLinked(false);
         setLedgerConfirmed(false);
         setLiveFocus(false);
@@ -142,7 +169,7 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
     });
   }
   function downloadTemplate() {
-    const template = makeDraft(draft.type, draft.end);
+    const template = makeDraft(draft.type, draft.end, draft.monthStartDay ?? 1);
     template.accounts = template.accounts?.map(row => ({...row, balance: null}));
     template.balances.cash = null;
     download("finance-review-template.json", JSON.stringify(template, null, 2), "application/json");
@@ -166,11 +193,24 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
   function bindLedger() {
     confirmOrRun(draft.income!==null || reviewCategories.some(row=>row.flow==="expense"&&draft.amounts[row.id]!==null), "将替换本期收入和消费金额，投资与应急划拨、事项说明保持不变。是否继续？", ()=>{
       setDraft(linkDatedReview(draft,ledgerSource.rows));
+      setIncomeLinked(false);
       setLedgerLinked(true);
       setLedgerSeen(ledgerSignature);
       setLedgerConfirmed(false);
       setStatus("已按日期带入收支，请核对本期完整性后保存。");
     });
+  }
+  function bindIncome() {
+    confirmOrRun(draft.income!==null, "以本期带日期的工资和其他到账替换收入合计，支出、划拨及说明不变。是否继续？", ()=>{
+      setDraft(linkReviewIncome(draft,incomeRows));setIncomeLinked(true);setIncomeSeen(incomeSignature);setIncomeConfirmed(false);
+    });
+  }
+  function saveIncome(entry:DatedEntry, previousId:string|undefined, mode:EntryMode) {
+    onSaveIncome(entry,previousId,mode);
+    if (!boundLedger && (incomeLinked || (!draft.incomeLedger && (draft.income===null || draft.income===0)))) {
+      setIncomeLinked(true);setIncomeSeen("");setIncomeConfirmed(false);
+    }
+    setStatus("收入已保存到账本。未联动的手填金额或历史快照保留；需更新时请带入本期收入。");
   }
 
   return <div className="finance-review">
@@ -195,9 +235,22 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
       <div className="review-fields">
         <label className="field"><span>复盘周期</span><select value={draft.type} onChange={event => resetDraft(event.target.value as ReviewType)}>{Object.entries(reviewTypeNames).map(([type,name]) => <option key={type} value={type}>{name}</option>)}</select></label>
         <label className="field"><span>数据截至</span><input type="date" required value={draft.end} onInput={event => {if (event.currentTarget.validity.valid && event.currentTarget.value && event.currentTarget.value !== draft.end) resetDraft(draft.type, event.currentTarget.value);}}/></label>
-        <label className="field"><span>本期外部收入</span><input aria-label="本期外部收入" type="number" step="0.01" required readOnly={boundLedger} value={draft.income ?? ""} onChange={event => setDraft({...draft, income:numeric(event.target.value)})}/></label>
+        <label className="field"><span>本期外部收入</span><input aria-label="本期外部收入" type="number" step="0.01" required readOnly={boundIncome} value={draft.income ?? ""} onChange={event => setDraft({...draft, income:numeric(event.target.value)})}/></label>
       </div>
       <p className="review-caption">{draft.start} 至 {draft.end} · 人民币 · 填该日期范围内的发生额，不填跨期累计数。没有发生填 0，空白保留为待补。</p>
+      {draft.type==="month"&&<label className="field"><span>月度起算日</span><select aria-label="月度起算日" value={draft.monthStartDay ?? 1} onChange={event=>resetDraft(draft.type,draft.end,Number(event.target.value) as 1|10)}><option value="10">每月10日至下月9日</option><option value="1">自然月（保留旧口径）</option></select></label>}
+      <section className="review-income" aria-label="复盘收入录入">
+        <div className="review-toolbar"><h3>本期收入 · 工资与其他到账</h3><span className="review-caption">{draft.start} 至 {draft.end}</span></div>
+        {incomeMonths.length>1&&<label className="field"><span>到账月份</span><select aria-label="复盘收入月份" value={incomeMonth?.id ?? ""} onChange={event=>{const next=event.target.value;confirmOrRun(incomePending,"切换月份会放弃尚未保存的收入输入，是否继续？",()=>{setIncomeMonthId(next);setIncomePending(false);});}}>{incomeMonths.map(month=><option key={month.id} value={month.id}>{month.id}</option>)}</select></label>}
+        {incomeMonth ? <DatedLedgerEditor key={`${draft.start}:${draft.end}:${incomeMonth.id}:${incomeEditorRevision}`} embedded range={{start:draft.start,end:draft.end}} flow="income" month={incomeMonth} entries={datedEntries} onSave={saveIncome} onDelete={onDeleteIncome} onDirtyChange={setIncomePending}/> : <p>该日期尚无月份账本。<button type="button" className="secondary-button" onClick={()=>onOpenModule("income")}>前往收入添加月份</button></p>}
+        <div className="review-toolbar"><span className="review-caption">账本已登记：工资 {reviewMoney(incomeRows.filter(row=>row.categoryId==="salary").reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100)} · 其他收入 {reviewMoney(incomeRows.filter(row=>row.categoryId==="otherIncome").reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100)}</span><div className="data-actions"><button type="button" className="secondary-button" disabled={boundLedger||incomeLinked} onClick={bindIncome}>带入本期收入</button>{!boundLedger&&(incomeLinked||draft.incomeLedger)&&<button type="button" className="secondary-button" onClick={()=>{setIncomeLinked(false);setIncomeConfirmed(false);setDraft({...draft,incomeLedger:undefined});}}>收入改为手填</button>}</div></div>
+        {incomeLinked&&!ledgerLinked&&<label className="review-ledger-confirm"><input type="checkbox" required checked={incomeConfirmed} onChange={event=>setIncomeConfirmed(event.target.checked)}/>已核对本期工资和其他收入，未到账不算收入</label>}
+      </section>
+      {draft.type!=="quarter"&&<section className="review-cycle" aria-label="十号账期累计"><h3>10号账期 · 每周收支</h3><p>{cycle.start} 至 {cycle.limit} · 截至 {cycle.end}</p>
+        <p>已登记收入 {reviewMoney(cycleSource.income)} · 支出 {reviewMoney(cycleSource.spending)} · 结余 {reviewMoney(cycleSource.income-cycleSource.spending)}</p>
+        <div className="table-wrap"><table className="review-table"><thead><tr><th>周内日期</th><th>工资</th><th>其他收入</th><th>支出</th><th>结余</th><th>结余较前段</th></tr></thead><tbody>{cycleWeeks.map(row=><tr key={row.start}><th>{row.start.slice(5)} 至 {row.end.slice(5)}<small>{row.days} 天 · {row.count} 笔</small></th><td>{row.count ? reviewMoney(row.salary) : "未登记"}</td><td>{row.count ? reviewMoney(row.other) : "未登记"}</td><td>{row.count ? reviewMoney(row.spending) : "未登记"}</td><td>{row.count ? reviewMoney(row.surplus) : "未登记"}</td><td>{row.surplusDelta===null ? "无同天数基准" : change(row.surplusDelta)}</td></tr>)}</tbody></table></div>
+        <p className="review-caption">口径：日期账本，不含手填复盘发生额。未登记不代表没有发生；相关月份还有 {cycleSource.undated.length} 项未标日期金额。账期首尾按实际天数列示，不把跨账期周重复相加。{draft.start<cycle.start ? "本次复盘跨账期，本表仅列所示账期内的数据。" : ""}</p>
+      </section>}
       <section className="review-ledger" aria-label="本期日期收支">
         <div className="review-toolbar"><h3>本期日期收支</h3><div className="data-actions"><button type="button" className="secondary-button" onClick={()=>onOpenModule("income")}>前往收入</button><button type="button" className="secondary-button" onClick={()=>onOpenModule("spending")}>前往支出</button></div></div>
         <p>账本已标日期 {ledgerSource.rows.length} 笔 · 收入 {reviewMoney(ledgerSource.income)} · 净支出 {reviewMoney(ledgerSource.spending)}</p>
@@ -246,13 +299,15 @@ export default function FinanceReviewPanel({records, plan, accounts, focusSource
     {view === "report" && (!selected || !analysis ? <p>尚无复盘记录。</p> : <section aria-label="周期对比报告">
       <div className="review-toolbar">
         <label className="field"><span>报告期间</span><select aria-label="报告期间" value={selected.id} onChange={event => setSelectedId(event.target.value)}>{records.map(record => <option key={record.id} value={record.id}>{reviewTypeNames[record.type]} · {record.start} 至 {record.end}</option>)}</select></label>
-        <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => {setDraft({...selected});setLiveFocus(false);setLedgerLinked(false);setLedgerConfirmed(false);setAccountsConfirmed(false);setView("entry");setStatus("");})}>修订本期</button>
+        <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => {setDraft({...selected});resetIncome();setLiveFocus(false);setLedgerLinked(false);setLedgerConfirmed(false);setAccountsConfirmed(false);setView("entry");setStatus("");})}>修订本期</button>
           <button className="secondary-button" type="button" onClick={() => download(`finance-${selected.type}-${selected.start}.md`,financeReviewReport(selected,records),"text/markdown;charset=utf-8")}>下载报告</button></div>
       </div>
       <p className="review-caption">{analysis.previous ? `对比上期：${analysis.previous.start} 至 ${analysis.previous.end}` : "首次基准，暂无上期对比"}</p>
+      {selected.type==="month"&&<p className="review-caption">{selected.monthStartDay===10 ? "10号账期：每月10日至下月9日" : "自然月报告：沿用原口径"}</p>}
+      {selected.incomeLedger&&<><p className="review-caption">收入来源：保存时的到账明细快照</p><LedgerRows rows={selected.incomeLedger}/></>}
       {selected.ledger&&<><p className="review-caption">收支来源：保存时的日期明细快照 · {selected.ledger.length} 笔</p><LedgerRows rows={selected.ledger}/></>}
       <div className="review-metrics">
-        <div><span>本期收入</span><strong>{reviewMoney(analysis.totals.income)}</strong></div>
+        <div><span>本期收入</span><strong>{reviewMoney(analysis.totals.income)}</strong>{reviewIncomeRows(selected)&&<small>工资 {reviewMoney(reviewIncomeRows(selected)!.filter(row=>row.categoryId==="salary").reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100)} · 其他 {reviewMoney(reviewIncomeRows(selected)!.filter(row=>row.categoryId==="otherIncome").reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100)}</small>}</div>
         <div><span>本期实际消费</span><strong>{reviewMoney(analysis.totals.spending)}</strong></div>
         <div><span>本期收支结余</span><strong>{reviewMoney(analysis.totals.surplus)}</strong></div>
         <div><span>期末净资产</span><strong>{reviewMoney(analysis.totals.netWorth)}</strong><small>较上期余额 {change(analysis.netWorthDelta)}</small></div>

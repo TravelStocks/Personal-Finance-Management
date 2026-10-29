@@ -3538,7 +3538,7 @@ export default function FinanceDashboard() {
 
                 {moduleId === "periodReview" && (
                   <Module title="周期复盘" desc="本期实际发生额与上期同类周期比较；记录与账本明细分别保存。">
-                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} ledgerMonths={monthlyRecords} datedEntries={datedEntries}
+                    <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} ledgerMonths={monthlyRecords} datedEntries={datedEntries} onSaveIncome={saveDatedEntry} onDeleteIncome={deleteDatedEntry}
                       focusSource={{
                         projects:fundBuckets.map(({id,name,target,current,dueDate})=>({id,name,target,current,dueDate})),
                         bills:reminders.map(({id,name,amount,date,kind})=>({id,name,amount,date,kind})),

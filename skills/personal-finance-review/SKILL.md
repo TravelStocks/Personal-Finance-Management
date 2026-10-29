@@ -15,7 +15,7 @@ Store actual inputs, histories and reports in `.private-finance/`, which must be
 
 ## Start A Review
 
-1. Confirm the period and cutoff date if unclear. Weeks begin Monday; months and quarters begin on their first calendar date. Use Asia/Shanghai dates. Partial periods are allowed and must be labelled as such.
+1. Confirm the period and cutoff date if unclear. Weeks begin Monday. New monthly reviews use the 10th through the following 9th, including both ends; the next 10th belongs only to the next cycle. Quarters retain calendar boundaries. Use Asia/Shanghai dates. Partial periods are allowed and must be labelled as such. Preserve old calendar-month reviews, and compare months only with the same start-day basis.
 2. Read `.private-finance/history.json` if it exists. Prefer the user's latest exported website review records if newer; reconcile same-period conflicts before replacement. The website and local history are not automatically the same store.
 3. Generate a blank intake:
 
@@ -24,6 +24,7 @@ node scripts/finance-review.cjs template --type week --end YYYY-MM-DD
 ```
 
 For a monthly review use `--type month --mode normal` or `--mode trip`; for a quarterly review use `--type quarter`. Existing intake files are never overwritten. Return the concise human template in `assets/review-template.md`, with the calculated dates and previous verified baseline. Do not prefill last period's values as this period's actuals.
+Monthly CLI templates default to the 10th; `--month-start 1` explicitly retains a calendar-month template. Saved monthly records use optional `monthStartDay: 10`; omission means legacy calendar month. Model helpers keep a legacy default of 1 for compatibility, so pass 10 explicitly for new payday-cycle drafts and period calculations.
 4. Ask only for missing necessary numbers or material ambiguities. Zero means confirmed none; blank means unknown. Do not finish a report by assuming unknown balances or expenses are zero.
 
 ## Nine Categories And Accounting
@@ -59,6 +60,8 @@ Return a concise fine-category table and learning-purpose list with the periodic
 ## Save And Analyze
 
 ### Dated Website Ledger
+
+The review form has an inline income editor for salary and other actual receipts. Saving it updates the source month's income ledger; income-only linking must preserve manual expense amounts, transfers and notes. An unsubmitted income edit must not be silently dropped when saving a review. An optional `incomeLedger` snapshot preserves dated income evidence when expenses remain manual; `ledger` remains the full dated-flow snapshot. The parser reconciles income totals to either source and rejects contradictory evidence. Preserve saved receipt dates for reporting which week salary or other income arrived, without inferring dates from the planned payday. The live 10th-cycle weekly table is dated-ledger evidence only, not proof of completeness: it excludes undated monthly amounts and manually entered review flows. Clip boundary weeks to the cycle rather than duplicating whole weeks; never prorate actuals. Missing weeks are not zero-change baselines.
 
 The website now stores `datedEntries` in full backups: `id`, ISO `date`, `flow` (`income` or `expense`), `categoryId`, signed `amount`, and `note`. Income categories are `salary` and `otherIncome`; expenses reference a budget row in the date's month, with a verified coarse `group`. Use `app/dated-ledger-model.ts` for reconciliation. Backfilling dates (`allocate`) splits already-entered monthly actuals without increasing them. New actuals add to monthly totals; editing/deleting applies only the delta. Never add the dated subtotal again to monthly totals. A monthly amount without a date cannot establish which week it belongs to. Dated salary actuals are protected from later salary-plan changes.
 

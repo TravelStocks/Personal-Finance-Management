@@ -87,5 +87,9 @@ export function linkDatedReview(draft:ReviewDraft, rows:ReviewLedgerRow[]):Revie
   if (rows.some(row=>row.group==="unassigned")) throw new Error("请先在支出模块确认明细的分类归属");
   const amounts = {...draft.amounts};
   for (const group of groups) amounts[group] = sum(rows.filter(row=>row.group===group).map(row=>row.amount));
-  return {...draft,income:sum(rows.filter(row=>row.group==="income").map(row=>row.amount)),amounts,ledger:rows.map(row=>({...row}))};
+  return {...draft,income:sum(rows.filter(row=>row.group==="income").map(row=>row.amount)),amounts,ledger:rows.map(row=>({...row})),incomeLedger:undefined};
+}
+export function linkReviewIncome(draft:ReviewDraft, rows:ReviewLedgerRow[]):ReviewDraft {
+  const incomeLedger = rows.filter(row=>row.flow==="income").map(row=>({...row}));
+  return {...draft,income:sum(incomeLedger.map(row=>row.amount)),incomeLedger};
 }

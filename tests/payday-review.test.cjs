@@ -1,0 +1,85 @@
+const assert = require('node:assert/strict');
+const {test} = require('node:test');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const {spawnSync} = require('node:child_process');
+const {loadModel} = require('../scripts/finance-review.cjs');
+const m=loadModel('finance-review-model');
+const ledger=loadModel('dated-ledger-model');
+const record=(end,startDay=10,extra={})=>m.parseFinanceReview({...m.newReviewDraft('month',end,startDay),income:0,amounts:Object.fromEntries(m.reviewCategories.map(row=>[row.id,0])),balances:{cash:100,investments:0,otherAssets:0,debt:0},...extra});
+const receipt=(date,categoryId='salary',amount=13000)=>({id:date+categoryId,date,flow:'income',group:'income',categoryId,name:categoryId==='salary'?'工资到账':'其他到账',amount,note:'verified receipt'});
+
+test('payday month includes the 10th and excludes next 10th, with leap and year boundaries',()=>{
+  assert.deepEqual(m.reviewPeriod('month','2026-10-09',10),{start:'2026-09-10',end:'2026-10-09',limit:'2026-10-09'});
+  assert.deepEqual(m.reviewPeriod('month','2026-10-10',10),{start:'2026-10-10',end:'2026-10-10',limit:'2026-11-09'});
+  assert.equal(m.reviewPeriod('month','2027-01-09',10).start,'2026-12-10');
+  assert.equal(m.reviewPeriod('month','2024-02-29',10).limit,'2024-03-09');
+  assert.equal(m.reviewTotals(record('2024-03-09')).days,29);
+  assert.equal(m.reviewTotals(record('2025-03-09')).days,28);
+  assert.equal(m.reviewPeriod('week','2026-11-10',10).start,'2026-11-09');
+  assert.equal(m.reviewPeriod('quarter','2026-11-10',10).start,'2026-10-01');
+});
+test('legacy calendar months round-trip unchanged and compare only with the same month basis',()=>{
+  const legacy=record('2026-10-29',1), cycle=record('2026-10-29');
+  assert.equal(legacy.start,'2026-10-01');assert.equal(legacy.monthStartDay,undefined);
+  assert.equal(cycle.start,'2026-10-10');assert.equal(cycle.monthStartDay,10);
+  const previous=record('2026-10-09'), previousCalendar=record('2026-09-30',1);
+  assert.equal(m.analyzeFinanceReview(cycle,[previous,previousCalendar]).previous.id,previous.id);
+  assert.equal(m.analyzeFinanceReview(legacy,[previous,previousCalendar]).previous.id,previousCalendar.id);
+  assert.equal(m.analyzeFinanceReview(cycle,[previousCalendar]).previous,undefined);
+  assert.equal(m.parseFinanceReviews([legacy,cycle]).length,2);
+  assert.deepEqual(m.parseFinanceReview(JSON.parse(JSON.stringify(legacy))),legacy);
+  assert.throws(()=>m.parseFinanceReview({...cycle,monthStartDay:11}),/起算日/);
+  assert.throws(()=>m.parseFinanceReview({...cycle,monthStartDay:undefined}),/跨周期/);
+  assert.match(m.financeReviewReport(cycle,[cycle]),/每月10日至下月9日/);
+});
+test('weekly cycle breakdown clips edges without duplicating receipts or treating missing weeks as a baseline',()=>{
+  const rows=[receipt('2026-10-09'),receipt('2026-10-10'),receipt('2026-10-18','otherIncome',200),receipt('2026-10-28','otherIncome',100),receipt('2026-11-10')];
+  const weeks=m.weeklyLedgerTotals(rows,'2026-10-10','2026-11-09');
+  assert.equal(weeks[0].start,'2026-10-10');assert.equal(weeks[0].end,'2026-10-11');assert.equal(weeks.at(-1).end,'2026-11-09');
+  assert.equal(weeks.reduce((sum,row)=>sum+row.salary,0),13000);
+  assert.equal(weeks.reduce((sum,row)=>sum+row.other,0),300);
+  assert.equal(weeks.reduce((sum,row)=>sum+row.count,0),3);
+  assert.equal(weeks.find(row=>row.start==='2026-10-26').surplusDelta,null);
+  for(let i=1;i<weeks.length;i++) assert.equal(Date.parse(weeks[i].start)-Date.parse(weeks[i-1].end),86400000);
+  const equal=m.weeklyLedgerTotals([receipt('2026-10-12','otherIncome',10),receipt('2026-10-19','otherIncome',20)],'2026-10-12','2026-10-25');
+  assert.equal(equal[1].surplusDelta,10);
+});
+test('income-only linking retains manual spending and transfers, and freezes the source evidence',()=>{
+  const draft=m.newReviewDraft('week','2026-10-29');
+  draft.amounts=Object.fromEntries(m.reviewCategories.map(row=>[row.id,0]));
+  draft.amounts.daily=200;draft.amounts.investment=2750;draft.amounts.emergency=500;
+  draft.balances={cash:100,investments:0,otherAssets:0,debt:0};
+  const rows=[receipt('2026-10-26'),receipt('2026-10-28','otherIncome',20.5)];
+  const linked=ledger.linkReviewIncome(draft,rows), saved=m.parseFinanceReview(linked);
+  assert.equal(saved.income,13020.5);assert.equal(saved.amounts.daily,200);assert.equal(saved.amounts.investment,2750);assert.equal(saved.amounts.emergency,500);
+  rows[0].amount=5;
+  assert.equal(m.reviewIncomeRows(saved)[0].amount,13000);
+  assert.match(m.financeReviewReport(saved,[saved]),/收入到账快照/);
+  assert.ok(m.analyzeFinanceReview(saved,[saved]).highlights[0].details.some(text=>text.includes('2026-10-26 工资到账')));
+  assert.throws(()=>m.parseFinanceReview({...saved,income:13000}),/不一致/);
+  assert.throws(()=>m.parseFinanceReview({...saved,incomeLedger:[receipt('2026-10-25')]}),/不属于/);
+  assert.throws(()=>m.parseFinanceReview({...saved,incomeLedger:[receipt('2026-10-28','stockIncome',13020.5)]}),/须区分/);
+  const full=ledger.linkDatedReview(linked,saved.incomeLedger);
+  assert.equal(full.incomeLedger,undefined);assert.equal(full.ledger.length,2);
+});
+test('monthly rollups do not prorate crossing weeks, and complete matching coverage preserves income receipts',()=>{
+  const week=(date,entries)=>m.parseFinanceReview({...m.newReviewDraft('week',date),income:entries.reduce((sum,row)=>sum+row.amount,0),incomeLedger:entries,amounts:Object.fromEntries(m.reviewCategories.map(row=>[row.id,0])),balances:{cash:0,investments:0,otherAssets:0,debt:0}});
+  const weeks=['2026-08-16','2026-08-23','2026-08-30','2026-09-06','2026-09-09'].map(date=>week(date,[receipt(date,'otherIncome',1)]));
+  const monthly=m.aggregateFinanceReviews(weeks,'month','2026-09-09',10);
+  assert.equal(monthly.start,'2026-08-10');assert.equal(monthly.incomeLedger.length,5);
+  assert.throws(()=>m.aggregateFinanceReviews([week('2026-10-11',[])],'month','2026-10-11',10),/没有完整/);
+  const calendars=['2026-07-31','2026-08-31','2026-09-30'].map(end=>record(end,1));
+  const quarter=m.aggregateFinanceReviews([...calendars,record('2026-08-09')],'quarter','2026-09-30');
+  assert.equal(quarter.start,'2026-07-01');
+});
+test('CLI month template defaults to 10th with explicit legacy calendar option',t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'payday-review-test-'));
+  t.after(()=>{assert.ok(path.basename(dir).startsWith('payday-review-test-'));fs.rmSync(dir,{recursive:true,force:true});});
+  const run=(...args)=>spawnSync(process.execPath,['scripts/finance-review.cjs','template','--type','month','--end','2026-10-29','--dir',dir,...args],{encoding:'utf8'});
+  const cycle=run();assert.equal(cycle.status,0,cycle.stderr);
+  assert.equal(JSON.parse(fs.readFileSync(JSON.parse(cycle.stdout).draft)).start,'2026-10-10');
+  const calendar=run('--month-start','1');assert.equal(calendar.status,0,calendar.stderr);
+  assert.equal(JSON.parse(fs.readFileSync(JSON.parse(calendar.stdout).draft)).start,'2026-10-01');
+});
