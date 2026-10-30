@@ -333,6 +333,21 @@ select {
 .review-overview .section-title {
   flex-wrap: wrap;
 }
+.review-month-income {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 32px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+.review-month-income strong { display: block; font-size: 28px; }
+.review-month-income small, .review-week-trend small { display: block; margin-top: 4px; font-weight: 400; }
+.review-week-trend { margin-top: 20px; min-width: 0; }
+.review-week-table { overflow: auto; max-height: 480px; margin-top: 12px; }
+.review-week-table table { width: 100%; min-width: 720px; }
+.review-week-table th, .review-week-table td { text-align: left; padding: 12px; }
+.review-week-table thead { position: sticky; top: 0; background: #eef4fa; }
+.review-week-trend p { font-size: 12px; }
 
 .total-assets-hero {
   display: grid;

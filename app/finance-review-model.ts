@@ -323,6 +323,41 @@ export function latestWeeklyReview(records: FinanceReview[]) {
 export function reviewIncomeRows(record:Pick<FinanceReview,"ledger" | "incomeLedger">) {
   return (record.ledger ?? record.incomeLedger)?.filter(row=>row.flow==="income");
 }
+export function overviewWeeklyTrend(records:FinanceReview[]) {
+  const weeks = new Map<string,FinanceReview>();
+  for (const record of records.filter(row=>row.type==="week")) {
+    const previous=weeks.get(record.start);
+    if(!previous || record.savedAt>previous.savedAt || (record.savedAt===previous.savedAt && record.end>previous.end)) weeks.set(record.start,record);
+  }
+  const ordered=[...weeks.values()].sort((a,b)=>a.start.localeCompare(b.start));
+  const rows=ordered.map((record,index)=>{
+    const totals=reviewTotals(record), previous=ordered[index-1];
+    const prior=previous ? reviewTotals(previous) : undefined;
+    const adjacent=previous && reviewDayDistance(record.start,previous.start)===7;
+    const comparable=adjacent && prior?.days===totals.days;
+    return {record,...totals,comparison:!previous ? "首次基准" : !adjacent ? "中间缺周" : !comparable ? "天数不同" : "较上周",
+      changes:comparable ? {income:sum([totals.income,-prior!.income]),spending:sum([totals.spending,-prior!.spending]),surplus:sum([totals.surplus,-prior!.surplus])} : null};
+  });
+  const latest=ordered.at(-1);
+  if(!latest)return {rows,month:null};
+  const cycle=reviewPeriod("month",latest.end,10);
+  let income=0,coveredDays=0,boundaryMissing=false;
+  for(const record of ordered.filter(row=>row.end>=cycle.start && row.start<=cycle.end)) {
+    const start=record.start>cycle.start ? record.start : cycle.start;
+    const end=record.end<cycle.end ? record.end : cycle.end;
+    if(record.start>=cycle.start && record.end<=cycle.end) {
+      income=sum([income,record.income]);
+      coveredDays+=reviewDayDistance(end,start)!+1;
+    } else {
+      const dated=reviewIncomeRows(record);
+      if(dated) {
+        income=sum([income,...dated.filter(row=>row.date>=start&&row.date<=end).map(row=>row.amount)]);
+        coveredDays+=reviewDayDistance(end,start)!+1;
+      } else boundaryMissing=true;
+    }
+  }
+  return {rows,month:{...cycle,income,coveredDays,days:reviewDayDistance(cycle.end,cycle.start)!+1,boundaryMissing}};
+}
 export function weeklyLedgerTotals(rows:Array<Pick<ReviewLedgerRow,"date" | "flow" | "categoryId" | "amount">>, start:string, end:string) {
   dateValue(start); dateValue(end);
   const result:Array<{start:string;end:string;days:number;count:number;salary:number;other:number;spending:number;surplus:number;surplusDelta:number|null}> = [];

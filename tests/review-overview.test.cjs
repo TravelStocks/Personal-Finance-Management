@@ -52,3 +52,41 @@ test('overview restored from stored review records retains amounts and first bas
   assert.match(render(rows),/2026-10-26 至 2026-10-29/);
   assert.match(render(rows),/13,000\.00/);
 });
+
+test('weekly trend excludes transfers, shows exact cents and compares only adjacent equal-length weeks',()=>{
+  const first=record('2026-10-18',{income:13000});
+  const second=record('2026-10-25',{income:12.34});
+  second.amounts={...second.amounts,daily:100.11,investment:2750,emergency:500};
+  const partial=record('2026-10-29');
+  const trend=m.overviewWeeklyTrend([partial,second,first]);
+  assert.equal(trend.rows[1].spending,100.11);
+  assert.equal(trend.rows[1].surplus,-87.77);
+  assert.equal(trend.rows[1].changes.income,-12987.66);
+  assert.equal(trend.rows[2].changes,null);
+  assert.equal(trend.month.income,14012.34);
+  assert.equal(trend.month.coveredDays,18);
+  assert.equal(trend.month.days,20);
+  assert.equal(m.overviewWeeklyTrend([first,partial]).rows[1].comparison,'中间缺周');
+  const html=render([first,second,partial]);
+  assert.match(html,/本月收入 · 已记录/);
+  assert.match(html,/每周收支变化/);
+  assert.match(html,/每周实际消费/);
+});
+
+test('month follows the tenth, only splits dated boundary income, and never adds monthly reports or revisions twice',()=>{
+  const boundary=record('2026-10-11',{income:300,savedAt:'2026-10-11T00:00:00Z'});
+  const last=record('2026-10-18',{income:100});
+  assert.equal(m.overviewWeeklyTrend([boundary,last]).month.income,100);
+  assert.equal(m.overviewWeeklyTrend([boundary,last]).month.boundaryMissing,true);
+  boundary.incomeLedger=[{id:'a',date:'2026-10-09',flow:'income',categoryId:'salary',amount:200,note:'',name:'工资',group:'income'},
+    {id:'b',date:'2026-10-10',flow:'income',categoryId:'otherIncome',amount:100,note:'',name:'其他',group:'income'}];
+  const revised={...last,income:50,savedAt:'2099-01-01T00:00:00Z'};
+  const monthly={...last,type:'month',income:99999};
+  const result=m.overviewWeeklyTrend([boundary,last,monthly,revised]);
+  assert.equal(result.rows.length,2);
+  assert.equal(result.month.income,150);
+  assert.equal(result.month.coveredDays,9);
+  assert.equal(result.month.boundaryMissing,false);
+  assert.equal(m.overviewWeeklyTrend([record('2027-01-03')]).month.start,'2026-12-10');
+  assert.equal(m.overviewWeeklyTrend([]).month,null);
+});

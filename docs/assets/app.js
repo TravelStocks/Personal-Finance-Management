@@ -960,7 +960,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			default: return e;
 		}
 	}
-	function L(e, t, n) {
+	function qe(e, t, n) {
 		var r = e.pendingLanes;
 		if (r === 0) return 0;
 		var i = 0, a = e.suspendedLanes, o = e.pingedLanes;
@@ -968,10 +968,10 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		var s = r & 134217727;
 		return s === 0 ? (s = r & ~a, s === 0 ? o === 0 ? n || (n = r & ~e, n !== 0 && (i = Ke(n))) : i = Ke(o) : i = Ke(s)) : (r = s & ~a, r === 0 ? (o &= s, o === 0 ? n || (n = s & ~e, n !== 0 && (i = Ke(n))) : i = Ke(o)) : i = Ke(r)), i === 0 ? 0 : t !== 0 && t !== i && (t & a) === 0 && (a = i & -i, n = t & -t, a >= n || a === 32 && n & 4194048) ? t : i;
 	}
-	function qe(e, t) {
+	function Je(e, t) {
 		return (e.pendingLanes & ~(e.suspendedLanes & ~e.pingedLanes) & t) === 0;
 	}
-	function Je(e, t) {
+	function Ye(e, t) {
 		switch (e) {
 			case 1:
 			case 2:
@@ -1007,18 +1007,18 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			default: return -1;
 		}
 	}
-	function Ye() {
+	function Xe() {
 		var e = Ge;
 		return Ge <<= 1, !(Ge & 62914560) && (Ge = 4194304), e;
 	}
-	function Xe(e) {
+	function Ze(e) {
 		for (var t = [], n = 0; 31 > n; n++) t.push(e);
 		return t;
 	}
-	function Ze(e, t) {
+	function Qe(e, t) {
 		e.pendingLanes |= t, t !== 268435456 && (e.suspendedLanes = 0, e.pingedLanes = 0, e.warmLanes = 0);
 	}
-	function Qe(e, t, n, r, i, a) {
+	function $e(e, t, n, r, i, a) {
 		var o = e.pendingLanes;
 		e.pendingLanes = n, e.suspendedLanes = 0, e.pingedLanes = 0, e.warmLanes = 0, e.expiredLanes &= n, e.entangledLanes &= n, e.errorRecoveryDisabledLanes &= n, e.shellSuspendCounter = 0;
 		var s = e.entanglements, c = e.expirationTimes, l = e.hiddenUpdates;
@@ -1032,25 +1032,25 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 			n &= ~d;
 		}
-		r !== 0 && $e(e, r, 0), a !== 0 && i === 0 && e.tag !== 0 && (e.suspendedLanes |= a & ~(o & ~t));
+		r !== 0 && et(e, r, 0), a !== 0 && i === 0 && e.tag !== 0 && (e.suspendedLanes |= a & ~(o & ~t));
 	}
-	function $e(e, t, n) {
+	function et(e, t, n) {
 		e.pendingLanes |= t, e.suspendedLanes &= ~t;
 		var r = 31 - ze(t);
 		e.entangledLanes |= t, e.entanglements[r] = e.entanglements[r] | 1073741824 | n & 261930;
 	}
-	function et(e, t) {
+	function tt(e, t) {
 		var n = e.entangledLanes |= t;
 		for (e = e.entanglements; n;) {
 			var r = 31 - ze(n), i = 1 << r;
 			i & t | e[r] & t && (e[r] |= t), n &= ~i;
 		}
 	}
-	function tt(e, t) {
+	function nt(e, t) {
 		var n = t & -t;
-		return n = n & 42 ? 1 : nt(n), (n & (e.suspendedLanes | t)) === 0 ? n : 0;
+		return n = n & 42 ? 1 : rt(n), (n & (e.suspendedLanes | t)) === 0 ? n : 0;
 	}
-	function nt(e) {
+	function rt(e) {
 		switch (e) {
 			case 2:
 				e = 1;
@@ -1088,14 +1088,14 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 		return e;
 	}
-	function rt(e) {
+	function it(e) {
 		return e &= -e, 2 < e ? 8 < e ? e & 134217727 ? 32 : 268435456 : 8 : 2;
 	}
-	function it() {
+	function at() {
 		var e = A.p;
 		return e === 0 ? (e = window.event, e === void 0 ? 32 : mp(e.type)) : e;
 	}
-	function at(e, t) {
+	function ot(e, t) {
 		var n = A.p;
 		try {
 			return A.p = e, t();
@@ -1103,17 +1103,17 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			A.p = n;
 		}
 	}
-	var R = Math.random().toString(36).slice(2), z = "__reactFiber$" + R, ot = "__reactProps$" + R, st = "__reactContainer$" + R, ct = "__reactEvents$" + R, lt = "__reactListeners$" + R, ut = "__reactHandles$" + R, dt = "__reactResources$" + R, ft = "__reactMarker$" + R;
-	function pt(e) {
-		delete e[z], delete e[ot], delete e[ct], delete e[lt], delete e[ut];
-	}
+	var L = Math.random().toString(36).slice(2), R = "__reactFiber$" + L, st = "__reactProps$" + L, ct = "__reactContainer$" + L, lt = "__reactEvents$" + L, ut = "__reactListeners$" + L, dt = "__reactHandles$" + L, ft = "__reactResources$" + L, pt = "__reactMarker$" + L;
 	function mt(e) {
-		var t = e[z];
+		delete e[R], delete e[st], delete e[lt], delete e[ut], delete e[dt];
+	}
+	function z(e) {
+		var t = e[R];
 		if (t) return t;
 		for (var n = e.parentNode; n;) {
-			if (t = n[st] || n[z]) {
+			if (t = n[ct] || n[R]) {
 				if (n = t.alternate, t.child !== null || n !== null && n.child !== null) for (e = df(e); e !== null;) {
-					if (n = e[z]) return n;
+					if (n = e[R]) return n;
 					e = df(e);
 				}
 				return t;
@@ -1123,7 +1123,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		return null;
 	}
 	function ht(e) {
-		if (e = e[z] || e[st]) {
+		if (e = e[R] || e[ct]) {
 			var t = e.tag;
 			if (t === 5 || t === 6 || t === 13 || t === 31 || t === 26 || t === 27 || t === 3) return e;
 		}
@@ -1135,14 +1135,14 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		throw Error(i(33));
 	}
 	function _t(e) {
-		var t = e[dt];
-		return t ||= e[dt] = {
+		var t = e[ft];
+		return t ||= e[ft] = {
 			hoistableStyles: /* @__PURE__ */ new Map(),
 			hoistableScripts: /* @__PURE__ */ new Map()
 		}, t;
 	}
 	function B(e) {
-		e[ft] = !0;
+		e[pt] = !0;
 	}
 	var vt = /* @__PURE__ */ new Set(), yt = {};
 	function bt(e, t) {
@@ -1344,7 +1344,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			for (var a in t) r = t[a], t.hasOwnProperty(a) && n[a] !== r && Gt(e, a, r);
 		} else for (var o in t) t.hasOwnProperty(o) && Gt(e, o, t[o]);
 	}
-	function V(e) {
+	function qt(e) {
 		if (e.indexOf("-") === -1) return !1;
 		switch (e) {
 			case "annotation-xml":
@@ -1358,7 +1358,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			default: return !0;
 		}
 	}
-	var qt = new Map([
+	var V = new Map([
 		["acceptCharset", "accept-charset"],
 		["htmlFor", "for"],
 		["httpEquiv", "http-equiv"],
@@ -1450,7 +1450,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function tn(e) {
 		var t = ht(e);
 		if (t && (e = t.stateNode)) {
-			var n = e[ot] || null;
+			var n = e[st] || null;
 			a: switch (e = t.stateNode, t.type) {
 				case "input":
 					if (Lt(e, n.value, n.defaultValue, n.defaultValue, n.checked, n.defaultChecked, n.type, n.name), t = n.name, n.type === "radio" && t != null) {
@@ -1458,7 +1458,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						for (n = n.querySelectorAll("input[name=\"" + It("" + t) + "\"][type=\"radio\"]"), t = 0; t < n.length; t++) {
 							var r = n[t];
 							if (r !== e && r.form === e.form) {
-								var a = r[ot] || null;
+								var a = r[st] || null;
 								if (!a) throw Error(i(90));
 								Lt(r, a.value, a.defaultValue, a.defaultValue, a.checked, a.defaultChecked, a.type, a.name);
 							}
@@ -1486,7 +1486,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function an(e, t) {
 		var n = e.stateNode;
 		if (n === null) return null;
-		var r = n[ot] || null;
+		var r = n[st] || null;
 		if (r === null) return null;
 		n = r[t];
 		a: switch (t) {
@@ -1556,7 +1556,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			isPersistent: mn
 		}), t;
 	}
-	var H = {
+	var _n = {
 		eventPhase: 0,
 		bubbles: 0,
 		cancelable: 0,
@@ -1565,10 +1565,10 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		},
 		defaultPrevented: 0,
 		isTrusted: 0
-	}, _n = gn(H), vn = h({}, H, {
+	}, H = gn(_n), U = h({}, _n, {
 		view: 0,
 		detail: 0
-	}), yn = gn(vn), bn, xn, Sn, Cn = h({}, vn, {
+	}), vn = gn(U), yn, bn, xn, Sn = h({}, U, {
 		screenX: 0,
 		screenY: 0,
 		clientX: 0,
@@ -1579,25 +1579,25 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		shiftKey: 0,
 		altKey: 0,
 		metaKey: 0,
-		getModifierState: Pn,
+		getModifierState: Nn,
 		button: 0,
 		buttons: 0,
 		relatedTarget: function(e) {
 			return e.relatedTarget === void 0 ? e.fromElement === e.srcElement ? e.toElement : e.fromElement : e.relatedTarget;
 		},
 		movementX: function(e) {
-			return "movementX" in e ? e.movementX : (e !== Sn && (Sn && e.type === "mousemove" ? (bn = e.screenX - Sn.screenX, xn = e.screenY - Sn.screenY) : xn = bn = 0, Sn = e), bn);
+			return "movementX" in e ? e.movementX : (e !== xn && (xn && e.type === "mousemove" ? (yn = e.screenX - xn.screenX, bn = e.screenY - xn.screenY) : bn = yn = 0, xn = e), yn);
 		},
 		movementY: function(e) {
-			return "movementY" in e ? e.movementY : xn;
+			return "movementY" in e ? e.movementY : bn;
 		}
-	}), wn = gn(Cn), Tn = gn(h({}, Cn, { dataTransfer: 0 })), En = gn(h({}, vn, { relatedTarget: 0 })), Dn = gn(h({}, H, {
+	}), Cn = gn(Sn), wn = gn(h({}, Sn, { dataTransfer: 0 })), Tn = gn(h({}, U, { relatedTarget: 0 })), En = gn(h({}, _n, {
 		animationName: 0,
 		elapsedTime: 0,
 		pseudoElement: 0
-	})), On = gn(h({}, H, { clipboardData: function(e) {
+	})), Dn = gn(h({}, _n, { clipboardData: function(e) {
 		return "clipboardData" in e ? e.clipboardData : window.clipboardData;
-	} })), kn = gn(h({}, H, { data: 0 })), An = {
+	} })), On = gn(h({}, _n, { data: 0 })), kn = {
 		Esc: "Escape",
 		Spacebar: " ",
 		Left: "ArrowLeft",
@@ -1610,7 +1610,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		Apps: "ContextMenu",
 		Scroll: "ScrollLock",
 		MozPrintableKey: "Unidentified"
-	}, jn = {
+	}, An = {
 		8: "Backspace",
 		9: "Tab",
 		12: "Clear",
@@ -1647,26 +1647,26 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		144: "NumLock",
 		145: "ScrollLock",
 		224: "Meta"
-	}, Mn = {
+	}, jn = {
 		Alt: "altKey",
 		Control: "ctrlKey",
 		Meta: "metaKey",
 		Shift: "shiftKey"
 	};
-	function Nn(e) {
+	function Mn(e) {
 		var t = this.nativeEvent;
-		return t.getModifierState ? t.getModifierState(e) : (e = Mn[e]) ? !!t[e] : !1;
+		return t.getModifierState ? t.getModifierState(e) : (e = jn[e]) ? !!t[e] : !1;
 	}
-	function Pn() {
-		return Nn;
+	function Nn() {
+		return Mn;
 	}
-	var Fn = gn(h({}, vn, {
+	var Pn = gn(h({}, U, {
 		key: function(e) {
 			if (e.key) {
-				var t = An[e.key] || e.key;
+				var t = kn[e.key] || e.key;
 				if (t !== "Unidentified") return t;
 			}
-			return e.type === "keypress" ? (e = pn(e), e === 13 ? "Enter" : String.fromCharCode(e)) : e.type === "keydown" || e.type === "keyup" ? jn[e.keyCode] || "Unidentified" : "";
+			return e.type === "keypress" ? (e = pn(e), e === 13 ? "Enter" : String.fromCharCode(e)) : e.type === "keydown" || e.type === "keyup" ? An[e.keyCode] || "Unidentified" : "";
 		},
 		code: 0,
 		location: 0,
@@ -1676,7 +1676,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		metaKey: 0,
 		repeat: 0,
 		locale: 0,
-		getModifierState: Pn,
+		getModifierState: Nn,
 		charCode: function(e) {
 			return e.type === "keypress" ? pn(e) : 0;
 		},
@@ -1686,7 +1686,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		which: function(e) {
 			return e.type === "keypress" ? pn(e) : e.type === "keydown" || e.type === "keyup" ? e.keyCode : 0;
 		}
-	})), In = gn(h({}, Cn, {
+	})), Fn = gn(h({}, Sn, {
 		pointerId: 0,
 		width: 0,
 		height: 0,
@@ -1697,7 +1697,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		twist: 0,
 		pointerType: 0,
 		isPrimary: 0
-	})), Ln = gn(h({}, vn, {
+	})), In = gn(h({}, U, {
 		touches: 0,
 		targetTouches: 0,
 		changedTouches: 0,
@@ -1705,12 +1705,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		metaKey: 0,
 		ctrlKey: 0,
 		shiftKey: 0,
-		getModifierState: Pn
-	})), Rn = gn(h({}, H, {
+		getModifierState: Nn
+	})), Ln = gn(h({}, _n, {
 		propertyName: 0,
 		elapsedTime: 0,
 		pseudoElement: 0
-	})), zn = gn(h({}, Cn, {
+	})), Rn = gn(h({}, Sn, {
 		deltaX: function(e) {
 			return "deltaX" in e ? e.deltaX : "wheelDeltaX" in e ? -e.wheelDeltaX : 0;
 		},
@@ -1719,20 +1719,20 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		},
 		deltaZ: 0,
 		deltaMode: 0
-	})), Bn = gn(h({}, H, {
+	})), zn = gn(h({}, _n, {
 		newState: 0,
 		oldState: 0
-	})), Vn = [
+	})), Bn = [
 		9,
 		13,
 		27,
 		32
-	], Hn = on && "CompositionEvent" in window, Un = null;
-	on && "documentMode" in document && (Un = document.documentMode);
-	var Wn = on && "TextEvent" in window && !Un, Gn = on && (!Hn || Un && 8 < Un && 11 >= Un), Kn = " ", qn = !1;
-	function Jn(e, t) {
+	], Vn = on && "CompositionEvent" in window, Hn = null;
+	on && "documentMode" in document && (Hn = document.documentMode);
+	var Un = on && "TextEvent" in window && !Hn, Wn = on && (!Vn || Hn && 8 < Hn && 11 >= Hn), Gn = " ", Kn = !1;
+	function qn(e, t) {
 		switch (e) {
-			case "keyup": return Vn.indexOf(t.keyCode) !== -1;
+			case "keyup": return Bn.indexOf(t.keyCode) !== -1;
 			case "keydown": return t.keyCode !== 229;
 			case "keypress":
 			case "mousedown":
@@ -1740,20 +1740,20 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			default: return !1;
 		}
 	}
-	function Yn(e) {
+	function Jn(e) {
 		return e = e.detail, typeof e == "object" && "data" in e ? e.data : null;
 	}
-	var Xn = !1;
-	function Zn(e, t) {
+	var Yn = !1;
+	function Xn(e, t) {
 		switch (e) {
-			case "compositionend": return Yn(t);
-			case "keypress": return t.which === 32 ? (qn = !0, Kn) : null;
-			case "textInput": return e = t.data, e === Kn && qn ? null : e;
+			case "compositionend": return Jn(t);
+			case "keypress": return t.which === 32 ? (Kn = !0, Gn) : null;
+			case "textInput": return e = t.data, e === Gn && Kn ? null : e;
 			default: return null;
 		}
 	}
-	function Qn(e, t) {
-		if (Xn) return e === "compositionend" || !Hn && Jn(e, t) ? (e = fn(), dn = un = ln = null, Xn = !1, e) : null;
+	function Zn(e, t) {
+		if (Yn) return e === "compositionend" || !Vn && qn(e, t) ? (e = fn(), dn = un = ln = null, Yn = !1, e) : null;
 		switch (e) {
 			case "paste": return null;
 			case "keypress":
@@ -1762,11 +1762,11 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					if (t.which) return String.fromCharCode(t.which);
 				}
 				return null;
-			case "compositionend": return Gn && t.locale !== "ko" ? null : t.data;
+			case "compositionend": return Wn && t.locale !== "ko" ? null : t.data;
 			default: return null;
 		}
 	}
-	var $n = {
+	var Qn = {
 		color: !0,
 		date: !0,
 		datetime: !0,
@@ -1783,17 +1783,17 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		url: !0,
 		week: !0
 	};
-	function er(e) {
+	function $n(e) {
 		var t = e && e.nodeName && e.nodeName.toLowerCase();
-		return t === "input" ? !!$n[e.type] : t === "textarea";
+		return t === "input" ? !!Qn[e.type] : t === "textarea";
 	}
-	function tr(e, t, n, r) {
-		$t ? en ? en.push(r) : en = [r] : $t = r, t = Td(t, "onChange"), 0 < t.length && (n = new _n("onChange", "change", null, n, r), e.push({
+	function er(e, t, n, r) {
+		$t ? en ? en.push(r) : en = [r] : $t = r, t = Td(t, "onChange"), 0 < t.length && (n = new H("onChange", "change", null, n, r), e.push({
 			event: n,
 			listeners: t
 		}));
 	}
-	var nr = null, U = null;
+	var tr = null, nr = null;
 	function rr(e) {
 		vd(e, 0);
 	}
@@ -1803,38 +1803,38 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function ar(e, t) {
 		if (e === "change") return t;
 	}
-	var W = !1;
+	var or = !1;
 	if (on) {
-		var or;
+		var W;
 		if (on) {
-			var G = "oninput" in document;
-			if (!G) {
-				var K = document.createElement("div");
-				K.setAttribute("oninput", "return;"), G = typeof K.oninput == "function";
+			var sr = "oninput" in document;
+			if (!sr) {
+				var G = document.createElement("div");
+				G.setAttribute("oninput", "return;"), sr = typeof G.oninput == "function";
 			}
-			or = G;
-		} else or = !1;
-		W = or && (!document.documentMode || 9 < document.documentMode);
+			W = sr;
+		} else W = !1;
+		or = W && (!document.documentMode || 9 < document.documentMode);
 	}
-	function sr() {
-		nr && (nr.detachEvent("onpropertychange", cr), U = nr = null);
+	function K() {
+		tr && (tr.detachEvent("onpropertychange", cr), nr = tr = null);
 	}
 	function cr(e) {
-		if (e.propertyName === "value" && ir(U)) {
+		if (e.propertyName === "value" && ir(nr)) {
 			var t = [];
-			tr(t, U, e, Qt(e)), rn(rr, t);
+			er(t, nr, e, Qt(e)), rn(rr, t);
 		}
 	}
 	function lr(e, t, n) {
-		e === "focusin" ? (sr(), nr = t, U = n, nr.attachEvent("onpropertychange", cr)) : e === "focusout" && sr();
+		e === "focusin" ? (K(), tr = t, nr = n, tr.attachEvent("onpropertychange", cr)) : e === "focusout" && K();
 	}
 	function ur(e) {
-		if (e === "selectionchange" || e === "keyup" || e === "keydown") return ir(U);
-	}
-	function q(e, t) {
-		if (e === "click") return ir(t);
+		if (e === "selectionchange" || e === "keyup" || e === "keydown") return ir(nr);
 	}
 	function dr(e, t) {
+		if (e === "click") return ir(t);
+	}
+	function q(e, t) {
 		if (e === "input" || e === "change") return ir(t);
 	}
 	function fr(e, t) {
@@ -1912,7 +1912,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			anchorOffset: r.anchorOffset,
 			focusNode: r.focusNode,
 			focusOffset: r.focusOffset
-		}), Cr && mr(Cr, r) || (Cr = r, r = Td(Sr, "onSelect"), 0 < r.length && (t = new _n("onSelect", "select", null, t, n), e.push({
+		}), Cr && mr(Cr, r) || (Cr = r, r = Td(Sr, "onSelect"), 0 < r.length && (t = new H("onSelect", "select", null, t, n), e.push({
 			event: t,
 			listeners: r
 		}), t.target = xr)));
@@ -2120,7 +2120,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	function ki(e) {
 		var t = e.stateNode, n = e.type, r = e.memoizedProps;
-		switch (t[z] = e, t[ot] = r, n) {
+		switch (t[R] = e, t[st] = r, n) {
 			case "dialog":
 				$("cancel", t), $("close", t);
 				break;
@@ -2675,7 +2675,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function Fa(e, t, n) {
 		if (t = t.updateQueue, t !== null && (t = t.shared, n & 4194048)) {
 			var r = t.lanes;
-			r &= e.pendingLanes, n |= r, t.lanes = n, et(e, n);
+			r &= e.pendingLanes, n |= r, t.lanes = n, tt(e, n);
 		}
 	}
 	function Ia(e, t) {
@@ -3479,7 +3479,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function As(e, t, n) {
 		if (n & 4194048) {
 			var r = t.lanes;
-			r &= e.pendingLanes, n |= r, t.lanes = n, et(e, n);
+			r &= e.pendingLanes, n |= r, t.lanes = n, tt(e, n);
 		}
 	}
 	var js = {
@@ -3924,7 +3924,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			else if (t.memoizedState !== null) t.child = e.child, t.flags |= 128, t = null;
 			else throw Error(i(558));
 			else if (Xs || Hi(e, t, n, !1), a = (n & e.childLanes) !== 0, Xs || a) {
-				if (r = Fl, r !== null && (s = tt(r, n), s !== 0 && s !== o.retryLane)) throw o.retryLane = s, Jr(e, s), pu(r, e, s), Ys;
+				if (r = Fl, r !== null && (s = nt(r, n), s !== 0 && s !== o.retryLane)) throw o.retryLane = s, Jr(e, s), pu(r, e, s), Ys;
 				Tu(), t = ac(e, t, n);
 			} else e = o.treeContext, wi = cf(s.nextSibling), Ci = t, Y = !0, Ti = null, Ei = !1, e !== null && Si(t, e), t = ic(t, r), t.flags |= 4096;
 			return t;
@@ -4022,7 +4022,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					stack: null
 				}), t = vc(e, t, n);
 			} else if (Xs || Hi(e, t, n, !1), s = (n & e.childLanes) !== 0, Xs || s) {
-				if (s = Fl, s !== null && (r = tt(s, n), r !== 0 && r !== l.retryLane)) throw l.retryLane = r, Jr(e, r), pu(s, e, r), Ys;
+				if (s = Fl, s !== null && (r = nt(s, n), r !== 0 && r !== l.retryLane)) throw l.retryLane = r, Jr(e, r), pu(s, e, r), Ys;
 				af(c) || Tu(), t = vc(e, t, n);
 			} else af(c) ? (t.flags |= 192, t.child = e.child, t = null) : (e = l.treeContext, wi = cf(c.nextSibling), Ci = t, Y = !0, Ti = null, Ei = !1, e !== null && Si(t, e), t = gc(t, r.children), t.flags |= 4096);
 			return t;
@@ -4226,7 +4226,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					t = t.child;
 				}
 				return t;
-			case 26: return sc(e, t), e === null ? (n = kf(t.type, null, t.pendingProps, null)) ? t.memoizedState = n : Y || (n = t.type, e = t.pendingProps, r = Bd(pe.current).createElement(n), r[z] = t, r[ot] = e, Pd(r, n, e), B(r), t.stateNode = r) : t.memoizedState = kf(t.type, e.memoizedProps, t.pendingProps, e.memoizedState), null;
+			case 26: return sc(e, t), e === null ? (n = kf(t.type, null, t.pendingProps, null)) ? t.memoizedState = n : Y || (n = t.type, e = t.pendingProps, r = Bd(pe.current).createElement(n), r[R] = t, r[st] = e, Pd(r, n, e), B(r), t.stateNode = r) : t.memoizedState = kf(t.type, e.memoizedProps, t.pendingProps, e.memoizedState), null;
 			case 27: return _e(t), e === null && Y && (r = t.stateNode = ff(t.type, t.pendingProps, pe.current), Ci = t, Ei = !0, a = wi, Zd(t.type) ? (lf = a, wi = cf(r.firstChild)) : wi = a), Zs(e, t, t.pendingProps.children, n), sc(e, t), e === null && (t.flags |= 4194304), t.child;
 			case 5: return e === null && Y && ((a = r = wi) && (r = tf(r, t.type, t.pendingProps, Ei), r === null ? a = !1 : (t.stateNode = r, Ci = t, wi = cf(r.firstChild), Ei = !1, a = !0)), a || Oi(t)), _e(t), a = t.type, o = t.pendingProps, s = e === null ? null : e.memoizedProps, r = o.children, Ud(a, o) ? r = null : s !== null && Ud(a, s) && (t.flags |= 32), t.memoizedState !== null && (a = ho(e, t, vo, null, null, n), Qf._currentValue = a), sc(e, t), Zs(e, t, r, n), t.child;
 			case 6: return e === null && Y && ((e = n = wi) && (n = nf(n, t.pendingProps, Ei), n === null ? e = !1 : (t.stateNode = n, Ci = t, wi = null, e = !0)), e || Oi(t)), null;
@@ -4270,7 +4270,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		else throw ya = ha, pa;
 	}
 	function kc(e, t) {
-		t !== null && (e.flags |= 4), e.flags & 16384 && (t = e.tag === 22 ? 536870912 : Ye(), e.lanes |= t, ql |= t);
+		t !== null && (e.flags |= 4), e.flags & 16384 && (t = e.tag === 22 ? 536870912 : Xe(), e.lanes |= t, ql |= t);
 	}
 	function Ac(e, t) {
 		if (!Y) switch (e.tailMode) {
@@ -4351,7 +4351,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 								default: o = typeof r.is == "string" ? s.createElement(a, { is: r.is }) : s.createElement(a);
 							}
 						}
-						o[z] = t, o[ot] = r;
+						o[R] = t, o[st] = r;
 						a: for (s = t.child; s !== null;) {
 							if (s.tag === 5 || s.tag === 6) o.appendChild(s.stateNode);
 							else if (s.tag !== 4 && s.tag !== 27 && s.child !== null) {
@@ -4391,8 +4391,8 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 							case 27:
 							case 5: r = a.memoizedProps;
 						}
-						e[z] = t, e = !!(e.nodeValue === n || r !== null && !0 === r.suppressHydrationWarning || jd(e.nodeValue, n)), e || Oi(t, !0);
-					} else e = Bd(e).createTextNode(r), e[z] = t, t.stateNode = e;
+						e[R] = t, e = !!(e.nodeValue === n || r !== null && !0 === r.suppressHydrationWarning || jd(e.nodeValue, n)), e || Oi(t, !0);
+					} else e = Bd(e).createTextNode(r), e[R] = t, t.stateNode = e;
 				}
 				return jc(t), null;
 			case 31:
@@ -4401,7 +4401,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						if (e === null) {
 							if (!r) throw Error(i(318));
 							if (e = t.memoizedState, e = e === null ? null : e.dehydrated, !e) throw Error(i(557));
-							e[z] = t;
+							e[R] = t;
 						} else Mi(), !(t.flags & 128) && (t.memoizedState = null), t.flags |= 4;
 						jc(t), e = !1;
 					} else n = Ni(), e !== null && e.memoizedState !== null && (e.memoizedState.hydrationErrors = n), e = !0;
@@ -4415,7 +4415,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						if (e === null) {
 							if (!a) throw Error(i(318));
 							if (a = t.memoizedState, a = a === null ? null : a.dehydrated, !a) throw Error(i(317));
-							a[z] = t;
+							a[R] = t;
 						} else Mi(), !(t.flags & 128) && (t.memoizedState = null), t.flags |= 4;
 						jc(t), a = !1;
 					} else a = Ni(), e !== null && e.memoizedState !== null && (e.memoizedState.hydrationErrors = a), a = !0;
@@ -4633,7 +4633,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function Hc(e, t, n) {
 		try {
 			var r = e.stateNode;
-			Fd(r, e.type, n, t), r[ot] = t;
+			Fd(r, e.type, n, t), r[st] = t;
 		} catch (t) {
 			Uu(e, e.return, t);
 		}
@@ -4668,7 +4668,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		var t = e.stateNode, n = e.memoizedProps;
 		try {
 			for (var r = e.type, i = t.attributes; i.length;) t.removeAttributeNode(i[0]);
-			Pd(t, r, n), t[z] = e, t[ot] = n;
+			Pd(t, r, n), t[R] = e, t[st] = n;
 		} catch (t) {
 			Uu(e, e.return, t);
 		}
@@ -4832,7 +4832,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	function tl(e) {
 		var t = e.alternate;
-		t !== null && (e.alternate = null, tl(t)), e.child = null, e.deletions = null, e.sibling = null, e.tag === 5 && (t = e.stateNode, t !== null && pt(t)), e.stateNode = null, e.return = null, e.dependencies = null, e.memoizedProps = null, e.memoizedState = null, e.pendingProps = null, e.stateNode = null, e.updateQueue = null;
+		t !== null && (e.alternate = null, tl(t)), e.child = null, e.deletions = null, e.sibling = null, e.tag === 5 && (t = e.stateNode, t !== null && mt(t)), e.stateNode = null, e.return = null, e.dependencies = null, e.memoizedProps = null, e.memoizedState = null, e.pendingProps = null, e.stateNode = null, e.updateQueue = null;
 	}
 	var nl = null, rl = !1;
 	function il(e, t, n) {
@@ -4975,7 +4975,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 							r = e.type, n = e.memoizedProps, a = a.ownerDocument || a;
 							b: switch (r) {
 								case "title":
-									o = a.getElementsByTagName("title")[0], (!o || o[ft] || o[z] || o.namespaceURI === "http://www.w3.org/2000/svg" || o.hasAttribute("itemprop")) && (o = a.createElement(r), a.head.insertBefore(o, a.querySelector("head > title"))), Pd(o, r, n), o[z] = e, B(o), r = o;
+									o = a.getElementsByTagName("title")[0], (!o || o[pt] || o[R] || o.namespaceURI === "http://www.w3.org/2000/svg" || o.hasAttribute("itemprop")) && (o = a.createElement(r), a.head.insertBefore(o, a.querySelector("head > title"))), Pd(o, r, n), o[R] = e, B(o), r = o;
 									break a;
 								case "link":
 									var s = Vf("link", "href", a).get(r + (n.href || ""));
@@ -4998,7 +4998,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 									break;
 								default: throw Error(i(468, r));
 							}
-							o[z] = e, B(o), r = o;
+							o[R] = e, B(o), r = o;
 						}
 						e.stateNode = r;
 					} else Hf(a, e.type, e.stateNode);
@@ -5452,7 +5452,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 	}, Nl = typeof WeakMap == "function" ? WeakMap : Map, Pl = 0, Fl = null, Z = null, Q = 0, Il = 0, Ll = null, Rl = !1, zl = !1, Bl = !1, Vl = 0, Hl = 0, Ul = 0, Wl = 0, Gl = 0, Kl = 0, ql = 0, Jl = null, Yl = null, Xl = !1, Zl = 0, Ql = 0, $l = Infinity, eu = null, tu = null, nu = 0, ru = null, iu = null, au = 0, ou = 0, su = null, cu = null, lu = 0, uu = null;
 	function du() {
-		return Pl & 2 && Q !== 0 ? Q & -Q : k.T === null ? it() : ud();
+		return Pl & 2 && Q !== 0 ? Q & -Q : k.T === null ? at() : ud();
 	}
 	function fu() {
 		if (Kl === 0) if (!(Q & 536870912) || Y) {
@@ -5462,11 +5462,11 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		return e = qa.current, e !== null && (e.flags |= 32), Kl;
 	}
 	function pu(e, t, n) {
-		(e === Fl && (Il === 2 || Il === 9) || e.cancelPendingCommit !== null) && (bu(e, 0), _u(e, Q, Kl, !1)), Ze(e, n), (!(Pl & 2) || e !== Fl) && (e === Fl && (!(Pl & 2) && (Wl |= n), Hl === 4 && _u(e, Q, Kl, !1)), nd(e));
+		(e === Fl && (Il === 2 || Il === 9) || e.cancelPendingCommit !== null) && (bu(e, 0), _u(e, Q, Kl, !1)), Qe(e, n), (!(Pl & 2) || e !== Fl) && (e === Fl && (!(Pl & 2) && (Wl |= n), Hl === 4 && _u(e, Q, Kl, !1)), nd(e));
 	}
 	function mu(e, t, n) {
 		if (Pl & 6) throw Error(i(327));
-		var r = !n && (t & 127) == 0 && (t & e.expiredLanes) === 0 || qe(e, t), a = r ? Ou(e, t) : Eu(e, t, !0), o = r;
+		var r = !n && (t & 127) == 0 && (t & e.expiredLanes) === 0 || Je(e, t), a = r ? Ou(e, t) : Eu(e, t, !0), o = r;
 		do {
 			if (a === 0) {
 				zl && !r && _u(e, t, 0, !1);
@@ -5517,7 +5517,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						default: throw Error(i(329));
 					}
 					if ((t & 62914560) === t && (a = Zl + 300 - I(), 10 < a)) {
-						if (_u(r, t, Kl, !Rl), L(r, 0, !0) !== 0) break a;
+						if (_u(r, t, Kl, !Rl), qe(r, 0, !0) !== 0) break a;
 						au = t, r.timeoutHandle = Kd(hu.bind(null, r, n, Yl, eu, Xl, t, Kl, Wl, ql, Rl, o, "Throttled", -0, 0), a);
 						break a;
 					}
@@ -5578,7 +5578,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			var a = 31 - ze(i), o = 1 << a;
 			r[a] = -1, i &= ~o;
 		}
-		n !== 0 && $e(e, n, t);
+		n !== 0 && et(e, n, t);
 	}
 	function vu() {
 		return Pl & 6 ? !0 : (rd(0, !1), !1);
@@ -5593,7 +5593,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	function bu(e, t) {
 		var n = e.timeoutHandle;
-		n !== -1 && (e.timeoutHandle = -1, qd(n)), n = e.cancelPendingCommit, n !== null && (e.cancelPendingCommit = null, n()), au = 0, yu(), Fl = e, Z = n = ei(e.current, null), Q = t, Il = 0, Ll = null, Rl = !1, zl = qe(e, t), Bl = !1, ql = Kl = Gl = Wl = Ul = Hl = 0, Yl = Jl = null, Xl = !1, t & 8 && (t |= t & 32);
+		n !== -1 && (e.timeoutHandle = -1, qd(n)), n = e.cancelPendingCommit, n !== null && (e.cancelPendingCommit = null, n()), au = 0, yu(), Fl = e, Z = n = ei(e.current, null), Q = t, Il = 0, Ll = null, Rl = !1, zl = Je(e, t), Bl = !1, ql = Kl = Gl = Wl = Ul = Hl = 0, Yl = Jl = null, Xl = !1, t & 8 && (t |= t & 32);
 		var r = e.entangledLanes;
 		if (r !== 0) for (e = e.entanglements, r &= t; 0 < r;) {
 			var i = 31 - ze(r), a = 1 << i;
@@ -5662,7 +5662,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		var n = Pl;
 		Pl |= 2;
 		var r = Cu(), a = wu();
-		Fl !== e || Q !== t ? (eu = null, $l = I() + 500, bu(e, t)) : zl = qe(e, t);
+		Fl !== e || Q !== t ? (eu = null, $l = I() + 500, bu(e, t)) : zl = Je(e, t);
 		a: do
 			try {
 				if (Il !== 0 && Z !== null) {
@@ -5809,7 +5809,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (Pl & 6) throw Error(i(327));
 		if (t !== null) {
 			if (t === e.current) throw Error(i(177));
-			if (o = t.lanes | t.childLanes, o |= Wr, Qe(e, n, o, s, c, l), e === Fl && (Z = Fl = null, Q = 0), iu = t, ru = e, au = n, ou = o, su = a, cu = r, t.subtreeFlags & 10256 || t.flags & 10256 ? (e.callbackNode = null, e.callbackPriority = 0, Yu(je, function() {
+			if (o = t.lanes | t.childLanes, o |= Wr, $e(e, n, o, s, c, l), e === Fl && (Z = Fl = null, Q = 0), iu = t, ru = e, au = n, ou = o, su = a, cu = r, t.subtreeFlags & 10256 || t.flags & 10256 ? (e.callbackNode = null, e.callbackPriority = 0, Yu(je, function() {
 				return Vu(), null;
 			})) : (e.callbackNode = null, e.callbackPriority = 0), r = (t.flags & 13878) != 0, t.subtreeFlags & 13878 || r) {
 				r = k.T, k.T = null, a = A.p, A.p = 2, s = Pl, Pl |= 4;
@@ -5895,7 +5895,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			var e = ru, t = iu, n = au, r = cu;
 			t.subtreeFlags & 10256 || t.flags & 10256 ? nu = 5 : (nu = 0, iu = ru = null, zu(e, e.pendingLanes));
 			var i = e.pendingLanes;
-			if (i === 0 && (tu = null), rt(n), t = t.stateNode, Le && typeof Le.onCommitFiberRoot == "function") try {
+			if (i === 0 && (tu = null), it(n), t = t.stateNode, Le && typeof Le.onCommitFiberRoot == "function") try {
 				Le.onCommitFiberRoot(Ie, t, void 0, (t.current.flags & 128) == 128);
 			} catch {}
 			if (r !== null) {
@@ -5922,7 +5922,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (nu !== 5) return !1;
 		var e = ru, t = ou;
 		ou = 0;
-		var n = rt(au), r = k.T, a = A.p;
+		var n = it(au), r = k.T, a = A.p;
 		try {
 			A.p = 32 > n ? 32 : n, k.T = null, n = su, su = null;
 			var o = ru, s = au;
@@ -5937,7 +5937,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 	}
 	function Hu(e, t, n) {
-		t = ci(n, t), t = Gs(e.stateNode, t, 2), e = Pa(e, t, 2), e !== null && (Ze(e, 2), nd(e));
+		t = ci(n, t), t = Gs(e.stateNode, t, 2), e = Pa(e, t, 2), e !== null && (Qe(e, 2), nd(e));
 	}
 	function Uu(e, t, n) {
 		if (e.tag === 3) Hu(e, e, n);
@@ -5948,7 +5948,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			} else if (t.tag === 1) {
 				var r = t.stateNode;
 				if (typeof t.type.getDerivedStateFromError == "function" || typeof r.componentDidCatch == "function" && (tu === null || !tu.has(r))) {
-					e = ci(n, e), n = Ks(2), r = Pa(t, n, 2), r !== null && (qs(n, r, t, e), Ze(r, 2), nd(r));
+					e = ci(n, e), n = Ks(2), r = Pa(t, n, 2), r !== null && (qs(n, r, t, e), Qe(r, 2), nd(r));
 					break;
 				}
 			}
@@ -5969,7 +5969,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		r !== null && r.delete(t), e.pingedLanes |= e.suspendedLanes & n, e.warmLanes &= ~n, Fl === e && (Q & n) === n && (Hl === 4 || Hl === 3 && (Q & 62914560) === Q && 300 > I() - Zl ? !(Pl & 2) && bu(e, 0) : Gl |= n, ql === Q && (ql = 0)), nd(e);
 	}
 	function Ku(e, t) {
-		t === 0 && (t = Ye()), e = Jr(e, t), e !== null && (Ze(e, t), nd(e));
+		t === 0 && (t = Xe()), e = Jr(e, t), e !== null && (Qe(e, t), nd(e));
 	}
 	function qu(e) {
 		var t = e.memoizedState, n = 0;
@@ -6013,7 +6013,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 							a = (1 << 31 - ze(42 | e) + 1) - 1, a &= i & ~(o & ~s), a = a & 201326741 ? a & 201326741 | 1 : a ? a | 2 : 0;
 						}
 						a !== 0 && (n = !0, cd(r, a));
-					} else a = Q, a = L(r, r === Fl ? a : 0, r.cancelPendingCommit !== null || r.timeoutHandle !== -1), !(a & 3) || qe(r, a) || (n = !0, cd(r, a));
+					} else a = Q, a = qe(r, r === Fl ? a : 0, r.cancelPendingCommit !== null || r.timeoutHandle !== -1), !(a & 3) || Je(r, a) || (n = !0, cd(r, a));
 					r = r.next;
 				}
 			while (n);
@@ -6036,12 +6036,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function od(e, t) {
 		for (var n = e.suspendedLanes, r = e.pingedLanes, i = e.expirationTimes, a = e.pendingLanes & -62914561; 0 < a;) {
 			var o = 31 - ze(a), s = 1 << o, c = i[o];
-			c === -1 ? ((s & n) === 0 || (s & r) !== 0) && (i[o] = Je(s, t)) : c <= t && (e.expiredLanes |= s), a &= ~s;
+			c === -1 ? ((s & n) === 0 || (s & r) !== 0) && (i[o] = Ye(s, t)) : c <= t && (e.expiredLanes |= s), a &= ~s;
 		}
-		if (t = Fl, n = Q, n = L(e, e === t ? n : 0, e.cancelPendingCommit !== null || e.timeoutHandle !== -1), r = e.callbackNode, n === 0 || e === t && (Il === 2 || Il === 9) || e.cancelPendingCommit !== null) return r !== null && r !== null && Te(r), e.callbackNode = null, e.callbackPriority = 0;
-		if (!(n & 3) || qe(e, n)) {
+		if (t = Fl, n = Q, n = qe(e, e === t ? n : 0, e.cancelPendingCommit !== null || e.timeoutHandle !== -1), r = e.callbackNode, n === 0 || e === t && (Il === 2 || Il === 9) || e.cancelPendingCommit !== null) return r !== null && r !== null && Te(r), e.callbackNode = null, e.callbackPriority = 0;
+		if (!(n & 3) || Je(e, n)) {
 			if (t = n & -n, t === e.callbackPriority) return t;
-			switch (r !== null && Te(r), rt(n)) {
+			switch (r !== null && Te(r), it(n)) {
 				case 2:
 				case 8:
 					n = Ae;
@@ -6063,7 +6063,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		var n = e.callbackNode;
 		if (Bu() && e.callbackNode !== n) return null;
 		var r = Q;
-		return r = L(e, e === Fl ? r : 0, e.cancelPendingCommit !== null || e.timeoutHandle !== -1), r === 0 ? null : (mu(e, r, t), od(e, I()), e.callbackNode != null && e.callbackNode === n ? sd.bind(null, e) : null);
+		return r = qe(e, e === Fl ? r : 0, e.cancelPendingCommit !== null || e.timeoutHandle !== -1), r === 0 ? null : (mu(e, r, t), od(e, I()), e.callbackNode != null && e.callbackNode === n ? sd.bind(null, e) : null);
 	}
 	function cd(e, t) {
 		if (Bu()) return null;
@@ -6090,9 +6090,9 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	function pd(e, t, n, r, i) {
 		if (t === "submit" && n && n.stateNode === i) {
-			var a = dd((i[ot] || null).action), o = r.submitter;
-			o && (t = (t = o[ot] || null) ? dd(t.formAction) : o.getAttribute("formAction"), t !== null && (a = t, o = null));
-			var s = new _n("action", "action", null, r, i);
+			var a = dd((i[st] || null).action), o = r.submitter;
+			o && (t = (t = o[st] || null) ? dd(t.formAction) : o.getAttribute("formAction"), t !== null && (a = t, o = null));
+			var s = new H("action", "action", null, r, i);
 			e.push({
 				event: s,
 				listeners: [{
@@ -6163,8 +6163,8 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 	}
 	function $(e, t) {
-		var n = t[ct];
-		n === void 0 && (n = t[ct] = /* @__PURE__ */ new Set());
+		var n = t[lt];
+		n === void 0 && (n = t[lt] = /* @__PURE__ */ new Set());
 		var r = e + "__bubble";
 		n.has(r) || (Sd(t, e, 2, !1), n.add(r));
 	}
@@ -6211,7 +6211,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					s = s.return;
 				}
 				for (; c !== null;) {
-					if (s = mt(c), s === null) return;
+					if (s = z(c), s === null) return;
 					if (l = s.tag, l === 5 || l === 6 || l === 26 || l === 27) {
 						r = a = s;
 						continue a;
@@ -6226,22 +6226,22 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			a: {
 				var c = Rr.get(e);
 				if (c !== void 0) {
-					var l = _n, u = e;
+					var l = H, u = e;
 					switch (e) {
 						case "keypress": if (pn(n) === 0) break a;
 						case "keydown":
 						case "keyup":
-							l = Fn;
+							l = Pn;
 							break;
 						case "focusin":
-							u = "focus", l = En;
+							u = "focus", l = Tn;
 							break;
 						case "focusout":
-							u = "blur", l = En;
+							u = "blur", l = Tn;
 							break;
 						case "beforeblur":
 						case "afterblur":
-							l = En;
+							l = Tn;
 							break;
 						case "click": if (n.button === 2) break a;
 						case "auxclick":
@@ -6252,7 +6252,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						case "mouseout":
 						case "mouseover":
 						case "contextmenu":
-							l = wn;
+							l = Cn;
 							break;
 						case "drag":
 						case "dragend":
@@ -6262,33 +6262,33 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						case "dragover":
 						case "dragstart":
 						case "drop":
-							l = Tn;
+							l = wn;
 							break;
 						case "touchcancel":
 						case "touchend":
 						case "touchmove":
 						case "touchstart":
-							l = Ln;
+							l = In;
 							break;
 						case jr:
 						case Mr:
 						case Nr:
-							l = Dn;
+							l = En;
 							break;
 						case Lr:
-							l = Rn;
+							l = Ln;
 							break;
 						case "scroll":
 						case "scrollend":
-							l = yn;
+							l = vn;
 							break;
 						case "wheel":
-							l = zn;
+							l = Rn;
 							break;
 						case "copy":
 						case "cut":
 						case "paste":
-							l = On;
+							l = Dn;
 							break;
 						case "gotpointercapture":
 						case "lostpointercapture":
@@ -6298,10 +6298,10 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 						case "pointerout":
 						case "pointerover":
 						case "pointerup":
-							l = In;
+							l = Fn;
 							break;
 						case "toggle":
-						case "beforetoggle": l = Bn;
+						case "beforetoggle": l = zn;
 					}
 					var d = (t & 4) != 0, f = !d && (e === "scroll" || e === "scrollend"), p = d ? c === null ? null : c + "Capture" : c;
 					d = [];
@@ -6318,9 +6318,9 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			}
 			if (!(t & 7)) {
 				a: {
-					if (c = e === "mouseover" || e === "pointerover", l = e === "mouseout" || e === "pointerout", c && n !== Zt && (u = n.relatedTarget || n.fromElement) && (mt(u) || u[st])) break a;
-					if ((l || c) && (c = i.window === i ? i : (c = i.ownerDocument) ? c.defaultView || c.parentWindow : window, l ? (u = n.relatedTarget || n.toElement, l = r, u = u ? mt(u) : null, u !== null && (f = o(u), d = u.tag, u !== f || d !== 5 && d !== 27 && d !== 6) && (u = null)) : (l = null, u = r), l !== u)) {
-						if (d = wn, g = "onMouseLeave", p = "onMouseEnter", m = "mouse", (e === "pointerout" || e === "pointerover") && (d = In, g = "onPointerLeave", p = "onPointerEnter", m = "pointer"), f = l == null ? c : gt(l), h = u == null ? c : gt(u), c = new d(g, m + "leave", l, n, i), c.target = f, c.relatedTarget = h, g = null, mt(i) === r && (d = new d(p, m + "enter", u, n, i), d.target = h, d.relatedTarget = f, g = d), f = g, l && u) b: {
+					if (c = e === "mouseover" || e === "pointerover", l = e === "mouseout" || e === "pointerout", c && n !== Zt && (u = n.relatedTarget || n.fromElement) && (z(u) || u[ct])) break a;
+					if ((l || c) && (c = i.window === i ? i : (c = i.ownerDocument) ? c.defaultView || c.parentWindow : window, l ? (u = n.relatedTarget || n.toElement, l = r, u = u ? z(u) : null, u !== null && (f = o(u), d = u.tag, u !== f || d !== 5 && d !== 27 && d !== 6) && (u = null)) : (l = null, u = r), l !== u)) {
+						if (d = Cn, g = "onMouseLeave", p = "onMouseEnter", m = "mouse", (e === "pointerout" || e === "pointerover") && (d = Fn, g = "onPointerLeave", p = "onPointerEnter", m = "pointer"), f = l == null ? c : gt(l), h = u == null ? c : gt(u), c = new d(g, m + "leave", l, n, i), c.target = f, c.relatedTarget = h, g = null, z(i) === r && (d = new d(p, m + "enter", u, n, i), d.target = h, d.relatedTarget = f, g = d), f = g, l && u) b: {
 							for (d = Ed, p = l, m = u, h = 0, g = p; g; g = d(g)) h++;
 							g = 0;
 							for (var _ = m; _; _ = d(_)) g++;
@@ -6341,21 +6341,21 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				}
 				a: {
 					if (c = r ? gt(r) : window, l = c.nodeName && c.nodeName.toLowerCase(), l === "select" || l === "input" && c.type === "file") var v = ar;
-					else if (er(c)) if (W) v = dr;
+					else if ($n(c)) if (or) v = q;
 					else {
 						v = ur;
 						var y = lr;
 					}
-					else l = c.nodeName, !l || l.toLowerCase() !== "input" || c.type !== "checkbox" && c.type !== "radio" ? r && V(r.elementType) && (v = ar) : v = q;
+					else l = c.nodeName, !l || l.toLowerCase() !== "input" || c.type !== "checkbox" && c.type !== "radio" ? r && qt(r.elementType) && (v = ar) : v = dr;
 					if (v &&= v(e, r)) {
-						tr(s, v, n, i);
+						er(s, v, n, i);
 						break a;
 					}
 					y && y(e, c, r), e === "focusout" && r && c.type === "number" && r.memoizedProps.value != null && zt(c, "number", c.value);
 				}
 				switch (y = r ? gt(r) : window, e) {
 					case "focusin":
-						(er(y) || y.contentEditable === "true") && (xr = y, Sr = r, Cr = null);
+						($n(y) || y.contentEditable === "true") && (xr = y, Sr = r, Cr = null);
 						break;
 					case "focusout":
 						Cr = Sr = xr = null;
@@ -6373,7 +6373,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					case "keyup": Tr(s, n, i);
 				}
 				var b;
-				if (Hn) b: {
+				if (Vn) b: {
 					switch (e) {
 						case "compositionstart":
 							var x = "onCompositionStart";
@@ -6387,11 +6387,11 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					}
 					x = void 0;
 				}
-				else Xn ? Jn(e, n) && (x = "onCompositionEnd") : e === "keydown" && n.keyCode === 229 && (x = "onCompositionStart");
-				x && (Gn && n.locale !== "ko" && (Xn || x !== "onCompositionStart" ? x === "onCompositionEnd" && Xn && (b = fn()) : (ln = i, un = "value" in ln ? ln.value : ln.textContent, Xn = !0)), y = Td(r, x), 0 < y.length && (x = new kn(x, e, null, n, i), s.push({
+				else Yn ? qn(e, n) && (x = "onCompositionEnd") : e === "keydown" && n.keyCode === 229 && (x = "onCompositionStart");
+				x && (Wn && n.locale !== "ko" && (Yn || x !== "onCompositionStart" ? x === "onCompositionEnd" && Yn && (b = fn()) : (ln = i, un = "value" in ln ? ln.value : ln.textContent, Yn = !0)), y = Td(r, x), 0 < y.length && (x = new On(x, e, null, n, i), s.push({
 					event: x,
 					listeners: y
-				}), b ? x.data = b : (b = Yn(n), b !== null && (x.data = b)))), (b = Wn ? Zn(e, n) : Qn(e, n)) && (x = Td(r, "onBeforeInput"), 0 < x.length && (y = new kn("onBeforeInput", "beforeinput", null, n, i), s.push({
+				}), b ? x.data = b : (b = Jn(n), b !== null && (x.data = b)))), (b = Un ? Xn(e, n) : Zn(e, n)) && (x = Td(r, "onBeforeInput"), 0 < x.length && (y = new On("onBeforeInput", "beforeinput", null, n, i), s.push({
 					event: y,
 					listeners: x
 				}), y.data = b)), pd(s, e, r, n, i);
@@ -6610,7 +6610,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				break;
 			case "innerText":
 			case "textContent": break;
-			default: (!(2 < n.length) || n[0] !== "o" && n[0] !== "O" || n[1] !== "n" && n[1] !== "N") && (n = qt.get(n) || n, Et(e, n, r));
+			default: (!(2 < n.length) || n[0] !== "o" && n[0] !== "O" || n[1] !== "n" && n[1] !== "N") && (n = V.get(n) || n, Et(e, n, r));
 		}
 	}
 	function Nd(e, t, n, r, a, o) {
@@ -6646,7 +6646,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 			case "innerText":
 			case "textContent": break;
 			default: if (!yt.hasOwnProperty(n)) a: {
-				if (n[0] === "o" && n[1] === "n" && (a = n.endsWith("Capture"), t = n.slice(2, a ? n.length - 7 : void 0), o = e[ot] || null, o = o == null ? null : o[n], typeof o == "function" && e.removeEventListener(t, o, a), typeof r == "function")) {
+				if (n[0] === "o" && n[1] === "n" && (a = n.endsWith("Capture"), t = n.slice(2, a ? n.length - 7 : void 0), o = e[st] || null, o = o == null ? null : o[n], typeof o == "function" && e.removeEventListener(t, o, a), typeof r == "function")) {
 					typeof o != "function" && o !== null && (n in e ? e[n] = null : e.hasAttribute(n) && e.removeAttribute(n)), e.addEventListener(t, r, a);
 					break a;
 				}
@@ -6792,7 +6792,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					default: Md(e, t, u, r, n, null);
 				}
 				return;
-			default: if (V(t)) {
+			default: if (qt(t)) {
 				for (d in n) n.hasOwnProperty(d) && (r = n[d], r !== void 0 && Nd(e, t, d, r, n, void 0));
 				return;
 			}
@@ -6927,7 +6927,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 					default: Md(e, t, u, p, r, m);
 				}
 				return;
-			default: if (V(t)) {
+			default: if (qt(t)) {
 				for (var _ in n) p = n[_], n.hasOwnProperty(_) && p !== void 0 && !r.hasOwnProperty(_) && Nd(e, t, _, void 0, r, p);
 				for (d in r) p = r[d], m = n[d], !r.hasOwnProperty(d) || p === m || p === void 0 && m === void 0 || Nd(e, t, d, p, r, m);
 				return;
@@ -7020,7 +7020,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				n = e.ownerDocument.head, pf(n);
 				for (var a = n.firstChild; a;) {
 					var o = a.nextSibling, s = a.nodeName;
-					a[ft] || s === "SCRIPT" || s === "STYLE" || s === "LINK" && a.rel.toLowerCase() === "stylesheet" || n.removeChild(a), a = o;
+					a[pt] || s === "SCRIPT" || s === "STYLE" || s === "LINK" && a.rel.toLowerCase() === "stylesheet" || n.removeChild(a), a = o;
 				}
 			} else n === "body" && pf(e.ownerDocument.body);
 			n = i;
@@ -7047,7 +7047,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				case "HTML":
 				case "HEAD":
 				case "BODY":
-					ef(n), pt(n);
+					ef(n), mt(n);
 					continue;
 				case "SCRIPT":
 				case "STYLE": continue;
@@ -7065,7 +7065,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 				var a = i.name == null ? null : "" + i.name;
 				if (i.type === "hidden" && e.getAttribute("name") === a) return e;
 			} else return e;
-			else if (!e[ft]) switch (t) {
+			else if (!e[pt]) switch (t) {
 				case "meta":
 					if (!e.hasAttribute("itemprop")) break;
 					return e;
@@ -7166,7 +7166,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	function pf(e) {
 		for (var t = e.attributes; t.length;) e.removeAttributeNode(t[0]);
-		pt(e);
+		mt(e);
 	}
 	var mf = /* @__PURE__ */ new Map(), hf = /* @__PURE__ */ new Set();
 	function gf(e) {
@@ -7462,7 +7462,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (r.has(e)) return r;
 		for (r.set(e, null), n = n.getElementsByTagName(e), i = 0; i < n.length; i++) {
 			var a = n[i];
-			if (!(a[ft] || a[z] || e === "link" && a.getAttribute("rel") === "stylesheet") && a.namespaceURI !== "http://www.w3.org/2000/svg") {
+			if (!(a[pt] || a[R] || e === "link" && a.getAttribute("rel") === "stylesheet") && a.namespaceURI !== "http://www.w3.org/2000/svg") {
 				var o = a.getAttribute(t) || "";
 				o = e + o;
 				var s = r.get(o);
@@ -7570,7 +7570,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		_threadCount: 0
 	};
 	function $f(e, t, n, r, i, a, o, s, c) {
-		this.tag = 1, this.containerInfo = e, this.pingCache = this.current = this.pendingChildren = null, this.timeoutHandle = -1, this.callbackNode = this.next = this.pendingContext = this.context = this.cancelPendingCommit = null, this.callbackPriority = 0, this.expirationTimes = Xe(-1), this.entangledLanes = this.shellSuspendCounter = this.errorRecoveryDisabledLanes = this.expiredLanes = this.warmLanes = this.pingedLanes = this.suspendedLanes = this.pendingLanes = 0, this.entanglements = Xe(0), this.hiddenUpdates = Xe(null), this.identifierPrefix = r, this.onUncaughtError = i, this.onCaughtError = a, this.onRecoverableError = o, this.pooledCache = null, this.pooledCacheLanes = 0, this.formState = c, this.incompleteTransitions = /* @__PURE__ */ new Map();
+		this.tag = 1, this.containerInfo = e, this.pingCache = this.current = this.pendingChildren = null, this.timeoutHandle = -1, this.callbackNode = this.next = this.pendingContext = this.context = this.cancelPendingCommit = null, this.callbackPriority = 0, this.expirationTimes = Ze(-1), this.entangledLanes = this.shellSuspendCounter = this.errorRecoveryDisabledLanes = this.expiredLanes = this.warmLanes = this.pingedLanes = this.suspendedLanes = this.pendingLanes = 0, this.entanglements = Ze(0), this.hiddenUpdates = Ze(null), this.identifierPrefix = r, this.onUncaughtError = i, this.onCaughtError = a, this.onRecoverableError = o, this.pooledCache = null, this.pooledCacheLanes = 0, this.formState = c, this.incompleteTransitions = /* @__PURE__ */ new Map();
 	}
 	function ep(e, t, n, r, i, a, o, s, c, l, u, d) {
 		return e = new $f(e, t, n, o, c, l, u, d, s), t = 1, !0 === a && (t |= 24), a = Qr(3, null, null, t), e.current = a, a.stateNode = e, t = Qi(), t.refCount++, e.pooledCache = t, t.refCount++, a.memoizedState = {
@@ -7603,7 +7603,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	function op(e) {
 		if (e.tag === 13 || e.tag === 31) {
 			var t = du();
-			t = nt(t);
+			t = rt(t);
 			var n = Jr(e, t);
 			n !== null && pu(n, e, t), ip(e, t);
 		}
@@ -7666,7 +7666,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	var fp = null;
 	function pp(e) {
-		if (fp = null, e = mt(e), e !== null) {
+		if (fp = null, e = z(e), e !== null) {
 			var t = o(e);
 			if (t === null) e = null;
 			else {
@@ -7814,20 +7814,20 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		return !1;
 	}
 	function Ep(e) {
-		var t = mt(e.target);
+		var t = z(e.target);
 		if (t !== null) {
 			var n = o(t);
 			if (n !== null) {
 				if (t = n.tag, t === 13) {
 					if (t = s(n), t !== null) {
-						e.blockedOn = t, at(e.priority, function() {
+						e.blockedOn = t, ot(e.priority, function() {
 							op(n);
 						});
 						return;
 					}
 				} else if (t === 31) {
 					if (t = c(n), t !== null) {
-						e.blockedOn = t, at(e.priority, function() {
+						e.blockedOn = t, ot(e.priority, function() {
 							op(n);
 						});
 						return;
@@ -7893,12 +7893,12 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		}
 		for (; 0 < xp.length && (n = xp[0], n.blockedOn === null);) Ep(n), n.blockedOn === null && xp.shift();
 		if (n = (e.ownerDocument || e).$$reactFormReplay, n != null) for (r = 0; r < n.length; r += 3) {
-			var i = n[r], a = n[r + 1], o = i[ot] || null;
+			var i = n[r], a = n[r + 1], o = i[st] || null;
 			if (typeof a == "function") o || Mp(n);
 			else if (o) {
 				var s = null;
 				if (a && a.hasAttribute("formAction")) {
-					if (i = a, o = a[ot] || null) s = o.formAction;
+					if (i = a, o = a[st] || null) s = o.formAction;
 					else if (pp(i) !== null) continue;
 				} else s = o.action;
 				typeof s == "function" ? n[r + 1] = s : (n.splice(r, 3), r -= 3), Mp(n);
@@ -7950,7 +7950,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 		if (e !== null) {
 			this._internalRoot = null;
 			var t = e.containerInfo;
-			np(e.current, 2, null, e, null, null), vu(), t[st] = null;
+			np(e.current, 2, null, e, null, null), vu(), t[ct] = null;
 		}
 	};
 	function Ip(e) {
@@ -7958,7 +7958,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	}
 	Ip.prototype.unstable_scheduleHydration = function(e) {
 		if (e) {
-			var t = it();
+			var t = at();
 			e = {
 				blockedOn: null,
 				target: e,
@@ -7991,7 +7991,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	e.createRoot = function(e, t) {
 		if (!a(e)) throw Error(i(299));
 		var n = !1, r = "", o = Bs, s = Vs, c = Hs;
-		return t != null && (!0 === t.unstable_strictMode && (n = !0), t.identifierPrefix !== void 0 && (r = t.identifierPrefix), t.onUncaughtError !== void 0 && (o = t.onUncaughtError), t.onCaughtError !== void 0 && (s = t.onCaughtError), t.onRecoverableError !== void 0 && (c = t.onRecoverableError)), t = ep(e, 1, !1, null, null, n, r, null, o, s, c, Pp), e[st] = t.current, xd(e), new Fp(t);
+		return t != null && (!0 === t.unstable_strictMode && (n = !0), t.identifierPrefix !== void 0 && (r = t.identifierPrefix), t.onUncaughtError !== void 0 && (o = t.onUncaughtError), t.onCaughtError !== void 0 && (s = t.onCaughtError), t.onRecoverableError !== void 0 && (c = t.onRecoverableError)), t = ep(e, 1, !1, null, null, n, r, null, o, s, c, Pp), e[ct] = t.current, xd(e), new Fp(t);
 	};
 })), g = /* @__PURE__ */ o(((e, t) => {
 	function n() {
@@ -9628,7 +9628,50 @@ function Ne(e) {
 function Pe(e) {
 	return (e.ledger ?? e.incomeLedger)?.filter((e) => e.flow === "income");
 }
-function Fe(e, t, n) {
+function Fe(e) {
+	let t = /* @__PURE__ */ new Map();
+	for (let n of e.filter((e) => e.type === "week")) {
+		let e = t.get(n.start);
+		(!e || n.savedAt > e.savedAt || n.savedAt === e.savedAt && n.end > e.end) && t.set(n.start, n);
+	}
+	let n = [...t.values()].sort((e, t) => e.start.localeCompare(t.start)), r = n.map((e, t) => {
+		let r = Me(e), i = n[t - 1], a = i ? Me(i) : void 0, o = i && we(e.start, i.start) === 7, s = o && a?.days === r.days;
+		return {
+			record: e,
+			...r,
+			comparison: i ? o ? s ? "较上周" : "天数不同" : "中间缺周" : "首次基准",
+			changes: s ? {
+				income: N([r.income, -a.income]),
+				spending: N([r.spending, -a.spending]),
+				surplus: N([r.surplus, -a.surplus])
+			} : null
+		};
+	}), i = n.at(-1);
+	if (!i) return {
+		rows: r,
+		month: null
+	};
+	let a = Ee("month", i.end, 10), o = 0, s = 0, c = !1;
+	for (let e of n.filter((e) => e.end >= a.start && e.start <= a.end)) {
+		let t = e.start > a.start ? e.start : a.start, n = e.end < a.end ? e.end : a.end;
+		if (e.start >= a.start && e.end <= a.end) o = N([o, e.income]), s += we(n, t) + 1;
+		else {
+			let r = Pe(e);
+			r ? (o = N([o, ...r.filter((e) => e.date >= t && e.date <= n).map((e) => e.amount)]), s += we(n, t) + 1) : c = !0;
+		}
+	}
+	return {
+		rows: r,
+		month: {
+			...a,
+			income: o,
+			coveredDays: s,
+			days: we(a.end, a.start) + 1,
+			boundaryMissing: c
+		}
+	};
+}
+function Ie(e, t, n) {
 	F(t), F(n);
 	let r = [];
 	for (let i = t; i <= n;) {
@@ -9651,7 +9694,7 @@ function Fe(e, t, n) {
 	}
 	return r;
 }
-function Ie(e, t, n) {
+function Le(e, t, n) {
 	let r = (e) => typeof e == "number" ? P(e) : String(e || "未填写");
 	return [...e.flatMap((e) => {
 		let i = t.find((t) => t.id === e.id);
@@ -9660,21 +9703,21 @@ function Ie(e, t, n) {
 		return e.name !== i.name && a.unshift(`名称 ${i.name} → ${e.name}`), a.length ? [`${e.name}：${a.join("，")}`] : [];
 	}), ...t.filter((t) => !e.some((e) => e.id === t.id)).map((e) => `${e.name}：已移出本期清单，处理状态待确认`)];
 }
-function Le(e, t) {
+function Re(e, t) {
 	let n = Me(e), r = t ? Me(t) : null, i = e.focus, a = t?.focus, o = (e, t) => t === void 0 ? "无上期基准" : `较上期 ${xe(N([e, -t]))}`, s = (t) => t ? (F(t).getTime() - F(e.end).getTime()) / ge : null, c = (e) => N(e.map((e) => Math.max(0, N([e.target, -e.current])))), l = {
-		projects: i?.checks.projects && a?.checks.projects ? Ie(i.projects, a.projects, [
+		projects: i?.checks.projects && a?.checks.projects ? Le(i.projects, a.projects, [
 			["target", "目标"],
 			["current", "实际"],
 			["dueDate", "截止日期"]
 		]) : [],
-		bills: i?.checks.bills && a?.checks.bills ? Ie(i.bills, a.bills, [
+		bills: i?.checks.bills && a?.checks.bills ? Le(i.bills, a.bills, [
 			["amount", "登记金额"],
 			["date", "提醒日期"],
 			["kind", "类型"]
 		]) : [],
 		balance: i?.checks.balance && a?.checks.balance ? [
-			...Ie(i.assets, a.assets, [["amount", "补录资产"]]),
-			...Ie(i.debts, a.debts, [["amount", "负债余额"]]),
+			...Le(i.assets, a.assets, [["amount", "补录资产"]]),
+			...Le(i.debts, a.debts, [["amount", "负债余额"]]),
 			...i.holdings === a.holdings ? [] : [`持仓参考市值：${o(i.holdings, a.holdings)}（不直接视为投资收益）`]
 		] : []
 	}, u = (i?.projects ?? []).filter((e) => e.target > e.current && s(e.dueDate) !== null && s(e.dueDate) >= 0 && s(e.dueDate) <= 30).sort((e, t) => e.dueDate.localeCompare(t.dueDate)), d = (i?.projects ?? []).filter((e) => s(e.dueDate) !== null && s(e.dueDate) < 0), f = (i?.bills ?? []).filter((e) => s(e.date) !== null && s(e.date) >= 0 && s(e.date) <= 7).sort((e, t) => e.date.localeCompare(t.date)), p = (i?.bills ?? []).filter((e) => s(e.date) !== null && s(e.date) < 0), m = (e) => i ? i.checks[e] ? a?.checks[e] ? l[e].length ? `${l[e].length} 项变化` : "登记未变" : "首次基准" : "待核对" : "未提供", h = (e) => i ? i.checks[e] ? a?.checks[e] ? "" : "暂无已核对的上期明细，仅建立本期基准。" : "带入的登记数据尚未核对，不能据此确认本期变化。" : "本期没有这项快照，不按 0 或没有变化处理。", g = ce.filter((e) => e.flow === "expense").map((n) => ({
@@ -9739,7 +9782,7 @@ function Le(e, t) {
 		actions: b
 	};
 }
-function Re(e, t) {
+function ze(e, t) {
 	let n = t.filter((t) => t.type === e.type && (e.type !== "month" || (t.monthStartDay ?? 1) === (e.monthStartDay ?? 1)) && t.end < e.start).sort((e, t) => t.end.localeCompare(e.end))[0], r = Me(e), i = n ? Me(n) : null, a = ce.map((t) => ({
 		...t,
 		amount: e.amounts[t.id],
@@ -9750,7 +9793,7 @@ function Re(e, t) {
 	e.ledger && l.push("收支来自保存时核对的日期明细快照，不含未标日期的月度余额；后续账本修改不自动改写本报告。");
 	let u = be(e, n);
 	e.accounts && l.push("账户余额按复盘时的快照比较；余额变化本身不等于消费，具体原因以本期变动说明和账单为准。账户计入范围变化须另行核对。"), l.push("预算中的应急&学习金合并展示；复盘仍区分应急净转入与学习实际消费，学习用途据备注判断。"), n ? (o || l.push("与上期之间有未覆盖日期；余额差值不等于本期变化，暂不做收支对账。"), r.days !== i.days && l.push(`本期${r.days}天，上期${i.days}天；比较总额时同时看日均支出。`)) : l.push("本期是首次基准，暂无上期变化；不会把缺失的上期当成 0。"), e.type === "month" && l.push(e.monthStartDay === 10 ? "月度账期为每月10日至下月9日；与自然月报告分别比较，10号只归新账期。" : "本报告沿用自然月口径，不与10号账期混合比较。"), e.end !== Ee(e.type, e.end, e.monthStartDay).limit && l.push("本周期尚未结束，报告是截至所选日期的阶段数据。");
-	let d = Le(e, n);
+	let d = Re(e, n);
 	e.focus && l.push("关键事项为保存时的登记快照，不与账户或净资产重复相加；项目预留及提醒金额不记为本期消费。未核对的快照不作为已确认变化。");
 	let f = [];
 	r.surplus < 0 && f.push(`本期收支缺口${P(-r.surplus)}，结合发薪日与集中付款核对周转资金。`), c !== null && Math.abs(c) >= .01 && f.push(`净资产与收支之间有${xe(c)}待解释变化，核对投资涨跌、汇率、账户遗漏及口径，不能直接当作投资收益。`), f.push(...d.actions);
@@ -9776,8 +9819,8 @@ function Re(e, t) {
 		actions: f.slice(0, 3)
 	};
 }
-function ze(e, t) {
-	let n = Re(e, t), { previous: r, prior: i, totals: a, rows: o } = n, s = (e) => e.replace(/\|/g, "／").replace(/[\r\n]+/g, " ");
+function Be(e, t) {
+	let n = ze(e, t), { previous: r, prior: i, totals: a, rows: o } = n, s = (e) => e.replace(/\|/g, "／").replace(/[\r\n]+/g, " ");
 	return [
 		`# ${le[e.type]} · ${e.start} 至 ${e.end}`,
 		r ? `对比：${r.start} 至 ${r.end}` : "本期建立首次基准。",
@@ -9853,7 +9896,7 @@ function ze(e, t) {
 		""
 	].join("\n");
 }
-function Be(e, t, n, r = 1) {
+function Ve(e, t, n, r = 1) {
 	let { start: i } = Ee(t, n, r);
 	for (let a of t === "quarter" ? ["month", "week"] : ["week"]) {
 		let o = e.filter((e) => e.type === a && (a !== "month" || (e.monthStartDay ?? 1) === 1) && e.start >= i && e.end <= n).sort((e, t) => e.start.localeCompare(t.start)), s = i, c = o.length > 0;
@@ -9877,7 +9920,7 @@ function Be(e, t, n, r = 1) {
 }
 //#endregion
 //#region app/finance-review-focus.tsx
-function Ve({ focus: e, live: t, onChange: n, onRefresh: r, onOpen: i, onUseBalances: a, saveAction: o }) {
+function He({ focus: e, live: t, onChange: n, onRefresh: r, onOpen: i, onUseBalances: a, saveAction: o }) {
 	let s = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100, c = e ? {
 		projects: `${e.projects.length} 项 · 缺口 ${P(e.projects.reduce((e, t) => e + Math.max(0, Math.round((t.target - t.current) * 100)), 0) / 100)}`,
 		bills: `${e.bills.length} 项登记 · 包含已登记的订阅提醒`,
@@ -10042,7 +10085,7 @@ function Ve({ focus: e, live: t, onChange: n, onRefresh: r, onOpen: i, onUseBala
 }
 //#endregion
 //#region app/review-investments.tsx
-function He({ value: e, onChange: t, confirmed: n, onConfirm: r, onOpen: i, saveAction: a }) {
+function Ue({ value: e, onChange: t, confirmed: n, onConfirm: r, onOpen: i, saveAction: a }) {
 	let o = (e) => e.trim() === "" ? NaN : Number(e);
 	return /* @__PURE__ */ (0, b.jsxs)("section", {
 		className: "review-accounts",
@@ -10139,7 +10182,7 @@ function He({ value: e, onChange: t, confirmed: n, onConfirm: r, onOpen: i, save
 		] }) : /* @__PURE__ */ (0, b.jsx)("p", { children: "旧报告未保存投资明细，需重新带入当前模块后核对。" })]
 	});
 }
-function Ue({ current: e, previous: t }) {
+function We({ current: e, previous: t }) {
 	let n = de(e, t);
 	return n.length ? /* @__PURE__ */ (0, b.jsxs)("details", {
 		className: "review-method",
@@ -10174,7 +10217,7 @@ function Ue({ current: e, previous: t }) {
 }
 //#endregion
 //#region app/use-finance-today.ts
-function We() {
+function Ge() {
 	let [e, t] = (0, _.useState)(() => Ce());
 	return (0, _.useEffect)(() => {
 		let e = () => t(Ce()), n = window.setInterval(e, 6e4);
@@ -10185,7 +10228,7 @@ function We() {
 }
 //#endregion
 //#region app/dated-ledger-model.ts
-var Ge = [
+var Ke = [
 	"rent",
 	"parents",
 	"learning",
@@ -10193,8 +10236,8 @@ var Ge = [
 	"partner",
 	"small",
 	"daily"
-], Ke = (e) => Math.round(e * 100), L = (e) => e.reduce((e, t) => e + Ke(t), 0) / 100;
-function qe(e) {
+], qe = (e) => Math.round(e * 100), Je = (e) => e.reduce((e, t) => e + qe(t), 0) / 100;
+function Ye(e) {
 	if (e === void 0) return [];
 	if (!Array.isArray(e)) throw Error("日期收支明细须为列表");
 	let t = /* @__PURE__ */ new Set();
@@ -10204,28 +10247,28 @@ function qe(e) {
 		if (t.add(n.id), typeof n.date != "string" || !/^\d{4}-\d{2}-\d{2}$/.test(n.date) || !Number.isFinite(Date.parse(`${n.date}T00:00:00Z`)) || (/* @__PURE__ */ new Date(`${n.date}T00:00:00Z`)).toISOString().slice(0, 10) !== n.date) throw Error("请填写有效的收支日期");
 		if (!["income", "expense"].includes(String(n.flow)) || typeof n.categoryId != "string" || !n.categoryId) throw Error("收支类型或分类缺失");
 		if (n.flow === "income" && !["salary", "otherIncome"].includes(n.categoryId)) throw Error("收入仅记录工资或其他实际到账，不含股票浮盈");
-		if (typeof n.amount != "number" || !Number.isFinite(n.amount) || Math.abs(n.amount) > 0xe8d4a51000 || Ke(n.amount) === 0) throw Error("金额须为有效非零数，退款填负数");
+		if (typeof n.amount != "number" || !Number.isFinite(n.amount) || Math.abs(n.amount) > 0xe8d4a51000 || qe(n.amount) === 0) throw Error("金额须为有效非零数，退款填负数");
 		return {
 			id: n.id,
 			date: n.date,
 			flow: n.flow,
 			categoryId: n.categoryId,
-			amount: Ke(n.amount) / 100,
+			amount: qe(n.amount) / 100,
 			note: typeof n.note == "string" ? n.note : ""
 		};
 	});
 }
-function Je(e, t, n) {
+function Xe(e, t, n) {
 	if (t === "income") return n === "salary" ? e.salary : e.otherIncome;
 	let r = e.budgets.find((e) => e.id === n);
 	if (!r) throw Error("支出分类已不存在，请重新选择");
 	return r.actual;
 }
-function Ye(e, t, n, r) {
-	return L([Je(e, n, r), ...t.filter((t) => t.date.startsWith(e.id + "-") && t.flow === n && t.categoryId === r).map((e) => -e.amount)]);
+function Ze(e, t, n, r) {
+	return Je([Xe(e, n, r), ...t.filter((t) => t.date.startsWith(e.id + "-") && t.flow === n && t.categoryId === r).map((e) => -e.amount)]);
 }
-function Xe(e, t, n, r, i = "new", a) {
-	let o = n ? qe([n])[0] : null, s = r ? t.find((e) => e.id === r) : void 0;
+function Qe(e, t, n, r, i = "new", a) {
+	let o = n ? Ye([n])[0] : null, s = r ? t.find((e) => e.id === r) : void 0;
 	if (r && !s) throw Error("原明细已不存在，请刷新后重试");
 	if (o && t.some((e) => e.id === o.id && e.id !== r)) throw Error("收支编号已存在");
 	if (!o && !s) throw Error("请选择收支明细");
@@ -10233,11 +10276,11 @@ function Xe(e, t, n, r, i = "new", a) {
 		if (!t) continue;
 		let n = e.find((e) => e.id === t.date.slice(0, 7));
 		if (!n) throw Error("请先添加该日期所属的月份");
-		Je(n, t.flow, t.categoryId);
+		Xe(n, t.flow, t.categoryId);
 	}
 	if (o && !s && i === "allocate") {
-		let n = Ye(e.find((e) => e.id === o.date.slice(0, 7)), t, o.flow, o.categoryId);
-		if (Math.sign(n) !== Math.sign(o.amount) || Math.abs(Ke(o.amount)) > Math.abs(Ke(n))) throw Error("补录金额超出该分类未标日期金额；新发生的收支请选择新增实际");
+		let n = Ze(e.find((e) => e.id === o.date.slice(0, 7)), t, o.flow, o.categoryId);
+		if (Math.sign(n) !== Math.sign(o.amount) || Math.abs(qe(o.amount)) > Math.abs(qe(n))) throw Error("补录金额超出该分类未标日期金额；新发生的收支请选择新增实际");
 	}
 	let c = [...s ? [{
 		...s,
@@ -10248,11 +10291,11 @@ function Xe(e, t, n, r, i = "new", a) {
 			let t = c.filter((t) => t.date.slice(0, 7) === e.id);
 			return {
 				...e,
-				salary: L([e.salary, ...t.filter((e) => e.flow === "income" && e.categoryId === "salary").map((e) => e.amount)]),
-				otherIncome: L([e.otherIncome, ...t.filter((e) => e.flow === "income" && e.categoryId === "otherIncome").map((e) => e.amount)]),
+				salary: Je([e.salary, ...t.filter((e) => e.flow === "income" && e.categoryId === "salary").map((e) => e.amount)]),
+				otherIncome: Je([e.otherIncome, ...t.filter((e) => e.flow === "income" && e.categoryId === "otherIncome").map((e) => e.amount)]),
 				budgets: e.budgets.map((n) => ({
 					...n,
-					actual: L([n.actual, ...t.filter((e) => e.flow === "expense" && e.categoryId === n.id).map((e) => e.amount)]),
+					actual: Je([n.actual, ...t.filter((e) => e.flow === "expense" && e.categoryId === n.id).map((e) => e.amount)]),
 					...o?.flow === "expense" && o.date.slice(0, 7) === e.id && o.categoryId === n.id && a ? { group: a } : {}
 				}))
 			};
@@ -10260,20 +10303,20 @@ function Xe(e, t, n, r, i = "new", a) {
 		entries: [...t.filter((e) => e.id !== r), ...o ? [o] : []].sort((e, t) => e.date.localeCompare(t.date) || e.id.localeCompare(t.id))
 	};
 }
-function Ze(e, t, n) {
+function $e(e, t, n) {
 	let r = new Set(n.filter((e) => e.flow === "income" && e.categoryId === "salary").map((e) => e.date.slice(0, 7)));
 	return e.map((e) => r.has(e.id) ? {
 		...e,
 		salary: t.find((t) => t.id === e.id)?.salary ?? e.salary
 	} : e);
 }
-function Qe(e, t, n, r) {
+function et(e, t, n, r) {
 	let i = t.filter((e) => e.date >= n && e.date <= r).map((t) => {
 		let n = e.find((e) => e.id === t.date.slice(0, 7))?.budgets.find((e) => e.id === t.categoryId), r = n?.group;
 		return {
 			...t,
 			name: t.flow === "income" ? t.categoryId === "salary" ? "工资到账" : "其他到账" : n?.name ?? "分类缺失",
-			group: t.flow === "income" ? "income" : Ge.includes(r) ? r : "unassigned"
+			group: t.flow === "income" ? "income" : Ke.includes(r) ? r : "unassigned"
 		};
 	});
 	return {
@@ -10297,36 +10340,36 @@ function Qe(e, t, n, r) {
 		].map((n) => ({
 			month: e.id,
 			name: n.name,
-			amount: Ye(e, t, n.flow, n.id)
+			amount: Ze(e, t, n.flow, n.id)
 		})).filter((e) => e.amount !== 0)),
 		unassigned: i.filter((e) => e.group === "unassigned"),
-		income: L(i.filter((e) => e.group === "income").map((e) => e.amount)),
-		spending: L(i.filter((e) => e.flow === "expense").map((e) => e.amount))
+		income: Je(i.filter((e) => e.group === "income").map((e) => e.amount)),
+		spending: Je(i.filter((e) => e.flow === "expense").map((e) => e.amount))
 	};
 }
-function $e(e, t) {
+function tt(e, t) {
 	if (t.some((e) => e.group === "unassigned")) throw Error("请先在支出模块确认明细的分类归属");
 	let n = { ...e.amounts };
-	for (let e of Ge) n[e] = L(t.filter((t) => t.group === e).map((e) => e.amount));
+	for (let e of Ke) n[e] = Je(t.filter((t) => t.group === e).map((e) => e.amount));
 	return {
 		...e,
-		income: L(t.filter((e) => e.group === "income").map((e) => e.amount)),
+		income: Je(t.filter((e) => e.group === "income").map((e) => e.amount)),
 		amounts: n,
 		ledger: t.map((e) => ({ ...e })),
 		incomeLedger: void 0
 	};
 }
-function et(e, t) {
+function nt(e, t) {
 	let n = t.filter((e) => e.flow === "income").map((e) => ({ ...e }));
 	return {
 		...e,
-		income: L(n.map((e) => e.amount)),
+		income: Je(n.map((e) => e.amount)),
 		incomeLedger: n
 	};
 }
 //#endregion
 //#region app/spending-detail-model.ts
-var tt = [
+var rt = [
 	{
 		id: "rent",
 		name: "房租"
@@ -10356,20 +10399,20 @@ var tt = [
 		name: "日常使用"
 	}
 ];
-function nt(e) {
-	return tt.some((t) => t.id === e.group) ? e.group : "unassigned";
-}
-var rt = (e) => e.reduce((e, t) => e + Math.round(t * 100), 0) / 100;
 function it(e) {
-	let t = e.filter((e) => nt(e) === "learning" && e.actual !== 0);
+	return rt.some((t) => t.id === e.group) ? e.group : "unassigned";
+}
+var at = (e) => e.reduce((e, t) => e + Math.round(t * 100), 0) / 100;
+function ot(e) {
+	let t = e.filter((e) => it(e) === "learning" && e.actual !== 0);
 	return {
 		rows: t,
-		total: rt(t.map((e) => e.actual)),
-		unassigned: rt(e.filter((e) => nt(e) === "unassigned").map((e) => e.actual)),
+		total: at(t.map((e) => e.actual)),
+		unassigned: at(e.filter((e) => it(e) === "unassigned").map((e) => e.actual)),
 		missingNotes: t.filter((e) => !e.note?.trim()).length
 	};
 }
-var at = [
+var L = [
 	{
 		id: "lunch-dinner",
 		name: "午餐与晚餐",
@@ -10427,7 +10470,7 @@ var at = [
 	}
 ];
 function R(e) {
-	let t = at.filter((t) => !e.some((e) => e.id === `detail-${t.id}` || e.name.trim() === t.name));
+	let t = L.filter((t) => !e.some((e) => e.id === `detail-${t.id}` || e.name.trim() === t.name));
 	return [...e, ...t.map((e) => ({
 		...e,
 		id: `detail-${e.id}`,
@@ -10438,7 +10481,7 @@ function R(e) {
 		note: ""
 	}))];
 }
-function z(e) {
+function st(e) {
 	return e.map((e) => ({
 		...e,
 		actual: 0,
@@ -10447,8 +10490,8 @@ function z(e) {
 }
 //#endregion
 //#region app/dated-ledger-editor.tsx
-function ot({ flow: e, month: t, entries: n, onSave: r, onDelete: i, embedded: a = !1, range: o, onDirtyChange: s }) {
-	let c = We(), l = e === "income" ? "收入" : "支出", u = e === "income" ? [{
+function ct({ flow: e, month: t, entries: n, onSave: r, onDelete: i, embedded: a = !1, range: o, onDirtyChange: s }) {
+	let c = Ge(), l = e === "income" ? "收入" : "支出", u = e === "income" ? [{
 		id: "salary",
 		name: "工资到账"
 	}, {
@@ -10457,9 +10500,9 @@ function ot({ flow: e, month: t, entries: n, onSave: r, onDelete: i, embedded: a
 	}] : t.budgets.filter((e) => !e.reviewPeriod);
 	function d(e) {
 		let n = t.budgets.find((t) => t.id === e);
-		return n ? nt(n) : "unassigned";
+		return n ? it(n) : "unassigned";
 	}
-	let [f, p] = (0, _.useState)(), [m, h] = (0, _.useState)(o ? o.end.startsWith(t.id) ? o.end : o.start.startsWith(t.id) ? o.start : `${t.id}-01` : c.startsWith(t.id) ? c : ""), [g, v] = (0, _.useState)(u[0]?.id ?? ""), [y, x] = (0, _.useState)(() => d(u[0]?.id ?? "")), [S, ee] = (0, _.useState)(""), [C, w] = (0, _.useState)(""), [T, te] = (0, _.useState)(() => u[0] && Ye(t, n, e, u[0].id) > 0 ? "allocate" : "new"), [E, D] = (0, _.useState)(""), [ne, re] = (0, _.useState)(), ie = n.filter((n) => n.flow === e && n.date.startsWith(t.id + "-") && (!o || n.date >= o.start && n.date <= o.end)), O = u.find((e) => e.id === g), ae = O ? Ye(t, n, e, g) : 0, oe = new Date(Date.UTC(Number(t.id.slice(0, 4)), Number(t.id.slice(5)), 0)).toISOString().slice(0, 10), k = o && o.start > `${t.id}-01` ? o.start : `${t.id}-01`, A = [
+	let [f, p] = (0, _.useState)(), [m, h] = (0, _.useState)(o ? o.end.startsWith(t.id) ? o.end : o.start.startsWith(t.id) ? o.start : `${t.id}-01` : c.startsWith(t.id) ? c : ""), [g, v] = (0, _.useState)(u[0]?.id ?? ""), [y, x] = (0, _.useState)(() => d(u[0]?.id ?? "")), [S, ee] = (0, _.useState)(""), [C, w] = (0, _.useState)(""), [T, te] = (0, _.useState)(() => u[0] && Ze(t, n, e, u[0].id) > 0 ? "allocate" : "new"), [E, D] = (0, _.useState)(""), [ne, re] = (0, _.useState)(), ie = n.filter((n) => n.flow === e && n.date.startsWith(t.id + "-") && (!o || n.date >= o.start && n.date <= o.end)), O = u.find((e) => e.id === g), ae = O ? Ze(t, n, e, g) : 0, oe = new Date(Date.UTC(Number(t.id.slice(0, 4)), Number(t.id.slice(5)), 0)).toISOString().slice(0, 10), k = o && o.start > `${t.id}-01` ? o.start : `${t.id}-01`, A = [
 		oe,
 		c,
 		...o ? [o.end] : []
@@ -10527,7 +10570,7 @@ function ot({ flow: e, month: t, entries: n, onSave: r, onDelete: i, embedded: a
 								"aria-label": `${l}分类`,
 								value: g,
 								onChange: (r) => {
-									v(r.target.value), x(d(r.target.value)), te(Ye(t, n, e, r.target.value) > 0 ? "allocate" : "new");
+									v(r.target.value), x(d(r.target.value)), te(Ze(t, n, e, r.target.value) > 0 ? "allocate" : "new");
 								},
 								children: u.map((e) => /* @__PURE__ */ (0, b.jsx)("option", {
 									value: e.id,
@@ -10544,7 +10587,7 @@ function ot({ flow: e, month: t, entries: n, onSave: r, onDelete: i, embedded: a
 								children: [/* @__PURE__ */ (0, b.jsx)("option", {
 									value: "unassigned",
 									children: "待确认"
-								}), tt.map((e) => /* @__PURE__ */ (0, b.jsx)("option", {
+								}), rt.map((e) => /* @__PURE__ */ (0, b.jsx)("option", {
 									value: e.id,
 									children: e.name
 								}, e.id))]
@@ -10697,7 +10740,7 @@ function ot({ flow: e, month: t, entries: n, onSave: r, onDelete: i, embedded: a
 }
 //#endregion
 //#region app/review-ledger-sync.ts
-var st = {
+var lt = {
 	rent: "房租",
 	parents: "家用",
 	learning: "学习支出",
@@ -10705,21 +10748,21 @@ var st = {
 	partner: "伴侣基金",
 	small: "小额支付",
 	daily: "日常使用"
-}, ct = (e) => Math.round(e * 100);
-function lt(e, t, n) {
+}, ut = (e) => Math.round(e * 100);
+function dt(e, t, n) {
 	if (n.type !== "week") throw Error("仅周复盘可回写账本，月度和季度报告不重复入账。");
 	let r = t.filter((e) => e.date >= n.start && e.date <= n.end);
-	if (r.filter((e) => e.flow === "income").reduce((e, t) => e + ct(t.amount), 0) !== ct(n.income)) throw Error("收入合计与到账明细不一致，请先在复盘中补齐工资和其他收入的日期。");
-	let i = Object.fromEntries(Object.keys(st).map((e) => [e, 0]));
+	if (r.filter((e) => e.flow === "income").reduce((e, t) => e + ut(t.amount), 0) !== ut(n.income)) throw Error("收入合计与到账明细不一致，请先在复盘中补齐工资和其他收入的日期。");
+	let i = Object.fromEntries(Object.keys(lt).map((e) => [e, 0]));
 	for (let t of r.filter((e) => e.flow === "expense")) {
 		let n = e.find((e) => e.id === t.date.slice(0, 7))?.budgets.find((e) => e.id === t.categoryId);
-		if (!n?.group || !(n.group in st)) throw Error("本周日期支出有待归类项目，请先确认所属大类。");
-		i[n.group] += ct(t.amount);
+		if (!n?.group || !(n.group in lt)) throw Error("本周日期支出有待归类项目，请先确认所属大类。");
+		i[n.group] += ut(t.amount);
 	}
-	let a = Object.entries(st).map(([e, t]) => ({
+	let a = Object.entries(lt).map(([e, t]) => ({
 		group: e,
 		name: t,
-		amount: (ct(n.amounts[e]) - i[e]) / 100
+		amount: (ut(n.amounts[e]) - i[e]) / 100
 	}));
 	if (n.start.slice(0, 7) !== n.end.slice(0, 7) && a.some((e) => e.amount !== 0)) throw Error("本周跨自然月，未标日期的支出不能自动分摊。请先补齐日期明细，再同步保存。");
 	if (!e.some((e) => e.id === n.end.slice(0, 7))) throw Error("请先在账本中添加复盘所属月份。");
@@ -10745,12 +10788,12 @@ function lt(e, t, n) {
 }
 //#endregion
 //#region app/goal-sync-model.ts
-function ut(e) {
+function ft(e) {
 	let t = e.name.toLowerCase();
 	return /旅游|旅行/.test(t) ? "travel" : /学习|教育|成长/.test(t) ? "learning" : /父母|爸妈|孝敬/.test(t) ? "parent" : /伴侣|情侣|共同/.test(t) ? "partner" : /应急|紧急/.test(t) ? "emergency" : "other";
 }
-function dt(e, t, n) {
-	let r = ut(e), i = t.find((e) => ut(e) === r)?.id === e.id;
+function pt(e, t, n) {
+	let r = ft(e), i = t.find((e) => ft(e) === r)?.id === e.id;
 	if (r === "parent" && i) return {
 		mode: "parents",
 		accounts: [],
@@ -10781,9 +10824,9 @@ function dt(e, t, n) {
 		label: r === "partner" ? "手填当前金额" : "手填"
 	};
 }
-function ft(e, t) {
+function mt(e, t) {
 	return e.map((n) => {
-		let r = dt(n, e, t);
+		let r = pt(n, e, t);
 		if (r.mode !== "accounts") return n;
 		let i = r.accounts.filter((e) => e.includedInPersonal !== !1).reduce((e, t) => e + Math.round(t.balance * 100), 0) / 100;
 		if (!Number.isFinite(i) || i < 0) throw Error("目标关联账户余额无效，请先核对账户。");
@@ -10793,15 +10836,15 @@ function ft(e, t) {
 		};
 	});
 }
-function pt(e, t, n) {
-	return ft(e.map((r) => dt(r, e, n).mode === "manual" ? {
+function z(e, t, n) {
+	return mt(e.map((r) => pt(r, e, n).mode === "manual" ? {
 		...r,
 		current: t.find((e) => e.id === r.id)?.current ?? r.current
 	} : r), n);
 }
-function mt(e, t, n) {
+function ht(e, t, n) {
 	if (!/^week:\d{4}-\d{2}-\d{2}$/.test(t) || !Number.isFinite(n)) throw Error("家用复盘金额或周期无效。");
-	let r = e.find((e) => ut(e) === "parent");
+	let r = e.find((e) => ft(e) === "parent");
 	if (!r) return e;
 	let i = r.parentReviewAmounts?.[t] ?? 0, a = (Math.round(r.current * 100) + Math.round(n * 100) - Math.round(i * 100)) / 100;
 	if (a < 0) throw Error("家用退款或修订超过已有累计金额，请核对父母累计金额。");
@@ -10814,7 +10857,7 @@ function mt(e, t, n) {
 		}
 	} : e);
 }
-function ht(e) {
+function gt(e) {
 	if (e !== void 0) {
 		if (!e || typeof e != "object" || Array.isArray(e)) throw Error("父母家用累计记录无效。");
 		return Object.fromEntries(Object.entries(e).map(([e, t]) => {
@@ -10825,7 +10868,7 @@ function ht(e) {
 }
 //#endregion
 //#region app/review-module-sync.ts
-var gt = {
+var _t = {
 	income: "收入",
 	spending: "支出",
 	accounts: "账户余额",
@@ -10834,8 +10877,8 @@ var gt = {
 	bills: "账单与订阅",
 	balance: "资产负债",
 	goals: "目标余额"
-}, _t = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
-function B(e, t) {
+}, B = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
+function vt(e, t) {
 	let n = e.focus ?? pe({
 		projects: [],
 		bills: [],
@@ -10865,9 +10908,9 @@ function B(e, t) {
 	return r.balances = { ...e.balances }, t.accounts && (r.balances.cash = ve(t.accounts)), t.investments && (r.balances.investments = M(t.investments), r.focus &&= {
 		...r.focus,
 		holdings: r.balances.investments
-	}), t.focus?.assets && (r.balances.otherAssets = _t(t.focus.assets)), t.focus?.debts && (r.balances.debt = _t(t.focus.debts)), r;
+	}), t.focus?.assets && (r.balances.otherAssets = B(t.focus.assets)), t.focus?.debts && (r.balances.debt = B(t.focus.debts)), r;
 }
-function vt(e, t) {
+function yt(e, t) {
 	let n = {
 		...De(e.type, e.end, e.monthStartDay),
 		start: e.start,
@@ -10908,7 +10951,7 @@ function vt(e, t) {
 		});
 		t === "projects" && (n.projects = e.focus.projects), t === "bills" && (n.bills = e.focus.bills), t === "balance" && (n.assets = e.focus.assets, n.debts = e.focus.debts), n.checks[t] = !0, n.notes[t] = e.focus.notes[t], r = { focus: n };
 	}
-	let i = ke(B(n, r));
+	let i = ke(vt(n, r));
 	if (t === "income") return {
 		income: i.income,
 		...i.incomeLedger ? { incomeLedger: i.incomeLedger } : {}
@@ -10930,7 +10973,7 @@ function vt(e, t) {
 		checks: { [t]: !0 }
 	} };
 }
-function yt(e, t) {
+function bt(e, t) {
 	let n = e.datedEntries ?? [], r = {
 		accounts: e.accounts,
 		investments: [
@@ -10954,28 +10997,28 @@ function yt(e, t) {
 	};
 	return JSON.stringify(r[t]);
 }
-function bt(e, t, n) {
+function xt(e, t, n) {
 	let r = e;
-	for (let i of Object.keys(gt)) {
+	for (let i of Object.keys(_t)) {
 		let a = [...t].reverse().find((t) => t.reviewId === `${e.type}:${e.start}` && t.published && (!t.module || t.module === i));
-		a?.module === i && a.asOf === e.end && a.moduleDraft && yt(a.after, i) === n[i] && (r = B(r, a.moduleDraft));
+		a?.module === i && a.asOf === e.end && a.moduleDraft && bt(a.after, i) === n[i] && (r = vt(r, a.moduleDraft));
 	}
 	return r;
 }
-function xt(e, t, n, r, i = (/* @__PURE__ */ new Date()).toISOString(), a = Ce()) {
-	if (!Object.hasOwn(gt, n)) throw Error("未知复盘模块。");
+function St(e, t, n, r, i = (/* @__PURE__ */ new Date()).toISOString(), a = Ce()) {
+	if (!Object.hasOwn(_t, n)) throw Error("未知复盘模块。");
 	let o = [
 		e.dashboardAsOf ?? "",
 		...(e.financeReviews ?? []).filter((e) => e.type === "week").map((e) => e.end),
 		...(e.reviewUpdates ?? []).filter((e) => e.published).map((e) => e.asOf)
 	].sort().at(-1);
 	if (t.type !== "week" || t.end < o || t.end > a || Ee("week", t.end).start !== t.start) throw Error("仅当前最新周复盘可更新模块；历史和未来期间请保存历史报告。");
-	if (r !== yt(e, n)) throw Error(`${gt[n]}已在其他位置修改，请重新带入并核对后保存。`);
-	let s = vt(n === "goals" && t.goals ? {
+	if (r !== bt(e, n)) throw Error(`${_t[n]}已在其他位置修改，请重新带入并核对后保存。`);
+	let s = yt(n === "goals" && t.goals ? {
 		...t,
-		goals: pt(e.goals, t.goals, e.accounts)
+		goals: z(e.goals, t.goals, e.accounts)
 	} : t, n), c = (e, t) => {
-		if (e.length !== t.length || e.some((e) => !t.some((t) => e.id === t.id))) throw Error(`${gt[n]}清单已变化，请重新带入当前模块。`);
+		if (e.length !== t.length || e.some((e) => !t.some((t) => e.id === t.id))) throw Error(`${_t[n]}清单已变化，请重新带入当前模块。`);
 	}, l = (e, t) => (c(e, t), e.map((e) => ({
 		...e,
 		...t.find((t) => t.id === e.id)
@@ -10992,7 +11035,7 @@ function xt(e, t, n, r, i = (/* @__PURE__ */ new Date()).toISOString(), a = Ce()
 	else if (n === "projects") u.fundBuckets = l(e.fundBuckets, s.focus.projects);
 	else if (n === "bills") u.reminders = l(e.reminders, s.focus.bills);
 	else if (n === "balance") u.balanceAssets = l(e.balanceAssets, s.focus.assets), u.liabilities = l(e.liabilities, s.focus.debts);
-	else if (n === "goals") u.goals = pt(e.goals, l(e.goals, s.goals), e.accounts);
+	else if (n === "goals") u.goals = z(e.goals, l(e.goals, s.goals), e.accounts);
 	else {
 		let r = (e.datedEntries ?? []).filter((e) => e.flow === "income" && e.date >= t.start && e.date <= t.end).reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
 		if (n === "income") {
@@ -11010,11 +11053,11 @@ function xt(e, t, n, r, i = (/* @__PURE__ */ new Date()).toISOString(), a = Ce()
 					debt: 0
 				}
 			};
-			u.monthlyRecords = lt(e.monthlyRecords, e.datedEntries ?? [], ke(n)), u.goals = mt(e.goals, `week:${t.start}`, s.amounts.parents);
+			u.monthlyRecords = dt(e.monthlyRecords, e.datedEntries ?? [], ke(n)), u.goals = ht(e.goals, `week:${t.start}`, s.amounts.parents);
 		}
 		u.selectedMonth = t.end.slice(0, 7);
 	}
-	(n === "accounts" || n === "spending" || n === "goals") && (u.goals = ft(u.goals, u.accounts));
+	(n === "accounts" || n === "spending" || n === "goals") && (u.goals = mt(u.goals, u.accounts));
 	let d = (e) => {
 		let t = { ...e };
 		return delete t.reviewUpdates, structuredClone(t);
@@ -11039,13 +11082,13 @@ function xt(e, t, n, r, i = (/* @__PURE__ */ new Date()).toISOString(), a = Ce()
 }
 //#endregion
 //#region app/finance-review-panel.tsx
-function St(e, t, n) {
+function Ct(e, t, n) {
 	let r = URL.createObjectURL(new Blob([t], { type: n })), i = document.createElement("a");
 	i.href = r, i.download = e, i.click(), window.setTimeout(() => URL.revokeObjectURL(r), 1e3);
 }
-var Ct = (e) => e.trim() === "" ? null : Number(e), wt = (e) => e === null ? "无基准" : `${e > 0 ? "+" : ""}${P(e)}`;
-function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashboardAsOf: a, sourceSignature: o, moduleSignatures: s, moduleUpdates: c, onSaveModule: l, focusSource: u, ledgerMonths: d, datedEntries: f, onSaveIncome: p, onDeleteIncome: m, onOpenModule: h, onChange: g }) {
-	let v = We();
+var wt = (e) => e.trim() === "" ? null : Number(e), Tt = (e) => e === null ? "无基准" : `${e > 0 ? "+" : ""}${P(e)}`;
+function Et({ records: e, plan: t, accounts: n, investments: r, goals: i, dashboardAsOf: a, sourceSignature: o, moduleSignatures: s, moduleUpdates: c, onSaveModule: l, focusSource: u, ledgerMonths: d, datedEntries: f, onSaveIncome: p, onDeleteIncome: m, onOpenModule: h, onChange: g }) {
+	let v = Ge();
 	function y(t, a = Ce(), o = 10) {
 		let l = e.filter((e) => e.accounts && e.end <= a).sort((e, t) => t.end.localeCompare(e.end))[0], d = {
 			...De(t, a, o),
@@ -11058,34 +11101,34 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 			investments: M(r),
 			otherAssets: u.assets.reduce((e, t) => e + t.amount, 0),
 			debt: u.debts.reduce((e, t) => e + t.amount, 0)
-		}, bt(ye(d, n, l?.accounts), c, s);
+		}, xt(ye(d, n, l?.accounts), c, s);
 	}
-	let [x, S] = (0, _.useState)(() => y()), [ee, C] = (0, _.useState)(!0), [w, T] = (0, _.useState)(!1), [te, E] = (0, _.useState)(!1), [D, ne] = (0, _.useState)(""), [re, ie] = (0, _.useState)(!1), [O, ae] = (0, _.useState)(!1), [oe, k] = (0, _.useState)(""), [A, se] = (0, _.useState)(!1), [j, de] = (0, _.useState)(""), [fe, ge] = (0, _.useState)(0), [_e, N] = (0, _.useState)(!1), [be, xe] = (0, _.useState)(!0), [Se, F] = (0, _.useState)(!1), [we, Te] = (0, _.useState)(o), [I, Oe] = (0, _.useState)(s), [Me, Ie] = (0, _.useState)(e.length ? "report" : "entry"), [Le, Ge] = (0, _.useState)(e[0]?.id ?? ""), [Ke, L] = (0, _.useState)(""), [qe, Je] = (0, _.useState)(t.mode), Ye = (0, _.useRef)(null), Xe = (0, _.useRef)(null), Ze = (0, _.useRef)(null), tt = (0, _.useRef)(null), [nt, rt] = (0, _.useState)(null), [it, at] = (0, _.useState)(null), R = e.find((e) => e.id === Le) ?? e[0], z = R ? Re(R, e) : null, st = c.findLastIndex((e) => e.reviewId === R?.id && !e.module), ct = c.some((e, t) => t > st && e.reviewId === R?.id && !!e.module), lt = [
+	let [x, S] = (0, _.useState)(() => y()), [ee, C] = (0, _.useState)(!0), [w, T] = (0, _.useState)(!1), [te, E] = (0, _.useState)(!1), [D, ne] = (0, _.useState)(""), [re, ie] = (0, _.useState)(!1), [O, ae] = (0, _.useState)(!1), [oe, k] = (0, _.useState)(""), [A, se] = (0, _.useState)(!1), [j, de] = (0, _.useState)(""), [fe, ge] = (0, _.useState)(0), [_e, N] = (0, _.useState)(!1), [be, xe] = (0, _.useState)(!0), [Se, F] = (0, _.useState)(!1), [we, Te] = (0, _.useState)(o), [I, Oe] = (0, _.useState)(s), [Me, Fe] = (0, _.useState)(e.length ? "report" : "entry"), [Le, Re] = (0, _.useState)(e[0]?.id ?? ""), [Ke, qe] = (0, _.useState)(""), [Je, Ye] = (0, _.useState)(t.mode), Xe = (0, _.useRef)(null), Ze = (0, _.useRef)(null), Qe = (0, _.useRef)(null), $e = (0, _.useRef)(null), [rt, it] = (0, _.useState)(null), [at, ot] = (0, _.useState)(null), L = e.find((e) => e.id === Le) ?? e[0], R = L ? ze(L, e) : null, st = c.findLastIndex((e) => e.reviewId === L?.id && !e.module), lt = c.some((e, t) => t > st && e.reviewId === L?.id && !!e.module), ut = [
 		a ?? "",
 		Ne(e)?.end ?? "",
 		...c.filter((e) => e.published).map((e) => e.asOf)
-	].sort().at(-1), ut = x.type === "week" && x.end <= v && x.end >= lt, ft = ut && be, pt = ut ? i.map((e) => dt(e, i, n).mode === "manual" ? x.goals?.find((t) => t.id === e.id) ?? e : e) : x.goals, mt = ee && x.end === v, ht = Qe(d, f, x.start, x.end), _t = JSON.stringify(ht), vt = !!x.ledger || w, yt = ht.rows.filter((e) => e.flow === "income"), xt = JSON.stringify(yt), Tt = vt || re || !!x.incomeLedger, Dt = d.filter((e) => e.id >= x.start.slice(0, 7) && e.id <= x.end.slice(0, 7)), Ot = Dt.find((e) => e.id === j) ?? Dt.at(-1), kt = Ee("month", x.end, 10), At = Qe(d, f, kt.start, kt.end), jt = Fe(At.rows, kt.start, kt.end);
-	re && !w && oe !== xt && (k(xt), ae(!1), S((e) => et(e, yt))), w && _t !== D && (ne(_t), E(!1), ht.unassigned.length || S((e) => $e(e, ht.rows))), mt && (!x.focus || !me(x.focus, u)) && S((e) => ({
+	].sort().at(-1), dt = x.type === "week" && x.end <= v && x.end >= ut, ft = dt && be, mt = dt ? i.map((e) => pt(e, i, n).mode === "manual" ? x.goals?.find((t) => t.id === e.id) ?? e : e) : x.goals, z = ee && x.end === v, ht = et(d, f, x.start, x.end), gt = JSON.stringify(ht), B = !!x.ledger || w, yt = ht.rows.filter((e) => e.flow === "income"), bt = JSON.stringify(yt), St = B || re || !!x.incomeLedger, Et = d.filter((e) => e.id >= x.start.slice(0, 7) && e.id <= x.end.slice(0, 7)), Ot = Et.find((e) => e.id === j) ?? Et.at(-1), kt = Ee("month", x.end, 10), At = et(d, f, kt.start, kt.end), jt = Ie(At.rows, kt.start, kt.end);
+	re && !w && oe !== bt && (k(bt), ae(!1), S((e) => nt(e, yt))), w && gt !== D && (ne(gt), E(!1), ht.unassigned.length || S((e) => tt(e, ht.rows))), z && (!x.focus || !me(x.focus, u)) && S((e) => ({
 		...e,
 		focus: he(e.focus, u)
 	}));
 	let Mt = A || x.income !== null || Object.values(x.amounts).some((e) => e !== null) || Object.values(x.balances).some((e) => e !== null) || !!x.summary || Object.values(x.notes).some(Boolean) || Object.values(x.focus?.checks ?? {}).some(Boolean) || Object.values(x.focus?.notes ?? {}).some(Boolean);
 	(0, _.useEffect)(() => {
-		it ? Xe.current?.showModal() : Xe.current?.close();
-	}, [it]), (0, _.useEffect)(() => {
-		nt ? Ze.current?.showModal() : Ze.current?.close();
-	}, [nt]);
+		at ? Ze.current?.showModal() : Ze.current?.close();
+	}, [at]), (0, _.useEffect)(() => {
+		rt ? Qe.current?.showModal() : Qe.current?.close();
+	}, [rt]);
 	function Nt(e, t) {
 		let n = e instanceof Error ? e.message : "操作失败，请重试。";
-		L(n), tt.current = t ?? null, rt({
+		qe(n), $e.current = t ?? null, it({
 			title: "未保存，请检查",
 			message: n,
 			hasField: !!t
 		});
 	}
 	function Pt() {
-		let e = tt.current;
-		if (tt.current = null, Ze.current?.close(), rt(null), e?.isConnected) {
+		let e = $e.current;
+		if ($e.current = null, Qe.current?.close(), it(null), e?.isConnected) {
 			for (let t = e.parentElement; t; t = t.parentElement) t instanceof HTMLDetailsElement && (t.open = !0);
 			e.scrollIntoView({ block: "center" }), e.focus({ preventScroll: !0 });
 		}
@@ -11098,7 +11141,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 		}
 	}
 	function It(e, t, n) {
-		e ? at({
+		e ? ot({
 			message: t,
 			action: n
 		}) : Ft(n);
@@ -11108,7 +11151,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 	}
 	function Rt(e = x.type, t = x.end, n = e === x.type && e === "month" ? x.monthStartDay ?? 1 : 10) {
 		It(Mt, "切换会清空当前未保存的输入，是否继续？", () => {
-			S(y(e, t, n)), Te(o), F(!1), Oe(s), Lt(), T(!1), E(!1), C(t === v), N(!1), Ie("entry"), L("");
+			S(y(e, t, n)), Te(o), F(!1), Oe(s), Lt(), T(!1), E(!1), C(t === v), N(!1), Fe("entry"), qe("");
 		});
 	}
 	function zt() {
@@ -11125,11 +11168,11 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 			].filter(Boolean) : []];
 			if (n.length) throw Error(`以下模块尚未确认：${n.join("、")}。可分别点击该模块的“保存并更新”，或勾选核对后全部保存。`);
 			let r = x.type === "month" ? x.budget ?? {
-				mode: qe,
-				amounts: Object.fromEntries(t.rows.map((e) => [e.id, e[qe]]))
+				mode: Je,
+				amounts: Object.fromEntries(t.rows.map((e) => [e.id, e[Je]]))
 			} : void 0, i = ke({
 				...x,
-				goals: pt,
+				goals: mt,
 				budget: r,
 				savedAt: (/* @__PURE__ */ new Date()).toISOString()
 			});
@@ -11139,9 +11182,9 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 					publish: ft,
 					sourceSignature: we
 				});
-				Ge(i.id), Ie("report"), S(structuredClone(t.record ?? i)), ft && Te(t.sourceSignature), ft && t.moduleSignatures && Oe(t.moduleSignatures), Lt(), T(!1), E(!1), C(!1);
+				Re(i.id), Fe("report"), S(structuredClone(t.record ?? i)), ft && Te(t.sourceSignature), ft && t.moduleSignatures && Oe(t.moduleSignatures), Lt(), T(!1), E(!1), C(!1);
 				let n = ft ? "本期收支、账户、投资及其他模块已更新，更新前后的历史已保存到本机。跨电脑使用前请确认云端保存成功。" : "历史报告已保存到本机，当前看板未覆盖。跨电脑使用前请确认云端保存成功。";
-				L(n), rt({
+				qe(n), it({
 					title: ft ? "保存并更新完毕" : "历史报告保存完毕",
 					message: n
 				});
@@ -11152,19 +11195,19 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 	}
 	function Bt(e) {
 		try {
-			if (!ut) throw Error("仅最新周复盘可以更新模块；历史或未来期间请保存历史报告。");
+			if (!dt) throw Error("仅最新周复盘可以更新模块；历史或未来期间请保存历史报告。");
 			if (e === "income" && A) throw Error("收入明细尚未保存，请先点击保存收入。");
 			let t = l({
 				...x,
-				goals: pt
+				goals: mt
 			}, e, e === "income" ? s.income : I[e]);
-			S((e) => B(e, t.patch)), C(!1), Oe((n) => ({
+			S((e) => vt(e, t.patch)), C(!1), Oe((n) => ({
 				...n,
 				[e]: t.moduleSignature,
 				...t.goalsSignature && n.goals === s.goals ? { goals: t.goalsSignature } : {}
 			})), we === o && Te(t.sourceSignature), e === "accounts" && N(!0), e === "investments" && F(!0), e === "income" && ae(!0);
-			let n = `${gt[e]}已写回对应模块并保存到本机，更新前后历史已保留。其他未保存输入保持不变；跨电脑使用请确认云同步成功。`;
-			L(n), rt({
+			let n = `${_t[e]}已写回对应模块并保存到本机，更新前后历史已保留。其他未保存输入保持不变；跨电脑使用请确认云同步成功。`;
+			qe(n), it({
 				title: "保存并更新完毕",
 				message: n
 			});
@@ -11175,7 +11218,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 	function Vt(e) {
 		let t = e.currentTarget.dataset.reviewSave, n = e.currentTarget.closest("[data-review-module]")?.querySelector("input:invalid:not([type=\"checkbox\"]),select:invalid,textarea:invalid");
 		if (n) {
-			Nt(/* @__PURE__ */ Error(`${n.getAttribute("aria-label") || n.labels?.[0]?.textContent || gt[t]}：${n.validationMessage}`), n);
+			Nt(/* @__PURE__ */ Error(`${n.getAttribute("aria-label") || n.labels?.[0]?.textContent || _t[t]}：${n.validationMessage}`), n);
 			return;
 		}
 		Bt(t);
@@ -11184,33 +11227,33 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 		return x.type === "week" ? /* @__PURE__ */ (0, b.jsxs)("button", {
 			type: "button",
 			className: "primary-button",
-			disabled: !ut,
+			disabled: !dt,
 			"data-review-save": e,
 			onClick: Vt,
-			children: ["保存并更新", gt[e]]
+			children: ["保存并更新", _t[e]]
 		}) : null;
 	}
 	async function Ut(t) {
 		try {
 			let n = je(JSON.parse(await t.text())), r = n.filter((t) => e.some((e) => e.id === t.id));
 			It(r.length > 0, `有 ${r.length} 个相同周期，是否更新这些记录？`, () => {
-				g(n.reduce(Ae, e)), Ge(n[0]?.id ?? Le), Ie("report"), L(`已导入 ${n.length} 条复盘；跨电脑使用前请保存完整版本到云端。`);
+				g(n.reduce(Ae, e)), Re(n[0]?.id ?? Le), Fe("report"), qe(`已导入 ${n.length} 条复盘；跨电脑使用前请保存完整版本到云端。`);
 			});
 		} catch (e) {
-			L(e instanceof Error ? e.message : "导入失败");
+			qe(e instanceof Error ? e.message : "导入失败");
 		} finally {
-			Ye.current && (Ye.current.value = "");
+			Xe.current && (Xe.current.value = "");
 		}
 	}
 	function Wt() {
 		try {
 			if (x.type === "week") return;
-			let t = Be(e, x.type, x.end, x.monthStartDay ?? 1);
+			let t = Ve(e, x.type, x.end, x.monthStartDay ?? 1);
 			It(Mt, "汇总将替换当前输入，是否继续？", () => {
-				S(t), Lt(), T(!1), E(!1), C(!1), N(!1), L("已汇总连续覆盖的记录，请核对后保存。");
+				S(t), Lt(), T(!1), E(!1), C(!1), N(!1), qe("已汇总连续覆盖的记录，请核对后保存。");
 			});
 		} catch (e) {
-			L(e instanceof Error ? e.message : "汇总失败");
+			qe(e instanceof Error ? e.message : "汇总失败");
 		}
 	}
 	function Gt(e, t) {
@@ -11232,15 +11275,15 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 			S(ye(x, n, x.accounts ?? y(x.type, x.end).accounts)), N(!1);
 		});
 	}
-	function V() {
+	function qt() {
 		let e = y(x.type, x.end, x.monthStartDay ?? 1);
 		e.accounts = e.accounts?.map((e) => ({
 			...e,
 			balance: null
-		})), e.balances.cash = null, St("finance-review-template.json", JSON.stringify(e, null, 2), "application/json");
+		})), e.balances.cash = null, Ct("finance-review-template.json", JSON.stringify(e, null, 2), "application/json");
 	}
-	function qt() {
-		It(!mt || Object.values(x.focus?.checks ?? {}).some(Boolean), "刷新会带入当前模块数据并重新核对，变化说明保留。历史复盘请确认这些数据属于该截至日。", () => {
+	function V() {
+		It(!z || Object.values(x.focus?.checks ?? {}).some(Boolean), "刷新会带入当前模块数据并重新核对，变化说明保留。历史复盘请确认这些数据属于该截至日。", () => {
 			let e = pe(u);
 			e.notes = { ...x.focus?.notes }, x.investments && (e.holdings = M(x.investments));
 			let t = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
@@ -11304,26 +11347,26 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 	}
 	function Zt() {
 		if (d.some((e) => e.budgets.some((e) => e.reviewPeriod && e.actual !== 0 && e.reviewPeriod.start <= x.end && e.reviewPeriod.end >= x.start))) {
-			L("本期已有未标具体日期的周复盘汇总。请修订原复盘或补齐日期后核对，不能用仅有日期的明细覆盖这些金额。");
+			qe("本期已有未标具体日期的周复盘汇总。请修订原复盘或补齐日期后核对，不能用仅有日期的明细覆盖这些金额。");
 			return;
 		}
 		It(x.income !== null || ce.some((e) => e.flow === "expense" && x.amounts[e.id] !== null), "将替换本期收入和消费金额，投资与应急划拨、事项说明保持不变。是否继续？", () => {
-			S($e(x, ht.rows)), ie(!1), T(!0), ne(_t), E(!1), L("已按日期带入收支，请核对本期完整性后保存。");
+			S(tt(x, ht.rows)), ie(!1), T(!0), ne(gt), E(!1), qe("已按日期带入收支，请核对本期完整性后保存。");
 		});
 	}
 	function Qt() {
 		It(x.income !== null, "以本期带日期的工资和其他到账替换收入合计，支出、划拨及说明不变。是否继续？", () => {
-			S(et(x, yt)), ie(!0), k(xt), ae(!1);
+			S(nt(x, yt)), ie(!0), k(bt), ae(!1);
 		});
 	}
 	function $t(e, t, n) {
-		p(e, t, n), !vt && (re || !x.incomeLedger && (x.income === null || x.income === 0)) && (ie(!0), k(""), ae(!1)), L("收入已保存到账本。未联动的手填金额或历史快照保留；需更新时请带入本期收入。");
+		p(e, t, n), !B && (re || !x.incomeLedger && (x.income === null || x.income === 0)) && (ie(!0), k(""), ae(!1)), qe("收入已保存到账本。未联动的手填金额或历史快照保留；需更新时请带入本期收入。");
 	}
 	return /* @__PURE__ */ (0, b.jsxs)("div", {
 		className: "finance-review",
 		children: [
 			/* @__PURE__ */ (0, b.jsxs)("dialog", {
-				ref: Ze,
+				ref: Qe,
 				className: "review-confirm",
 				"aria-labelledby": "review-result-title",
 				"aria-describedby": "review-result-message",
@@ -11333,11 +11376,11 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 				children: [
 					/* @__PURE__ */ (0, b.jsx)("h3", {
 						id: "review-result-title",
-						children: nt?.title
+						children: rt?.title
 					}),
 					/* @__PURE__ */ (0, b.jsx)("p", {
 						id: "review-result-message",
-						children: nt?.message
+						children: rt?.message
 					}),
 					/* @__PURE__ */ (0, b.jsx)("div", {
 						className: "data-actions",
@@ -11346,38 +11389,38 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 							className: "primary-button",
 							autoFocus: !0,
 							onClick: Pt,
-							children: nt?.hasField ? "前往检查" : "知道了"
+							children: rt?.hasField ? "前往检查" : "知道了"
 						})
 					})
 				]
 			}),
 			/* @__PURE__ */ (0, b.jsxs)("dialog", {
-				ref: Xe,
+				ref: Ze,
 				className: "review-confirm",
 				"aria-labelledby": "review-confirm-title",
 				onCancel: (e) => {
-					e.preventDefault(), at(null);
+					e.preventDefault(), ot(null);
 				},
 				children: [
 					/* @__PURE__ */ (0, b.jsx)("h3", {
 						id: "review-confirm-title",
 						children: "确认更新"
 					}),
-					/* @__PURE__ */ (0, b.jsx)("p", { children: it?.message }),
+					/* @__PURE__ */ (0, b.jsx)("p", { children: at?.message }),
 					/* @__PURE__ */ (0, b.jsxs)("div", {
 						className: "data-actions",
 						children: [/* @__PURE__ */ (0, b.jsx)("button", {
 							type: "button",
 							className: "secondary-button",
 							autoFocus: !0,
-							onClick: () => at(null),
+							onClick: () => ot(null),
 							children: "取消"
 						}), /* @__PURE__ */ (0, b.jsx)("button", {
 							type: "button",
 							className: "primary-button",
 							onClick: () => {
-								let e = it?.action;
-								at(null), e && Ft(e);
+								let e = at?.action;
+								ot(null), e && Ft(e);
 							},
 							children: "确认"
 						})]
@@ -11393,13 +11436,13 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 						type: "button",
 						className: Me === "entry" ? "active" : "",
 						"aria-pressed": Me === "entry",
-						onClick: () => Ie("entry"),
+						onClick: () => Fe("entry"),
 						children: "更新数据"
 					}), /* @__PURE__ */ (0, b.jsx)("button", {
 						type: "button",
 						className: Me === "report" ? "active" : "",
 						"aria-pressed": Me === "report",
-						onClick: () => Ie("report"),
+						onClick: () => Fe("report"),
 						children: "前后对比"
 					})]
 				}), /* @__PURE__ */ (0, b.jsxs)("div", {
@@ -11408,20 +11451,20 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 						/* @__PURE__ */ (0, b.jsx)("button", {
 							className: "secondary-button",
 							type: "button",
-							onClick: V,
+							onClick: qt,
 							children: "下载模板"
 						}),
 						/* @__PURE__ */ (0, b.jsx)("button", {
 							className: "secondary-button",
 							type: "button",
-							onClick: () => Ye.current?.click(),
+							onClick: () => Xe.current?.click(),
 							children: "导入复盘"
 						}),
 						/* @__PURE__ */ (0, b.jsx)("button", {
 							className: "secondary-button",
 							type: "button",
 							disabled: !e.length,
-							onClick: () => St("finance-reviews.json", JSON.stringify({
+							onClick: () => Ct("finance-reviews.json", JSON.stringify({
 								app: "personal-finance-review",
 								version: 1,
 								records: e
@@ -11430,7 +11473,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 						}),
 						/* @__PURE__ */ (0, b.jsx)("input", {
 							className: "visually-hidden",
-							ref: Ye,
+							ref: Xe,
 							type: "file",
 							accept: ".json,application/json",
 							"aria-label": "导入周期复盘文件",
@@ -11505,11 +11548,11 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									type: "number",
 									step: "0.01",
 									required: !0,
-									readOnly: Tt,
+									readOnly: St,
 									value: x.income ?? "",
 									onChange: (e) => S({
 										...x,
-										income: Ct(e.target.value)
+										income: wt(e.target.value)
 									})
 								})]
 							})
@@ -11555,7 +11598,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									]
 								})]
 							}),
-							Dt.length > 1 && /* @__PURE__ */ (0, b.jsxs)("label", {
+							Et.length > 1 && /* @__PURE__ */ (0, b.jsxs)("label", {
 								className: "field",
 								children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "到账月份" }), /* @__PURE__ */ (0, b.jsx)("select", {
 									"aria-label": "复盘收入月份",
@@ -11566,13 +11609,13 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 											de(t), se(!1);
 										});
 									},
-									children: Dt.map((e) => /* @__PURE__ */ (0, b.jsx)("option", {
+									children: Et.map((e) => /* @__PURE__ */ (0, b.jsx)("option", {
 										value: e.id,
 										children: e.id
 									}, e.id))
 								})]
 							}),
-							Ot ? /* @__PURE__ */ (0, b.jsx)(ot, {
+							Ot ? /* @__PURE__ */ (0, b.jsx)(ct, {
 								embedded: !0,
 								range: {
 									start: x.start,
@@ -11605,10 +11648,10 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									children: [/* @__PURE__ */ (0, b.jsx)("button", {
 										type: "button",
 										className: "secondary-button",
-										disabled: vt || re,
+										disabled: B || re,
 										onClick: Qt,
 										children: "带入本期收入"
-									}), !vt && (re || x.incomeLedger) && /* @__PURE__ */ (0, b.jsx)("button", {
+									}), !B && (re || x.incomeLedger) && /* @__PURE__ */ (0, b.jsx)("button", {
 										type: "button",
 										className: "secondary-button",
 										onClick: () => {
@@ -11683,7 +11726,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 										/* @__PURE__ */ (0, b.jsx)("td", { children: e.count ? P(e.other) : "未登记" }),
 										/* @__PURE__ */ (0, b.jsx)("td", { children: e.count ? P(e.spending) : "未登记" }),
 										/* @__PURE__ */ (0, b.jsx)("td", { children: e.count ? P(e.surplus) : "未登记" }),
-										/* @__PURE__ */ (0, b.jsx)("td", { children: e.surplusDelta === null ? "无同天数基准" : wt(e.surplusDelta) })
+										/* @__PURE__ */ (0, b.jsx)("td", { children: e.surplusDelta === null ? "无同天数基准" : Tt(e.surplusDelta) })
 									] }, e.start)) })]
 								})
 							}),
@@ -11750,7 +11793,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									children: "负数表示已标日期净额高于月度净额，需核对退款或月度金额；未确认到账的工资规划也不计入本期。"
 								})
 							] }),
-							/* @__PURE__ */ (0, b.jsx)(Et, { rows: ht.rows }),
+							/* @__PURE__ */ (0, b.jsx)(Dt, { rows: ht.rows }),
 							/* @__PURE__ */ (0, b.jsxs)("div", {
 								className: "review-toolbar",
 								children: [/* @__PURE__ */ (0, b.jsx)("span", {
@@ -11764,7 +11807,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 										disabled: w || ht.unassigned.length > 0,
 										onClick: Zt,
 										children: "带入并联动本期收支"
-									}), vt && /* @__PURE__ */ (0, b.jsx)("button", {
+									}), B && /* @__PURE__ */ (0, b.jsx)("button", {
 										type: "button",
 										className: "secondary-button",
 										onClick: () => {
@@ -11791,9 +11834,9 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 					x.type === "month" && /* @__PURE__ */ (0, b.jsxs)("label", {
 						className: "field",
 						children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "月预算口径" }), /* @__PURE__ */ (0, b.jsxs)("select", {
-							value: x.budget?.mode ?? qe,
+							value: x.budget?.mode ?? Je,
 							onChange: (e) => {
-								Je(e.target.value), S({
+								Ye(e.target.value), S({
 									...x,
 									budget: void 0
 								});
@@ -11828,14 +11871,14 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 											type: "number",
 											step: "0.01",
 											required: !0,
-											readOnly: vt && e.flow === "expense",
+											readOnly: B && e.flow === "expense",
 											"aria-label": `${e.name}本期金额`,
 											value: x.amounts[e.id] ?? "",
 											onChange: (t) => S({
 												...x,
 												amounts: {
 													...x.amounts,
-													[e.id]: Ct(t.target.value)
+													[e.id]: wt(t.target.value)
 												}
 											})
 										}) }),
@@ -11865,7 +11908,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 							})
 						]
 					}),
-					/* @__PURE__ */ (0, b.jsx)(He, {
+					/* @__PURE__ */ (0, b.jsx)(Ue, {
 						value: x.investments,
 						onChange: Yt,
 						confirmed: Se,
@@ -11873,9 +11916,9 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 						onOpen: () => h("investment"),
 						saveAction: Ht("investments")
 					}),
-					/* @__PURE__ */ (0, b.jsx)(Ve, {
+					/* @__PURE__ */ (0, b.jsx)(He, {
 						focus: x.focus,
-						live: mt,
+						live: z,
 						onChange: (e) => {
 							C(!1);
 							let t = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
@@ -11889,7 +11932,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 								}
 							});
 						},
-						onRefresh: qt,
+						onRefresh: V,
 						onOpen: h,
 						onUseBalances: Xt,
 						saveAction: (e) => Ht(e)
@@ -11946,7 +11989,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 												required: !0,
 												"aria-label": `${e.name}复盘期末余额`,
 												value: e.balance ?? "",
-												onChange: (t) => Gt(e.id, { balance: Ct(t.target.value) })
+												onChange: (t) => Gt(e.id, { balance: wt(t.target.value) })
 											}) }),
 											/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)("input", {
 												type: "checkbox",
@@ -11981,7 +12024,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 							children: "本期尚无账户明细，可带入核对；不带入时保留手填现金合计。"
 						})]
 					}),
-					pt && /* @__PURE__ */ (0, b.jsxs)("details", {
+					mt && /* @__PURE__ */ (0, b.jsxs)("details", {
 						className: "review-method",
 						"data-review-module": "goals",
 						children: [
@@ -11994,8 +12037,8 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 										/* @__PURE__ */ (0, b.jsx)("th", { children: "目标" }),
 										/* @__PURE__ */ (0, b.jsx)("th", { children: "金额" }),
 										/* @__PURE__ */ (0, b.jsx)("th", { children: "来源" })
-									] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: pt.map((e) => {
-										let t = dt(e, i, n);
+									] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: mt.map((e) => {
+										let t = pt(e, i, n);
 										return /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 											/* @__PURE__ */ (0, b.jsx)("th", { children: e.name }),
 											/* @__PURE__ */ (0, b.jsx)("td", { children: t.mode === "manual" ? /* @__PURE__ */ (0, b.jsx)("input", {
@@ -12007,7 +12050,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 												value: Number.isFinite(e.current) ? e.current : "",
 												onChange: (t) => S({
 													...x,
-													goals: pt.map((n) => n.id === e.id ? {
+													goals: mt.map((n) => n.id === e.id ? {
 														...n,
 														current: t.target.value === "" ? NaN : Number(t.target.value)
 													} : n)
@@ -12044,7 +12087,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									...x,
 									balances: {
 										...x.balances,
-										[e]: Ct(t.target.value)
+										[e]: wt(t.target.value)
 									}
 								})
 							})]
@@ -12076,7 +12119,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									onChange: (e) => xe(e.target.value === "dashboard"),
 									children: [/* @__PURE__ */ (0, b.jsx)("option", {
 										value: "dashboard",
-										disabled: !ut,
+										disabled: !dt,
 										children: "更新本期看板并保留历史"
 									}), /* @__PURE__ */ (0, b.jsx)("option", {
 										value: "history",
@@ -12084,7 +12127,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									})]
 								})]
 							}),
-							!ut && x.type === "week" && /* @__PURE__ */ (0, b.jsx)("p", { children: "本期早于已有最新一期或属于未来日期，仅保存历史报告，不覆盖当前看板。" }),
+							!dt && x.type === "week" && /* @__PURE__ */ (0, b.jsx)("p", { children: "本期早于已有最新一期或属于未来日期，仅保存历史报告，不覆盖当前看板。" }),
 							x.type === "week" && /* @__PURE__ */ (0, b.jsx)("p", {
 								className: "review-caption",
 								children: "账本已记录的金额须先补日期，避免再次记账。投资与应急划拨不计消费，期末余额直接替换，不再加减收支。预算和计划不变。"
@@ -12104,10 +12147,10 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 					})
 				]
 			}),
-			Me === "report" && (!R || !z ? /* @__PURE__ */ (0, b.jsx)("p", { children: "尚无复盘记录。" }) : /* @__PURE__ */ (0, b.jsxs)("section", {
+			Me === "report" && (!L || !R ? /* @__PURE__ */ (0, b.jsx)("p", { children: "尚无复盘记录。" }) : /* @__PURE__ */ (0, b.jsxs)("section", {
 				"aria-label": "周期对比报告",
 				children: [
-					ct && /* @__PURE__ */ (0, b.jsx)("p", {
+					lt && /* @__PURE__ */ (0, b.jsx)("p", {
 						className: "review-status",
 						role: "status",
 						children: "本期有模块已单独更新；此报告仍是上次全部保存的版本。"
@@ -12118,8 +12161,8 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 							className: "field",
 							children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "报告期间" }), /* @__PURE__ */ (0, b.jsx)("select", {
 								"aria-label": "报告期间",
-								value: R.id,
-								onChange: (e) => Ge(e.target.value),
+								value: L.id,
+								onChange: (e) => Re(e.target.value),
 								children: e.map((e) => /* @__PURE__ */ (0, b.jsxs)("option", {
 									value: e.id,
 									children: [
@@ -12137,67 +12180,67 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 								className: "secondary-button",
 								type: "button",
 								onClick: () => It(Mt, "修订会替换当前未保存的输入，是否继续？", () => {
-									S({ ...R }), Lt(), C(!1), T(!1), E(!1), N(!1), F(!1), Te(""), Ie("entry"), L("");
+									S({ ...L }), Lt(), C(!1), T(!1), E(!1), N(!1), F(!1), Te(""), Fe("entry"), qe("");
 								}),
 								children: "修订本期"
 							}), /* @__PURE__ */ (0, b.jsx)("button", {
 								className: "secondary-button",
 								type: "button",
-								onClick: () => St(`finance-${R.type}-${R.start}.md`, ze(R, e), "text/markdown;charset=utf-8"),
+								onClick: () => Ct(`finance-${L.type}-${L.start}.md`, Be(L, e), "text/markdown;charset=utf-8"),
 								children: "下载报告"
 							})]
 						})]
 					}),
 					/* @__PURE__ */ (0, b.jsx)("p", {
 						className: "review-caption",
-						children: z.previous ? `对比上期：${z.previous.start} 至 ${z.previous.end}` : "首次基准，暂无上期对比"
+						children: R.previous ? `对比上期：${R.previous.start} 至 ${R.previous.end}` : "首次基准，暂无上期对比"
 					}),
-					R.type === "month" && /* @__PURE__ */ (0, b.jsx)("p", {
+					L.type === "month" && /* @__PURE__ */ (0, b.jsx)("p", {
 						className: "review-caption",
-						children: R.monthStartDay === 10 ? "10号账期：每月10日至下月9日" : "自然月报告：沿用原口径"
+						children: L.monthStartDay === 10 ? "10号账期：每月10日至下月9日" : "自然月报告：沿用原口径"
 					}),
-					R.incomeLedger && /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)("p", {
+					L.incomeLedger && /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)("p", {
 						className: "review-caption",
 						children: "收入来源：保存时的到账明细快照"
-					}), /* @__PURE__ */ (0, b.jsx)(Et, { rows: R.incomeLedger })] }),
-					R.ledger && /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsxs)("p", {
+					}), /* @__PURE__ */ (0, b.jsx)(Dt, { rows: L.incomeLedger })] }),
+					L.ledger && /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsxs)("p", {
 						className: "review-caption",
 						children: [
 							"收支来源：保存时的日期明细快照 · ",
-							R.ledger.length,
+							L.ledger.length,
 							" 笔"
 						]
-					}), /* @__PURE__ */ (0, b.jsx)(Et, { rows: R.ledger })] }),
+					}), /* @__PURE__ */ (0, b.jsx)(Dt, { rows: L.ledger })] }),
 					/* @__PURE__ */ (0, b.jsxs)("div", {
 						className: "review-metrics",
 						children: [
 							/* @__PURE__ */ (0, b.jsxs)("div", { children: [
 								/* @__PURE__ */ (0, b.jsx)("span", { children: "本期收入" }),
-								/* @__PURE__ */ (0, b.jsx)("strong", { children: P(z.totals.income) }),
-								Pe(R) && /* @__PURE__ */ (0, b.jsxs)("small", { children: [
+								/* @__PURE__ */ (0, b.jsx)("strong", { children: P(R.totals.income) }),
+								Pe(L) && /* @__PURE__ */ (0, b.jsxs)("small", { children: [
 									"工资 ",
-									P(Pe(R).filter((e) => e.categoryId === "salary").reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100),
+									P(Pe(L).filter((e) => e.categoryId === "salary").reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100),
 									" · 其他 ",
-									P(Pe(R).filter((e) => e.categoryId === "otherIncome").reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100)
+									P(Pe(L).filter((e) => e.categoryId === "otherIncome").reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100)
 								] })
 							] }),
-							/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "本期实际消费" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: P(z.totals.spending) })] }),
-							/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "本期收支结余" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: P(z.totals.surplus) })] }),
+							/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "本期实际消费" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: P(R.totals.spending) })] }),
+							/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "本期收支结余" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: P(R.totals.surplus) })] }),
 							/* @__PURE__ */ (0, b.jsxs)("div", { children: [
 								/* @__PURE__ */ (0, b.jsx)("span", { children: "期末净资产" }),
-								/* @__PURE__ */ (0, b.jsx)("strong", { children: P(z.totals.netWorth) }),
-								/* @__PURE__ */ (0, b.jsxs)("small", { children: ["较上期余额 ", wt(z.netWorthDelta)] })
+								/* @__PURE__ */ (0, b.jsx)("strong", { children: P(R.totals.netWorth) }),
+								/* @__PURE__ */ (0, b.jsxs)("small", { children: ["较上期余额 ", Tt(R.netWorthDelta)] })
 							] })
 						]
 					}),
-					/* @__PURE__ */ (0, b.jsx)(Ue, {
-						current: R,
-						previous: z.previous
+					/* @__PURE__ */ (0, b.jsx)(We, {
+						current: L,
+						previous: R.previous
 					}),
 					/* @__PURE__ */ (0, b.jsxs)("section", {
 						className: "review-highlights",
 						"aria-label": "本期关键变化",
-						children: [/* @__PURE__ */ (0, b.jsx)("h3", { children: "本期关键变化" }), z.highlights.map((e) => /* @__PURE__ */ (0, b.jsxs)("details", {
+						children: [/* @__PURE__ */ (0, b.jsx)("h3", { children: "本期关键变化" }), R.highlights.map((e) => /* @__PURE__ */ (0, b.jsxs)("details", {
 							className: "review-highlight",
 							children: [/* @__PURE__ */ (0, b.jsxs)("summary", { children: [/* @__PURE__ */ (0, b.jsxs)("span", {
 								className: "review-highlight-title",
@@ -12209,7 +12252,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 						}, e.id))]
 					}),
 					/* @__PURE__ */ (0, b.jsx)("h3", { children: "下期动作" }),
-					/* @__PURE__ */ (0, b.jsx)("ul", { children: z.actions.map((e) => /* @__PURE__ */ (0, b.jsx)("li", { children: e }, e)) }),
+					/* @__PURE__ */ (0, b.jsx)("ul", { children: R.actions.map((e) => /* @__PURE__ */ (0, b.jsx)("li", { children: e }, e)) }),
 					/* @__PURE__ */ (0, b.jsxs)("details", {
 						className: "review-method",
 						children: [/* @__PURE__ */ (0, b.jsx)("summary", { children: "收支分类明细" }), /* @__PURE__ */ (0, b.jsx)("div", {
@@ -12222,20 +12265,20 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									/* @__PURE__ */ (0, b.jsx)("th", { children: "上期" }),
 									/* @__PURE__ */ (0, b.jsx)("th", { children: "变化" }),
 									/* @__PURE__ */ (0, b.jsx)("th", { children: "本期事项" })
-								] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: z.rows.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
+								] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: R.rows.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 									/* @__PURE__ */ (0, b.jsxs)("th", {
 										scope: "row",
 										children: [e.name, e.flow === "transfer" && /* @__PURE__ */ (0, b.jsx)("small", { children: "划拨，不计消费" })]
 									}),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: P(e.amount) }),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: e.previous === null ? "无基准" : P(e.previous) }),
-									/* @__PURE__ */ (0, b.jsx)("td", { children: wt(e.delta) }),
+									/* @__PURE__ */ (0, b.jsx)("td", { children: Tt(e.delta) }),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: e.note || "未填写" })
 								] }, e.id)) })]
 							})
 						})]
 					}),
-					z.accountRows.length > 0 && /* @__PURE__ */ (0, b.jsxs)("details", {
+					R.accountRows.length > 0 && /* @__PURE__ */ (0, b.jsxs)("details", {
 						className: "review-method",
 						"aria-label": "账户余额对比",
 						children: [/* @__PURE__ */ (0, b.jsx)("summary", { children: "账户余额对比" }), /* @__PURE__ */ (0, b.jsx)("div", {
@@ -12249,24 +12292,24 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									/* @__PURE__ */ (0, b.jsx)("th", { children: "变化" }),
 									/* @__PURE__ */ (0, b.jsx)("th", { children: "计入现金" }),
 									/* @__PURE__ */ (0, b.jsx)("th", { children: "本期说明" })
-								] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: z.accountRows.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
+								] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: R.accountRows.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 									/* @__PURE__ */ (0, b.jsxs)("th", {
 										scope: "row",
 										children: [e.name, /* @__PURE__ */ (0, b.jsx)("small", { children: e.purpose })]
 									}),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: e.current === null ? "未记录" : P(e.current) }),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: e.previous === null ? "无基准" : P(e.previous) }),
-									/* @__PURE__ */ (0, b.jsx)("td", { children: wt(e.delta) }),
+									/* @__PURE__ */ (0, b.jsx)("td", { children: Tt(e.delta) }),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: e.included === null ? "未记录" : e.included ? "是" : "否" }),
 									/* @__PURE__ */ (0, b.jsxs)("td", { children: [e.note || "未填写", /* @__PURE__ */ (0, b.jsx)("small", { children: e.status })] })
 								] }, e.id)) })]
 							})
 						})]
 					}),
-					R.budget && /* @__PURE__ */ (0, b.jsxs)("details", {
+					L.budget && /* @__PURE__ */ (0, b.jsxs)("details", {
 						className: "review-method",
 						open: !0,
-						children: [/* @__PURE__ */ (0, b.jsxs)("summary", { children: ["月预算核对 · ", R.budget.mode === "normal" ? "普通月" : "出差月"] }), /* @__PURE__ */ (0, b.jsx)("div", {
+						children: [/* @__PURE__ */ (0, b.jsxs)("summary", { children: ["月预算核对 · ", L.budget.mode === "normal" ? "普通月" : "出差月"] }), /* @__PURE__ */ (0, b.jsx)("div", {
 							className: "table-wrap",
 							children: /* @__PURE__ */ (0, b.jsxs)("table", {
 								className: "review-table",
@@ -12275,7 +12318,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 									/* @__PURE__ */ (0, b.jsx)("th", { children: "整月预算" }),
 									/* @__PURE__ */ (0, b.jsx)("th", { children: "本期金额" }),
 									/* @__PURE__ */ (0, b.jsx)("th", { children: "预算减本期" })
-								] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: z.budgetRows.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
+								] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: R.budgetRows.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 									/* @__PURE__ */ (0, b.jsx)("th", { children: e.name }),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: P(e.budget) }),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: P(e.amount) }),
@@ -12284,9 +12327,9 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 							})
 						})]
 					}),
-					R.summary && /* @__PURE__ */ (0, b.jsxs)("p", {
+					L.summary && /* @__PURE__ */ (0, b.jsxs)("p", {
 						className: "review-caption",
-						children: ["本期补充：", R.summary]
+						children: ["本期补充：", L.summary]
 					}),
 					/* @__PURE__ */ (0, b.jsxs)("details", {
 						className: "review-method",
@@ -12302,17 +12345,17 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 										/* @__PURE__ */ (0, b.jsx)("th", { children: "上期" })
 									] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: Object.entries(ue).map(([e, t]) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 										/* @__PURE__ */ (0, b.jsx)("th", { children: t }),
-										/* @__PURE__ */ (0, b.jsx)("td", { children: P(R.balances[e]) }),
-										/* @__PURE__ */ (0, b.jsx)("td", { children: z.previous ? P(z.previous.balances[e]) : "无基准" })
+										/* @__PURE__ */ (0, b.jsx)("td", { children: P(L.balances[e]) }),
+										/* @__PURE__ */ (0, b.jsx)("td", { children: R.previous ? P(R.previous.balances[e]) : "无基准" })
 									] }, e)) })]
 								})
 							}),
 							/* @__PURE__ */ (0, b.jsxs)("p", { children: [
 								"日均消费：本期 ",
-								P(z.totals.spending / z.totals.days),
-								z.prior ? `；上期 ${P(z.prior.spending / z.prior.days)}` : ""
+								P(R.totals.spending / R.totals.days),
+								R.prior ? `；上期 ${P(R.prior.spending / R.prior.days)}` : ""
 							] }),
-							/* @__PURE__ */ (0, b.jsx)("ul", { children: z.notices.map((e) => /* @__PURE__ */ (0, b.jsx)("li", { children: e }, e)) })
+							/* @__PURE__ */ (0, b.jsx)("ul", { children: R.notices.map((e) => /* @__PURE__ */ (0, b.jsx)("li", { children: e }, e)) })
 						]
 					})
 				]
@@ -12320,7 +12363,7 @@ function Tt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 		]
 	});
 }
-function Et({ rows: e }) {
+function Dt({ rows: e }) {
 	return /* @__PURE__ */ (0, b.jsxs)("details", {
 		className: "review-method",
 		children: [/* @__PURE__ */ (0, b.jsxs)("summary", { children: [
@@ -12352,7 +12395,7 @@ function Et({ rows: e }) {
 }
 //#endregion
 //#region app/weekly-ledger-view.tsx
-function Dt({ records: e, flow: t }) {
+function Ot({ records: e, flow: t }) {
 	let n = e.filter((e) => e.type === "week").sort((e, t) => e.start.localeCompare(t.start));
 	return /* @__PURE__ */ (0, b.jsxs)("details", {
 		className: "review-method",
@@ -12395,18 +12438,18 @@ function Dt({ records: e, flow: t }) {
 }
 //#endregion
 //#region app/review-overview.tsx
-function Ot({ records: e, onOpen: t }) {
-	let n = Ne(e), r = n ? Re(n, e) : null, i = (e) => e === null ? "首次基准" : `较上期 ${e > 0 ? "+" : ""}${P(e)}`, a = r && n ? [
+function kt({ records: e, onOpen: t }) {
+	let n = Ne(e), r = n ? ze(n, e) : null, i = Fe(e), a = (e) => e === null ? "首次基准" : `较上期 ${e > 0 ? "+" : ""}${P(e)}`, o = r && n ? [
 		{
 			title: "本周收入",
 			value: r.totals.income,
-			detail: i(r.prior ? r.totals.income - r.prior.income : null),
+			detail: a(r.prior ? r.totals.income - r.prior.income : null),
 			tone: "blue"
 		},
 		{
 			title: "本周实际消费",
 			value: r.totals.spending,
-			detail: i(r.prior ? r.totals.spending - r.prior.spending : null),
+			detail: a(r.prior ? r.totals.spending - r.prior.spending : null),
 			tone: "green"
 		},
 		{
@@ -12418,59 +12461,118 @@ function Ot({ records: e, onOpen: t }) {
 		{
 			title: "复盘期末净资产",
 			value: r.totals.netWorth,
-			detail: i(r.netWorthDelta),
+			detail: a(r.netWorthDelta),
 			tone: "violet"
 		}
 	] : [];
 	return /* @__PURE__ */ (0, b.jsxs)("section", {
 		"aria-label": "最近周复盘",
 		className: "review-overview",
-		children: [/* @__PURE__ */ (0, b.jsxs)("div", {
-			className: "section-title compact",
-			children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [
-				/* @__PURE__ */ (0, b.jsx)("h3", { children: "最近周复盘" }),
-				/* @__PURE__ */ (0, b.jsx)("p", { children: n ? `${n.start} 至 ${n.end} · ${r.totals.days} 天 · 已保存快照` : "尚未保存周复盘" }),
-				r?.prior && /* @__PURE__ */ (0, b.jsxs)("p", { children: [
-					"上期：",
-					r.previous.start,
-					" 至 ",
-					r.previous.end,
-					" · ",
-					r.prior.days,
-					" 天",
-					r.prior.days === r.totals.days ? "" : " · 天数不同，金额不直接代表增减趋势"
-				] })
-			] }), /* @__PURE__ */ (0, b.jsx)("button", {
-				type: "button",
-				onClick: t,
-				children: "查看周复盘"
-			})]
-		}), /* @__PURE__ */ (0, b.jsx)("div", {
-			className: "overview-grid",
-			children: a.map((e) => /* @__PURE__ */ (0, b.jsxs)("article", {
-				className: `overview-card ${e.tone}`,
+		children: [
+			/* @__PURE__ */ (0, b.jsxs)("div", {
+				className: "section-title compact",
+				children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [
+					/* @__PURE__ */ (0, b.jsx)("h3", { children: "最近周复盘" }),
+					/* @__PURE__ */ (0, b.jsx)("p", { children: n ? `${n.start} 至 ${n.end} · ${r.totals.days} 天 · 已保存快照` : "尚未保存周复盘" }),
+					r?.prior && /* @__PURE__ */ (0, b.jsxs)("p", { children: [
+						"上期：",
+						r.previous.start,
+						" 至 ",
+						r.previous.end,
+						" · ",
+						r.prior.days,
+						" 天",
+						r.prior.days === r.totals.days ? "" : " · 天数不同，金额不直接代表增减趋势"
+					] })
+				] }), /* @__PURE__ */ (0, b.jsx)("button", {
+					type: "button",
+					onClick: t,
+					children: "查看周复盘"
+				})]
+			}),
+			i.month && /* @__PURE__ */ (0, b.jsxs)("div", {
+				className: "review-month-income",
+				"aria-label": "本月收入",
+				children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "本月收入 · 已记录" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: P(i.month.income) })] }), /* @__PURE__ */ (0, b.jsxs)("div", { children: [
+					/* @__PURE__ */ (0, b.jsxs)("span", { children: [
+						i.month.start,
+						" 至 ",
+						i.month.limit,
+						" · 截至 ",
+						i.month.end
+					] }),
+					/* @__PURE__ */ (0, b.jsxs)("small", { children: [
+						"10号账期 · 已保存周复盘汇总 · 已覆盖 ",
+						i.month.coveredDays,
+						"/",
+						i.month.days,
+						" 天"
+					] }),
+					i.month.coveredDays < i.month.days && /* @__PURE__ */ (0, b.jsx)("small", { children: "尚有未覆盖日期，当前金额不是完整月收入。" }),
+					i.month.boundaryMissing && /* @__PURE__ */ (0, b.jsx)("small", { children: "跨账期周缺少收入日期，该周收入暂未计入本月。" })
+				] })]
+			}),
+			/* @__PURE__ */ (0, b.jsx)("div", {
+				className: "overview-grid",
+				children: o.map((e) => /* @__PURE__ */ (0, b.jsxs)("article", {
+					className: `overview-card ${e.tone}`,
+					children: [
+						/* @__PURE__ */ (0, b.jsx)("span", { children: e.title }),
+						/* @__PURE__ */ (0, b.jsx)("strong", { children: P(e.value) }),
+						/* @__PURE__ */ (0, b.jsx)("small", { children: e.detail })
+					]
+				}, e.title))
+			}),
+			i.rows.length > 0 && /* @__PURE__ */ (0, b.jsxs)("section", {
+				"aria-label": "每周收支变化",
+				className: "review-week-trend",
 				children: [
-					/* @__PURE__ */ (0, b.jsx)("span", { children: e.title }),
-					/* @__PURE__ */ (0, b.jsx)("strong", { children: P(e.value) }),
-					/* @__PURE__ */ (0, b.jsx)("small", { children: e.detail })
+					/* @__PURE__ */ (0, b.jsx)("h3", { children: "每周收支变化" }),
+					/* @__PURE__ */ (0, b.jsx)("div", {
+						className: "review-week-table",
+						children: /* @__PURE__ */ (0, b.jsxs)("table", { children: [/* @__PURE__ */ (0, b.jsx)("thead", { children: /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
+							/* @__PURE__ */ (0, b.jsx)("th", { children: "复盘日期" }),
+							/* @__PURE__ */ (0, b.jsx)("th", { children: "每周收入" }),
+							/* @__PURE__ */ (0, b.jsx)("th", { children: "每周实际消费" }),
+							/* @__PURE__ */ (0, b.jsx)("th", { children: "每周收支结余" }),
+							/* @__PURE__ */ (0, b.jsx)("th", { children: "比较口径" })
+						] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: [...i.rows].reverse().map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
+							/* @__PURE__ */ (0, b.jsxs)("th", {
+								scope: "row",
+								children: [
+									e.record.start,
+									" 至 ",
+									e.record.end,
+									/* @__PURE__ */ (0, b.jsxs)("small", { children: [e.days, " 天"] })
+								]
+							}),
+							[
+								"income",
+								"spending",
+								"surplus"
+							].map((t) => /* @__PURE__ */ (0, b.jsxs)("td", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: P(e[t]) }), /* @__PURE__ */ (0, b.jsx)("small", { children: e.changes ? a(e.changes[t]).replace("较上期", "较上周") : "—" })] }, t)),
+							/* @__PURE__ */ (0, b.jsx)("td", { children: e.comparison })
+						] }, e.record.id)) })] })
+					}),
+					/* @__PURE__ */ (0, b.jsx)("p", { children: "仅统计已保存周复盘；同周修订替换旧值，不重复累计。消费不含投资和应急划拨。" })
 				]
-			}, e.title))
-		})]
+			})
+		]
 	});
 }
 //#endregion
 //#region app/review-dashboard-sync.ts
-var kt = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
-function At(e, t, n) {
+var At = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
+function jt(e, t, n) {
 	if (e.length !== t.length || new Set(t.map((e) => e.id)).size !== t.length || e.some((e) => !t.some((t) => e.id === t.id))) throw Error(`${n}清单已变化，请重新带入当前模块并核对，不能遗漏或猜测账户。`);
 }
-function jt(e, t) {
+function Mt(e, t) {
 	return e.map((e) => ({
 		...e,
 		...t.find((t) => t.id === e.id)
 	}));
 }
-function Mt(e) {
+function Nt(e) {
 	return JSON.stringify([
 		e.accounts,
 		e.holdings,
@@ -12483,20 +12585,20 @@ function Mt(e) {
 		e.goals
 	]);
 }
-function Nt(e) {
+function Pt(e) {
 	let t = e.accounts.filter((e) => e.includedInPersonal !== !1).reduce((e, t) => e + Math.round(t.balance * 100), 0) / 100, n = M({
 		holdings: e.holdings,
 		fxUsd: e.fxUsd,
 		fxHkd: e.fxHkd
-	}), r = kt(e.liabilities);
+	}), r = At(e.liabilities);
 	return {
 		cash: t,
 		investments: n,
 		debt: r,
-		netWorth: Math.round((t + n + kt(e.balanceAssets) - r) * 100) / 100
+		netWorth: Math.round((t + n + At(e.balanceAssets) - r) * 100) / 100
 	};
 }
-function Pt(e) {
+function Ft(e) {
 	if (e === void 0) return [];
 	if (!Array.isArray(e)) throw Error("整期更新历史格式无效，未导入。");
 	let t = /* @__PURE__ */ new Set();
@@ -12504,10 +12606,10 @@ function Pt(e) {
 		let n = structuredClone(e);
 		if (!n || typeof n.id != "string" || t.has(n.id) || typeof n.reviewId != "string" || typeof n.asOf != "string" || !/^\d{4}-\d{2}-\d{2}$/.test(n.asOf) || !Number.isFinite(Date.parse(n.savedAt)) || typeof n.published != "boolean") throw Error("整期更新历史编号或日期无效，未导入。");
 		if (t.add(n.id), n.module !== void 0) {
-			if (!Object.hasOwn(gt, n.module) || !n.moduleDraft || !n.published) throw Error("模块更新历史无效，未导入。");
+			if (!Object.hasOwn(_t, n.module) || !n.moduleDraft || !n.published) throw Error("模块更新历史无效，未导入。");
 			let e = De("week", n.asOf);
 			if (n.reviewId !== `week:${e.start}`) throw Error("模块更新历史周期无效，未导入。");
-			n.moduleDraft = vt(B(e, n.moduleDraft), n.module);
+			n.moduleDraft = yt(vt(e, n.moduleDraft), n.module);
 		}
 		for (let e of [n.before, n.after]) {
 			if (!e || typeof e != "object" || "reviewUpdates" in e || ![
@@ -12521,7 +12623,7 @@ function Pt(e) {
 				"goals"
 			].every((t) => Array.isArray(e[t]))) throw Error("整期更新历史快照不完整，未导入。");
 			try {
-				if (Object.values(Nt(e)).some((e) => !Number.isFinite(e))) throw Error();
+				if (Object.values(Pt(e)).some((e) => !Number.isFinite(e))) throw Error();
 			} catch {
 				throw Error("整期更新历史金额无效，未导入。");
 			}
@@ -12529,7 +12631,7 @@ function Pt(e) {
 		return structuredClone(n);
 	});
 }
-function Ft(e, t, n, r = (/* @__PURE__ */ new Date()).toISOString(), i = Ce()) {
+function It(e, t, n, r = (/* @__PURE__ */ new Date()).toISOString(), i = Ce()) {
 	let a = {
 		...e,
 		financeReviews: t
@@ -12542,14 +12644,14 @@ function Ft(e, t, n, r = (/* @__PURE__ */ new Date()).toISOString(), i = Ce()) {
 			...(e.reviewUpdates ?? []).filter((e) => e.published).map((e) => e.asOf)
 		].sort().at(-1);
 		if (o.end < r || o.end > i) throw Error("较早或未来一期不能覆盖当前看板，请选择仅保存历史报告。");
-		if (n.sourceSignature !== Mt(e)) throw Error("当前模块在复盘期间已变化，请重新带入当前模块并核对后保存。");
+		if (n.sourceSignature !== Nt(e)) throw Error("当前模块在复盘期间已变化，请重新带入当前模块并核对后保存。");
 		if (!o.accounts || !o.investments || !o.focus || !o.goals) throw Error("请补齐账户、逐账户投资、关键事项和目标余额明细。");
 		let s = o.focus;
 		if (Object.values(s.checks).some((e) => !e)) throw Error("请核对大花费项目、账单订阅及资产负债。");
-		if (At(e.accounts, o.accounts, "现金账户"), At(e.holdings, o.investments.holdings, "投资账户"), At(e.balanceAssets, s.assets, "补录资产"), At(e.liabilities, s.debts, "负债"), At(e.reminders, s.bills, "账单"), At(e.fundBuckets, s.projects, "大花费项目"), At(e.goals, o.goals, "目标"), kt(s.assets) !== o.balances.otherAssets || kt(s.debts) !== o.balances.debt || s.holdings !== M(o.investments)) throw Error("资产负债合计与明细不一致，请重新核对。");
+		if (jt(e.accounts, o.accounts, "现金账户"), jt(e.holdings, o.investments.holdings, "投资账户"), jt(e.balanceAssets, s.assets, "补录资产"), jt(e.liabilities, s.debts, "负债"), jt(e.reminders, s.bills, "账单"), jt(e.fundBuckets, s.projects, "大花费项目"), jt(e.goals, o.goals, "目标"), At(s.assets) !== o.balances.otherAssets || At(s.debts) !== o.balances.debt || s.holdings !== M(o.investments)) throw Error("资产负债合计与明细不一致，请重新核对。");
 		a = {
 			...a,
-			monthlyRecords: lt(e.monthlyRecords, e.datedEntries ?? [], o),
+			monthlyRecords: dt(e.monthlyRecords, e.datedEntries ?? [], o),
 			selectedMonth: o.end.slice(0, 7),
 			accounts: e.accounts.map((e) => {
 				let t = o.accounts.find((t) => t.id === e.id);
@@ -12559,16 +12661,16 @@ function Ft(e, t, n, r = (/* @__PURE__ */ new Date()).toISOString(), i = Ce()) {
 					includedInPersonal: t.included
 				};
 			}),
-			holdings: jt(e.holdings, o.investments.holdings),
+			holdings: Mt(e.holdings, o.investments.holdings),
 			fxUsd: o.investments.fxUsd,
 			fxHkd: o.investments.fxHkd,
-			balanceAssets: jt(e.balanceAssets, s.assets),
-			liabilities: jt(e.liabilities, s.debts),
-			reminders: jt(e.reminders, s.bills),
-			fundBuckets: jt(e.fundBuckets, s.projects),
-			goals: jt(e.goals, o.goals),
+			balanceAssets: Mt(e.balanceAssets, s.assets),
+			liabilities: Mt(e.liabilities, s.debts),
+			reminders: Mt(e.reminders, s.bills),
+			fundBuckets: Mt(e.fundBuckets, s.projects),
+			goals: Mt(e.goals, o.goals),
 			dashboardAsOf: o.end
-		}, a.goals = mt(pt(e.goals, o.goals, a.accounts), o.id, o.amounts.parents), o.goals = a.goals.map(({ id: e, name: t, current: n }) => ({
+		}, a.goals = ht(z(e.goals, o.goals, a.accounts), o.id, o.amounts.parents), o.goals = a.goals.map(({ id: e, name: t, current: n }) => ({
 			id: e,
 			name: t,
 			current: n
@@ -12593,7 +12695,7 @@ function Ft(e, t, n, r = (/* @__PURE__ */ new Date()).toISOString(), i = Ce()) {
 }
 //#endregion
 //#region app/review-update-history.tsx
-function It({ updates: e, onExport: t }) {
+function Lt({ updates: e, onExport: t }) {
 	return /* @__PURE__ */ (0, b.jsxs)("details", {
 		className: "review-method",
 		children: [
@@ -12615,10 +12717,10 @@ function It({ updates: e, onExport: t }) {
 						/* @__PURE__ */ (0, b.jsx)("th", { children: "净资产" }),
 						/* @__PURE__ */ (0, b.jsx)("th", { children: "完整版本" })
 					] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: [...e].reverse().map((e) => {
-						let n = Nt(e.after);
+						let n = Pt(e.after);
 						return /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 							/* @__PURE__ */ (0, b.jsxs)("th", { children: [e.asOf, /* @__PURE__ */ (0, b.jsx)("small", { children: new Date(e.savedAt).toLocaleString("zh-CN") })] }),
-							/* @__PURE__ */ (0, b.jsx)("td", { children: e.module ? `${gt[e.module]}更新` : e.published ? "全部更新" : "仅存报告" }),
+							/* @__PURE__ */ (0, b.jsx)("td", { children: e.module ? `${_t[e.module]}更新` : e.published ? "全部更新" : "仅存报告" }),
 							/* @__PURE__ */ (0, b.jsx)("td", { children: P(n.cash) }),
 							/* @__PURE__ */ (0, b.jsx)("td", { children: P(n.investments) }),
 							/* @__PURE__ */ (0, b.jsx)("td", { children: P(n.debt) }),
@@ -12650,58 +12752,58 @@ function It({ updates: e, onExport: t }) {
 }
 //#endregion
 //#region app/finance-save-model.ts
-var Lt = "其他页面已更新数据，本页暂停保存；刷新前请先导出本页备份";
-function Rt(e) {
+var Rt = "其他页面已更新数据，本页暂停保存；刷新前请先导出本页备份";
+function zt(e) {
 	let t = { ...e };
 	return delete t._localSave, t;
 }
-function zt(e) {
+function Bt(e) {
 	return e._localSave?.cloudPending === !0;
 }
-function Bt(e, t, n, r = !1, i = (/* @__PURE__ */ new Date()).toISOString(), a) {
+function Vt(e, t, n, r = !1, i = (/* @__PURE__ */ new Date()).toISOString(), a) {
 	let o = e.getItem(t), s = null;
 	try {
 		s = o ? JSON.parse(o) : null;
 	} catch {}
-	if (a !== void 0 && JSON.stringify(s ? Rt(s) : null) !== a) throw Error(Lt);
-	let c = Rt(n), l = !s || JSON.stringify(Rt(s)) !== JSON.stringify(c), u = {
+	if (a !== void 0 && JSON.stringify(s ? zt(s) : null) !== a) throw Error(Rt);
+	let c = zt(n), l = !s || JSON.stringify(zt(s)) !== JSON.stringify(c), u = {
 		updatedAt: l ? i : s?._localSave?.updatedAt ?? i,
-		cloudPending: !r && (l || !!(s && zt(s)))
+		cloudPending: !r && (l || !!(s && Bt(s)))
 	};
 	return e.setItem(t, JSON.stringify({
 		...c,
 		_localSave: u
 	})), u;
 }
-function Vt(e, t, n) {
+function Ht(e, t, n) {
 	let r = e.getItem(t);
 	if (!r) return !1;
 	let i = JSON.parse(r);
-	return JSON.stringify(Rt(i)) === JSON.stringify(Rt(n)) ? (Bt(e, t, i, !0), !0) : !1;
+	return JSON.stringify(zt(i)) === JSON.stringify(zt(n)) ? (Vt(e, t, i, !0), !0) : !1;
 }
-function Ht(e) {
+function Ut(e) {
 	return JSON.stringify({
-		data: Rt(e.data),
+		data: zt(e.data),
 		snapshots: e.snapshots,
 		monthlyArchives: e.monthlyArchives
 	});
 }
 //#endregion
 //#region app/salary-model.ts
-var Ut = 13e3, Wt = "2026-10";
-function Gt(e, t, n) {
+var Wt = 13e3, Gt = "2026-10";
+function Kt(e, t, n) {
 	return e.map((e) => e.id >= n ? {
 		...e,
 		salary: t
 	} : e);
 }
-function Kt(e, t, n) {
+function qt(e, t, n) {
 	return n === 1 ? {
 		salary: t,
 		records: e
 	} : {
-		salary: Ut,
-		records: Gt(e, Ut, Wt)
+		salary: Wt,
+		records: Kt(e, Wt, Gt)
 	};
 }
 //#endregion
@@ -12715,7 +12817,7 @@ var V = [
 	"#2b6cb0",
 	"#0f766e",
 	"#805ad5"
-], qt = [
+], Jt = [
 	{
 		id: "icbc2616",
 		name: "工行 2616",
@@ -12796,7 +12898,7 @@ var V = [
 		purpose: "储蓄",
 		liquid: !0
 	}
-], Jt = [
+], Yt = [
 	{
 		id: "rent",
 		name: "房租",
@@ -12870,77 +12972,77 @@ var V = [
 		fixed: !0
 	}
 ];
-function Yt(e = {}) {
-	return Jt.map((t) => ({
+function Xt(e = {}) {
+	return Yt.map((t) => ({
 		...t,
 		actual: e[t.id] ?? 0
 	}));
 }
-var Xt = [
+var Zt = [
 	{
 		id: "2026-06",
 		label: "2026年6月",
-		salary: Ut,
+		salary: Wt,
 		payday: 10,
 		stockIncome: 0,
 		otherIncome: 0,
-		budgets: Jt.map((e) => ({ ...e }))
+		budgets: Yt.map((e) => ({ ...e }))
 	},
 	{
 		id: "2026-07",
 		label: "2026年7月",
-		salary: Ut,
+		salary: Wt,
 		payday: 10,
 		stockIncome: 0,
 		otherIncome: 0,
-		budgets: Yt()
+		budgets: Xt()
 	},
 	{
 		id: "2026-08",
 		label: "2026年8月",
-		salary: Ut,
+		salary: Wt,
 		payday: 10,
 		stockIncome: 0,
 		otherIncome: 0,
-		budgets: Yt()
+		budgets: Xt()
 	},
 	{
 		id: "2026-09",
 		label: "2026年9月",
-		salary: Ut,
+		salary: Wt,
 		payday: 10,
 		stockIncome: 0,
 		otherIncome: 0,
-		budgets: Yt()
+		budgets: Xt()
 	},
 	{
 		id: "2026-10",
 		label: "2026年10月",
-		salary: Ut,
+		salary: Wt,
 		payday: 10,
 		stockIncome: 0,
 		otherIncome: 0,
-		budgets: Yt()
+		budgets: Xt()
 	},
 	{
 		id: "2026-11",
 		label: "2026年11月",
-		salary: Ut,
+		salary: Wt,
 		payday: 10,
 		stockIncome: 0,
 		otherIncome: 0,
-		budgets: Yt()
+		budgets: Xt()
 	},
 	{
 		id: "2026-12",
 		label: "2026年12月",
-		salary: Ut,
+		salary: Wt,
 		payday: 10,
 		stockIncome: 0,
 		otherIncome: 0,
-		budgets: Yt()
+		budgets: Xt()
 	}
-], Zt = [
+], Qt = [
 	{
 		id: "ashare",
 		name: "A股组合",
@@ -12965,7 +13067,7 @@ var Xt = [
 		value: 0,
 		currency: "HKD"
 	}
-], Qt = [
+], $t = [
 	{
 		id: "house-debt",
 		name: "房子负债",
@@ -12981,7 +13083,7 @@ var Xt = [
 		name: "其他负债",
 		amount: 0
 	}
-], $t = [
+], en = [
 	{
 		id: "house-asset",
 		name: "房产资产",
@@ -13000,7 +13102,7 @@ var Xt = [
 		amount: 0,
 		note: "未归类资产"
 	}
-], en = [
+], tn = [
 	{
 		id: "rent-reminder",
 		name: "房租提醒",
@@ -13022,7 +13124,7 @@ var Xt = [
 		amount: 2e3,
 		kind: "定存"
 	}
-], tn = [
+], nn = [
 	{
 		id: "travel",
 		name: "旅游基金",
@@ -13063,7 +13165,7 @@ var Xt = [
 		monthly: 2e3,
 		actualMonthly: 0
 	}
-], nn = [
+], rn = [
 	"应急",
 	"旅行",
 	"搬家",
@@ -13071,7 +13173,7 @@ var Xt = [
 	"投资",
 	"家庭",
 	"其他"
-], rn = [
+], an = [
 	{
 		id: "hard-emergency",
 		name: "硬应急金",
@@ -13132,7 +13234,7 @@ var Xt = [
 		locked: !1,
 		note: "最多两次，每次约 1500；现金紧张时取消"
 	}
-], an = [
+], on = [
 	{
 		id: "debt-strategy",
 		name: "债务策略",
@@ -13153,7 +13255,7 @@ var Xt = [
 		name: "规则引擎",
 		score: 35
 	}
-], on = [
+], sn = [
 	"salary",
 	"spendingPlan",
 	"travelSaving",
@@ -13164,7 +13266,7 @@ var Xt = [
 	"aSharePlan",
 	"usSharePlan",
 	"hkSharePlan"
-], sn = "2026-06", cn = "personal-finance-management-data-v2", ln = "personal-finance-management-snapshots-v1", un = "personal-finance-management-monthly-archives-v1", dn = "personal-finance-management-cloud-sync-v1", fn = "personal-finance-management-cloud-passphrase-v1", pn = "personal-finance-management-sync.json", mn = 20, hn = 48, gn = [
+], cn = "2026-06", ln = "personal-finance-management-data-v2", un = "personal-finance-management-snapshots-v1", dn = "personal-finance-management-monthly-archives-v1", fn = "personal-finance-management-cloud-sync-v1", pn = "personal-finance-management-cloud-passphrase-v1", mn = "personal-finance-management-sync.json", hn = 20, gn = 48, _n = [
 	{
 		id: "income",
 		title: "收入",
@@ -13258,7 +13360,7 @@ function H(e) {
 		maximumFractionDigits: 0
 	}).format(Number.isFinite(e) ? e : 0);
 }
-function _n(e, t = 0, n = 100) {
+function U(e, t = 0, n = 100) {
 	return Math.min(n, Math.max(t, Number.isFinite(e) ? e : t));
 }
 function vn(e) {
@@ -13266,7 +13368,7 @@ function vn(e) {
 	return Number.isFinite(t) ? t : 0;
 }
 function yn(e) {
-	return `${_n(e * 100).toFixed(0)}%`;
+	return `${U(e * 100).toFixed(0)}%`;
 }
 function bn(e) {
 	return Number.isFinite(e) ? `${(e * 100).toFixed(1)}%` : "0.0%";
@@ -13341,14 +13443,14 @@ function Mn(e) {
 		hasEmergency: !1
 	};
 	for (let n of e) {
-		let e = ut(n);
+		let e = ft(n);
 		e === "travel" ? (t.travelCurrent += n.current, t.travelMonthly += n.monthly, t.travelActualMonthly += n.actualMonthly, t.hasTravel = !0) : e === "learning" ? (t.learningCurrent += n.current, t.learningMonthly += n.monthly, t.learningActualMonthly += n.actualMonthly, t.hasLearning = !0) : e === "parent" ? (t.parentCurrent += n.current, t.parentMonthly += n.monthly, t.parentActualMonthly += n.actualMonthly, t.hasParent = !0) : e === "partner" ? (t.partnerCurrent += n.current, t.partnerMonthly += n.monthly, t.partnerActualMonthly += n.actualMonthly, t.hasPartner = !0) : e === "emergency" ? (t.emergencyCurrent += n.current, t.emergencyMonthly += n.monthly, t.emergencyActualMonthly += n.actualMonthly, t.hasEmergency = !0) : e === "other" && (t.otherCurrent += n.current, t.otherMonthly += n.monthly, t.otherActualMonthly += n.actualMonthly);
 	}
 	return t;
 }
 function Nn(e, t) {
-	let n = e.find((e) => ut(e) === "emergency")?.id, r = t.rows.find((e) => e.id === "emergency")?.[t.mode] ?? 0;
-	return e.map((e) => ut(e) === "emergency" ? {
+	let n = e.find((e) => ft(e) === "emergency")?.id, r = t.rows.find((e) => e.id === "emergency")?.[t.mode] ?? 0;
+	return e.map((e) => ft(e) === "emergency" ? {
 		...e,
 		monthly: e.id === n ? r : 0
 	} : e);
@@ -13364,14 +13466,14 @@ function Pn(e) {
 			current: typeof n.current == "number" ? n.current : 0,
 			monthly: r,
 			actualMonthly: typeof n.actualMonthly == "number" ? n.actualMonthly : r,
-			...n.parentReviewAmounts === void 0 ? {} : { parentReviewAmounts: ht(n.parentReviewAmounts) }
+			...n.parentReviewAmounts === void 0 ? {} : { parentReviewAmounts: gt(n.parentReviewAmounts) }
 		};
-	}).filter((e) => e !== null), n = t.length ? t : tn, r = n.some((e) => ut(e) === "parent") ? n : (() => {
-		let e = tn.find((e) => e.id === "parent-saving");
+	}).filter((e) => e !== null), n = t.length ? t : nn, r = n.some((e) => ft(e) === "parent") ? n : (() => {
+		let e = nn.find((e) => e.id === "parent-saving");
 		return e ? [...n, e] : n;
 	})();
-	if (r.some((e) => ut(e) === "partner")) return r;
-	let i = tn.find((e) => e.id === "partner");
+	if (r.some((e) => ft(e) === "partner")) return r;
+	let i = nn.find((e) => e.id === "partner");
 	return i ? [...r, i] : r;
 }
 function Fn(e) {
@@ -13400,7 +13502,7 @@ function In(e) {
 function Ln(e) {
 	return Array.isArray(e) ? e.map((e, t) => {
 		if (!e || typeof e != "object") return null;
-		let n = e, r = nn.includes(n.kind) ? n.kind : "其他";
+		let n = e, r = rn.includes(n.kind) ? n.kind : "其他";
 		return {
 			id: typeof n.id == "string" && n.id ? n.id : `fund-bucket-${t + 1}`,
 			name: typeof n.name == "string" && n.name.trim() ? n.name : `大花费项目 ${t + 1}`,
@@ -13449,7 +13551,7 @@ function zn(e) {
 			savings: typeof n.savings == "number" ? n.savings : 0,
 			accounts: Rn(n.accounts)
 		} : null;
-	}).filter((e) => e !== null).sort((e, t) => t.monthId.localeCompare(e.monthId) || t.savedAt.localeCompare(e.savedAt)).slice(0, hn) : [];
+	}).filter((e) => e !== null).sort((e, t) => t.monthId.localeCompare(e.monthId) || t.savedAt.localeCompare(e.savedAt)).slice(0, gn) : [];
 }
 function Bn(e) {
 	if (!e || typeof e != "object") return {
@@ -13469,7 +13571,7 @@ function Bn(e) {
 	};
 }
 function Vn(e) {
-	return Qt.map((t) => ({
+	return $t.map((t) => ({
 		...t,
 		amount: t.id === "house-debt" ? e.houseDebt ?? 0 : t.id === "car-debt" ? e.carDebt ?? 0 : e.otherDebt ?? 0
 	}));
@@ -13577,7 +13679,7 @@ async function er({ backup: e, gistId: t, passphrase: n, token: r }) {
 	let i = await Zn(e, n), a = {
 		description: "Personal Finance Management encrypted sync data",
 		public: !1,
-		files: { [pn]: { content: JSON.stringify(i, null, 2) } }
+		files: { [mn]: { content: JSON.stringify(i, null, 2) } }
 	};
 	return t.trim() ? $n(`/gists/${t.trim()}`, r, {
 		method: "PATCH",
@@ -13588,7 +13690,7 @@ async function er({ backup: e, gistId: t, passphrase: n, token: r }) {
 	});
 }
 async function tr(e, t, n) {
-	let r = await $n(`/gists/${e.trim()}`, t), i = r.files?.[pn] ?? Object.values(r.files ?? {})[0];
+	let r = await $n(`/gists/${e.trim()}`, t), i = r.files?.[mn] ?? Object.values(r.files ?? {})[0];
 	if (!i?.content) throw Error("cloud sync file not found");
 	return Qn(JSON.parse(i.content), n);
 }
@@ -13606,19 +13708,19 @@ function nr({ label: e, value: t, onChange: n, step: r = 100, disabled: i = !1 }
 		})]
 	});
 }
-function U() {
-	let e = We(), [t, n] = (0, _.useState)(C), [r, i] = (0, _.useState)([]), [a, o] = (0, _.useState)([]), [s, c] = (0, _.useState)(), [l, u] = (0, _.useState)([]), [d, f] = (0, _.useState)(x), [p, m] = (0, _.useState)(!1), [h, g] = (0, _.useState)([]), [v, y] = (0, _.useState)(null), [S, w] = (0, _.useState)("月"), [T, te] = (0, _.useState)("2026-06"), [D, ne] = (0, _.useState)(Xt), [O, ae] = (0, _.useState)(qt), [A, ce] = (0, _.useState)(Zt), [le, ue] = (0, _.useState)(7.25), [j, de] = (0, _.useState)(.93), [fe, pe] = (0, _.useState)(2250), [me, he] = (0, _.useState)(1500), [ge, _e] = (0, _.useState)(0), [N, ve] = (0, _.useState)(3e3), [ye, be] = (0, _.useState)(500), [xe, Se] = (0, _.useState)(2e3), F = t.emergencyTargetMonths, Ee = t.emergencyMonthlyNeed, De = (e) => n((t) => E({
+function rr() {
+	let e = Ge(), [t, n] = (0, _.useState)(C), [r, i] = (0, _.useState)([]), [a, o] = (0, _.useState)([]), [s, c] = (0, _.useState)(), [l, u] = (0, _.useState)([]), [d, f] = (0, _.useState)(x), [p, m] = (0, _.useState)(!1), [h, g] = (0, _.useState)([]), [v, y] = (0, _.useState)(null), [S, w] = (0, _.useState)("月"), [T, te] = (0, _.useState)("2026-06"), [D, ne] = (0, _.useState)(Zt), [O, ae] = (0, _.useState)(Jt), [A, ce] = (0, _.useState)(Qt), [le, ue] = (0, _.useState)(7.25), [j, de] = (0, _.useState)(.93), [fe, pe] = (0, _.useState)(2250), [me, he] = (0, _.useState)(1500), [ge, _e] = (0, _.useState)(0), [N, ve] = (0, _.useState)(3e3), [ye, be] = (0, _.useState)(500), [xe, Se] = (0, _.useState)(2e3), F = t.emergencyTargetMonths, Ee = t.emergencyMonthlyNeed, De = (e) => n((t) => E({
 		...t,
 		emergencyTargetMonths: e
 	})), I = (e) => n((t) => E({
 		...t,
 		emergencyMonthlyNeed: e
-	})), [Oe, ke] = (0, _.useState)($t), [Ae, Me] = (0, _.useState)(Qt), [Ne, Pe] = (0, _.useState)(en), [Fe, Ie] = (0, _.useState)(tn), Le = ft(Nn(Fe, t), O), [Re, ze] = (0, _.useState)(rn), [Be, Ve] = (0, _.useState)(an), [He, Ue] = (0, _.useState)([]), [Ge, Ke] = (0, _.useState)([]), [L, Je] = (0, _.useState)([]), [Ye, Qe] = (0, _.useState)([]), [$e, et] = (0, _.useState)({
+	})), [Oe, ke] = (0, _.useState)(en), [Ae, Me] = (0, _.useState)($t), [Ne, Pe] = (0, _.useState)(tn), [Fe, Ie] = (0, _.useState)(nn), Le = mt(Nn(Fe, t), O), [Re, ze] = (0, _.useState)(an), [Be, Ve] = (0, _.useState)(on), [He, Ue] = (0, _.useState)([]), [We, Ke] = (0, _.useState)([]), [qe, Je] = (0, _.useState)([]), [Xe, Ze] = (0, _.useState)([]), [et, tt] = (0, _.useState)({
 		gistId: "",
 		token: "",
 		autoSync: !1,
 		rememberPassphrase: !1
-	}), [tt, nt] = (0, _.useState)(""), [rt, at] = (0, _.useState)("未连接云同步"), [st, ct] = (0, _.useState)(!1), [lt, dt] = (0, _.useState)(!1), [pt, mt] = (0, _.useState)("正在读取本地数据…"), [ht, _t] = (0, _.useState)("报告随数据自动更新"), [B, vt] = (0, _.useState)(!1), bt = (0, _.useRef)(null), St = (0, _.useRef)(!1), Ct = (0, _.useRef)(!1), wt = (0, _.useRef)(""), Et = (0, _.useRef)(void 0), kt = (0, _.useRef)(null);
+	}), [nt, rt] = (0, _.useState)(""), [it, at] = (0, _.useState)("未连接云同步"), [L, lt] = (0, _.useState)(!1), [ut, dt] = (0, _.useState)(!1), [pt, z] = (0, _.useState)("正在读取本地数据…"), [ht, gt] = (0, _.useState)("报告随数据自动更新"), [B, vt] = (0, _.useState)(!1), yt = (0, _.useRef)(null), xt = (0, _.useRef)(!1), Ct = (0, _.useRef)(!1), wt = (0, _.useRef)(""), Tt = (0, _.useRef)(void 0), Dt = (0, _.useRef)(null);
 	function At() {
 		return {
 			salarySettingsVersion: 1,
@@ -13646,81 +13748,81 @@ function U() {
 			balanceAssets: Oe,
 			liabilities: Ae,
 			reminders: Ne,
-			goals: ft(Nn(Fe, t), O),
+			goals: mt(Nn(Fe, t), O),
 			fundBuckets: Re,
 			futureCapabilities: Be,
 			cashflowHiddenBuiltinIds: He,
-			cashflowCustomItems: Ge
+			cashflowCustomItems: We
 		};
 	}
 	function jt(e = At(), t = !1) {
-		let n = Bt(window.localStorage, cn, e, t, void 0, Et.current);
-		return Et.current = JSON.stringify(Rt(e)), n;
+		let n = Vt(window.localStorage, ln, e, t, void 0, Tt.current);
+		return Tt.current = JSON.stringify(zt(e)), n;
 	}
-	function Nt(e = {}) {
+	function Mt(e = {}) {
 		return {
 			version: 1,
 			exportedAt: (/* @__PURE__ */ new Date()).toISOString(),
 			data: e.data ?? At(),
-			snapshots: e.snapshots ?? L,
-			monthlyArchives: e.monthlyArchives ?? Ye
+			snapshots: e.snapshots ?? qe,
+			monthlyArchives: e.monthlyArchives ?? Xe
 		};
 	}
-	function Ut(e, t = tt) {
-		et(e), window.localStorage.setItem(dn, JSON.stringify(e)), e.rememberPassphrase ? t.trim() && window.localStorage.setItem(fn, t) : window.localStorage.removeItem(fn);
+	function Pt(e, t = nt) {
+		tt(e), window.localStorage.setItem(fn, JSON.stringify(e)), e.rememberPassphrase ? t.trim() && window.localStorage.setItem(pn, t) : window.localStorage.removeItem(pn);
 	}
 	function Wt(e) {
-		let t = Pt(e.reviewUpdates), r = e.financeReviews === void 0 ? void 0 : je(e.financeReviews), a = qe(e.datedEntries), s = E(e.annualBudgetPlan), l = Kt(Array.isArray(e.monthlyRecords) ? e.monthlyRecords : Xt, s.salary, e.salarySettingsVersion);
+		let t = Ft(e.reviewUpdates), r = e.financeReviews === void 0 ? void 0 : je(e.financeReviews), a = Ye(e.datedEntries), s = E(e.annualBudgetPlan), l = qt(Array.isArray(e.monthlyRecords) ? e.monthlyRecords : Zt, s.salary, e.salarySettingsVersion);
 		o(t), c(e.dashboardAsOf), n({
 			...s,
 			salary: l.salary
 		}), r && i(r), f({
 			...ee(e.monthlyCashPlan),
 			income: l.salary
-		}), e.period && w(e.period), e.selectedMonth && te(e.selectedMonth), ne(Ze(l.records, e.monthlyRecords ?? Xt, a)), u(a), Array.isArray(e.accounts) && ae(e.accounts), Array.isArray(e.holdings) && ce(e.holdings), typeof e.fxUsd == "number" && ue(e.fxUsd), typeof e.fxHkd == "number" && de(e.fxHkd), typeof e.aSharePlan == "number" && pe(e.aSharePlan), typeof e.usSharePlan == "number" && he(e.usSharePlan), typeof e.hkSharePlan == "number" && _e(e.hkSharePlan), typeof e.travelSaving == "number" && ve(e.travelSaving), typeof e.learningSaving == "number" && be(e.learningSaving), typeof e.emergencyFund == "number" && Se(e.emergencyFund);
+		}), e.period && w(e.period), e.selectedMonth && te(e.selectedMonth), ne($e(l.records, e.monthlyRecords ?? Zt, a)), u(a), Array.isArray(e.accounts) && ae(e.accounts), Array.isArray(e.holdings) && ce(e.holdings), typeof e.fxUsd == "number" && ue(e.fxUsd), typeof e.fxHkd == "number" && de(e.fxHkd), typeof e.aSharePlan == "number" && pe(e.aSharePlan), typeof e.usSharePlan == "number" && he(e.usSharePlan), typeof e.hkSharePlan == "number" && _e(e.hkSharePlan), typeof e.travelSaving == "number" && ve(e.travelSaving), typeof e.learningSaving == "number" && be(e.learningSaving), typeof e.emergencyFund == "number" && Se(e.emergencyFund);
 		let d = In(e.balanceAssets);
 		Array.isArray(e.balanceAssets) && ke(d);
 		let p = Fn(e.liabilities);
-		Array.isArray(e.liabilities) ? Me(p) : (typeof e.houseDebt == "number" || typeof e.carDebt == "number" || typeof e.otherDebt == "number") && Me(Vn(e)), Array.isArray(e.reminders) && Pe(e.reminders), Array.isArray(e.goals) && Ie(Pn(e.goals)), Array.isArray(e.fundBuckets) && ze(Ln(e.fundBuckets)), Array.isArray(e.futureCapabilities) && Ve(e.futureCapabilities), Array.isArray(e.cashflowHiddenBuiltinIds) && Ue(e.cashflowHiddenBuiltinIds.filter((e) => on.includes(e))), Array.isArray(e.cashflowCustomItems) && Ke(e.cashflowCustomItems);
+		Array.isArray(e.liabilities) ? Me(p) : (typeof e.houseDebt == "number" || typeof e.carDebt == "number" || typeof e.otherDebt == "number") && Me(Vn(e)), Array.isArray(e.reminders) && Pe(e.reminders), Array.isArray(e.goals) && Ie(Pn(e.goals)), Array.isArray(e.fundBuckets) && ze(Ln(e.fundBuckets)), Array.isArray(e.futureCapabilities) && Ve(e.futureCapabilities), Array.isArray(e.cashflowHiddenBuiltinIds) && Ue(e.cashflowHiddenBuiltinIds.filter((e) => sn.includes(e))), Array.isArray(e.cashflowCustomItems) && Ke(e.cashflowCustomItems);
 	}
 	(0, _.useEffect)(() => {
 		let e = !1, t = window.setTimeout(() => {
 			(async () => {
 				let t = !1, n = !1, r = Bn(null), i = "";
 				try {
-					let e = window.localStorage.getItem(cn), a = window.localStorage.getItem(ln), o = window.localStorage.getItem(un), s = window.localStorage.getItem(dn);
-					if (i = window.localStorage.getItem(fn) ?? "", e) {
+					let e = window.localStorage.getItem(ln), a = window.localStorage.getItem(un), o = window.localStorage.getItem(dn), s = window.localStorage.getItem(fn);
+					if (i = window.localStorage.getItem(pn) ?? "", e) {
 						let r = JSON.parse(e);
-						Et.current = JSON.stringify(Rt(r)), Wt(r), t = !0, n = zt(r);
+						Tt.current = JSON.stringify(zt(r)), Wt(r), t = !0, n = Bt(r);
 					}
 					if (a) {
 						let e = JSON.parse(a);
-						Array.isArray(e) && Je(e.slice(0, mn));
+						Array.isArray(e) && Je(e.slice(0, hn));
 					}
-					o && Qe(zn(JSON.parse(o))), s && (r = Bn(JSON.parse(s)), et(r), r.rememberPassphrase && i && nt(i), at(r.gistId ? "已读取云同步配置，准备连接云端" : "未连接云同步"));
+					o && Ze(zn(JSON.parse(o))), s && (r = Bn(JSON.parse(s)), tt(r), r.rememberPassphrase && i && rt(i), at(r.gistId ? "已读取云同步配置，准备连接云端" : "未连接云同步"));
 				} catch {
-					mt("本地数据读取失败，原数据已保留；已暂停自动保存，请先恢复有效备份后刷新。");
+					z("本地数据读取失败，原数据已保留；已暂停自动保存，请先恢复有效备份后刷新。");
 					return;
 				}
 				let a = r.gistId.trim() && r.token.trim() && r.rememberPassphrase && !!i.trim();
-				if (Ct.current = n && !!r.gistId.trim(), a && n) Ct.current = !0, mt("已恢复本机修改，尚未同步云端"), at("本机有未同步修改，已保留；请保存到云端，或核对后手动拉取。");
+				if (Ct.current = n && !!r.gistId.trim(), a && n) Ct.current = !0, z("已恢复本机修改，尚未同步云端"), at("本机有未同步修改，已保留；请保存到云端，或核对后手动拉取。");
 				else if (a) {
-					St.current = !0, ct(!0), at("正在打开时自动拉取云端数据…");
+					xt.current = !0, lt(!0), at("正在打开时自动拉取云端数据…");
 					try {
 						let t = await tr(r.gistId, r.token, i);
 						if (e) return;
-						Zn(t);
+						Xn(t);
 						let n = (/* @__PURE__ */ new Date()).toISOString();
-						Ut({
+						Pt({
 							...r,
 							lastPulledAt: n
-						}, i), mt("已从云端自动恢复最新数据"), at(`云端数据已自动拉取 · ${Un(n)}`);
+						}, i), z("已从云端自动恢复最新数据"), at(`云端数据已自动拉取 · ${Un(n)}`);
 					} catch {
-						Ct.current = !0, e || (mt(t ? "已恢复本机数据，云端自动拉取失败" : "已启用自动保存，云端自动拉取失败"), at("打开时自动拉取失败，请检查同步密码、Token 和 Gist ID。"));
+						Ct.current = !0, e || (z(t ? "已恢复本机数据，云端自动拉取失败" : "已启用自动保存，云端自动拉取失败"), at("打开时自动拉取失败，请检查同步密码、Token 和 Gist ID。"));
 					} finally {
-						St.current = !1, e || ct(!1);
+						xt.current = !1, e || lt(!1);
 					}
-				} else mt(t ? "已恢复上次保存的数据" : "已启用自动保存"), t || jt(At(), !0);
+				} else z(t ? "已恢复上次保存的数据" : "已启用自动保存"), t || jt(At(), !0);
 				e || vt(!0);
 			})();
 		}, 0);
@@ -13728,27 +13830,27 @@ function U() {
 			e = !0, window.clearTimeout(t);
 		};
 	}, []);
-	let Yt = (0, _.useEffectEvent)(() => {
-		if (!B || Ct.current || St.current || !$e.autoSync || !$e.gistId.trim() || !$e.token.trim() || !tt.trim()) return;
-		let e = Nt();
-		Ht(e) !== wt.current && Qn(!0, e);
-	}), nn = (0, _.useEffectEvent)(() => {
+	let Gt = (0, _.useEffectEvent)(() => {
+		if (!B || Ct.current || xt.current || !et.autoSync || !et.gistId.trim() || !et.token.trim() || !nt.trim()) return;
+		let e = Mt();
+		Ut(e) !== wt.current && Zn(!0, e);
+	}), Xt = (0, _.useEffectEvent)(() => {
 		if (B) try {
-			jt(), mt(`本机已自动保存 · ${(/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", {
+			jt(), z(`本机已自动保存 · ${(/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", {
 				hour: "2-digit",
 				minute: "2-digit",
 				second: "2-digit"
 			})}`);
 		} catch (e) {
-			mt(e instanceof Error && e.message === "其他页面已更新数据，本页暂停保存；刷新前请先导出本页备份" ? Lt : "本机保存失败，请立即导出备份");
+			z(e instanceof Error && e.message === "其他页面已更新数据，本页暂停保存；刷新前请先导出本页备份" ? Rt : "本机保存失败，请立即导出备份");
 		}
 	});
 	(0, _.useEffect)(() => {
 		if (!B) return;
 		let e = window.setInterval(() => {
-			nn(), Yt();
-		}, 3e4), t = () => nn(), n = () => {
-			document.visibilityState === "hidden" && nn();
+			Xt(), Gt();
+		}, 3e4), t = () => Xt(), n = () => {
+			document.visibilityState === "hidden" && Xt();
 		};
 		return window.addEventListener("pagehide", t), document.addEventListener("visibilitychange", n), () => {
 			window.clearInterval(e), window.removeEventListener("pagehide", t), document.removeEventListener("visibilitychange", n);
@@ -13756,10 +13858,10 @@ function U() {
 	}, [B]), (0, _.useEffect)(() => {
 		if (!B) return;
 		let e = window.setTimeout(() => {
-			nn(), bt.current && window.clearTimeout(bt.current), bt.current = window.setTimeout(() => Yt(), 3500);
+			Xt(), yt.current && window.clearTimeout(yt.current), yt.current = window.setTimeout(() => Gt(), 3500);
 		}, 300);
 		return () => {
-			window.clearTimeout(e), bt.current && window.clearTimeout(bt.current);
+			window.clearTimeout(e), yt.current && window.clearTimeout(yt.current);
 		};
 	}, [
 		B,
@@ -13791,148 +13893,148 @@ function U() {
 		Re,
 		Be,
 		He,
-		Ge,
-		$e.autoSync,
-		$e.gistId,
-		$e.token,
-		tt
+		We,
+		et.autoSync,
+		et.gistId,
+		et.token,
+		nt
 	]);
-	async function pn() {
-		if (!(!B || St.current)) try {
-			let e = Nt();
-			jt(e.data), mt(`本机已保存 · ${Un((/* @__PURE__ */ new Date()).toISOString())}`), $e.token.trim() && tt.trim() ? mt(await Qn(!1, e) ? "当前数据已保存到本机和云端" : "本机已保存，云端未更新") : at("未连接云同步，仅保存到本机");
+	async function rn() {
+		if (!(!B || xt.current)) try {
+			let e = Mt();
+			jt(e.data), z(`本机已保存 · ${Un((/* @__PURE__ */ new Date()).toISOString())}`), et.token.trim() && nt.trim() ? z(await Zn(!1, e) ? "当前数据已保存到本机和云端" : "本机已保存，云端未更新") : at("未连接云同步，仅保存到本机");
 		} catch (e) {
-			mt(e instanceof Error && e.message === "其他页面已更新数据，本页暂停保存；刷新前请先导出本页备份" ? Lt : "保存失败，请立即导出备份；本次修改尚未确认保存");
+			z(e instanceof Error && e.message === "其他页面已更新数据，本页暂停保存；刷新前请先导出本页备份" ? Rt : "保存失败，请立即导出备份；本次修改尚未确认保存");
 		}
 	}
-	async function hn() {
+	async function mn() {
 		let e = {
 			id: `${Date.now()}`,
 			createdAt: (/* @__PURE__ */ new Date()).toISOString(),
 			data: At()
-		}, t = [e, ...L].slice(0, mn);
-		Je(t), window.localStorage.setItem(ln, JSON.stringify(t)), jt(e.data), dt(!0), mt("历史版本已保存，正在同步云端…"), mt(await Qn(!1, Nt({
+		}, t = [e, ...qe].slice(0, hn);
+		Je(t), window.localStorage.setItem(un, JSON.stringify(t)), jt(e.data), dt(!0), z("历史版本已保存，正在同步云端…"), z(await Zn(!1, Mt({
 			data: e.data,
 			snapshots: t
 		})) ? "完整版本已保存并上传云端" : "完整版本已保存到本机，云端未更新");
 	}
+	function gn(e) {
+		window.confirm(`确定恢复 ${Un(e.createdAt)} 的版本吗？当前数据会被该版本覆盖。`) && (Wt(e.data), jt(e.data), z("历史版本已恢复并自动保存"));
+	}
 	function vn(e) {
-		window.confirm(`确定恢复 ${Un(e.createdAt)} 的版本吗？当前数据会被该版本覆盖。`) && (Wt(e.data), jt(e.data), mt("历史版本已恢复并自动保存"));
+		let t = qe.filter((t) => t.id !== e);
+		Je(t), window.localStorage.setItem(un, JSON.stringify(t));
 	}
-	function bn(e) {
-		let t = L.filter((t) => t.id !== e);
-		Je(t), window.localStorage.setItem(ln, JSON.stringify(t));
+	function bn() {
+		let e = Mt(), t = new Blob([JSON.stringify(e, null, 2)], { type: "application/json" }), n = URL.createObjectURL(t), r = document.createElement("a");
+		r.href = n, r.download = `personal-finance-backup-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`, r.click(), URL.revokeObjectURL(n), z("备份文件已导出");
 	}
-	function Dn() {
-		let e = Nt(), t = new Blob([JSON.stringify(e, null, 2)], { type: "application/json" }), n = URL.createObjectURL(t), r = document.createElement("a");
-		r.href = n, r.download = `personal-finance-backup-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`, r.click(), URL.revokeObjectURL(n), mt("备份文件已导出");
-	}
-	function Rn(e, t) {
+	function Dn(e, t) {
 		let n = {
 			...e[t],
 			reviewUpdates: a
-		}, r = URL.createObjectURL(new Blob([JSON.stringify(Nt({ data: n }), null, 2)], { type: "application/json" })), i = document.createElement("a");
+		}, r = URL.createObjectURL(new Blob([JSON.stringify(Mt({ data: n }), null, 2)], { type: "application/json" })), i = document.createElement("a");
 		i.href = r, i.download = `finance-${e.asOf}-${t}-${e.id.replace(/[^a-zA-Z0-9-]/g, "_")}.json`, i.click(), window.setTimeout(() => URL.revokeObjectURL(r), 1e3);
 	}
-	async function Gn(e) {
+	async function Rn(e) {
 		try {
 			let t = JSON.parse(await e.text());
 			if (!t.data || !Array.isArray(t.data.accounts) || !Array.isArray(t.data.monthlyRecords)) throw Error("invalid backup");
 			if (Wt(t.data), jt(t.data), Array.isArray(t.snapshots)) {
-				let e = t.snapshots.slice(0, mn);
-				Je(e), window.localStorage.setItem(ln, JSON.stringify(e));
+				let e = t.snapshots.slice(0, hn);
+				Je(e), window.localStorage.setItem(un, JSON.stringify(e));
 			}
 			if (Array.isArray(t.monthlyArchives)) {
 				let e = zn(t.monthlyArchives);
-				Qe(e), window.localStorage.setItem(un, JSON.stringify(e));
+				Ze(e), window.localStorage.setItem(dn, JSON.stringify(e));
 			}
-			mt("备份已导入并自动保存");
+			z("备份已导入并自动保存");
 		} catch {
 			window.alert("无法导入：请选择由本网页导出的 JSON 备份文件。");
 		} finally {
-			kt.current && (kt.current.value = "");
+			Dt.current && (Dt.current.value = "");
 		}
 	}
-	function Jn(e) {
-		Ut({
-			...$e,
+	function Gn(e) {
+		Pt({
+			...et,
 			...e
 		});
 	}
-	function Yn(e) {
-		nt(e), $e.rememberPassphrase && (e.trim() ? window.localStorage.setItem(fn, e) : window.localStorage.removeItem(fn));
+	function Jn(e) {
+		rt(e), et.rememberPassphrase && (e.trim() ? window.localStorage.setItem(pn, e) : window.localStorage.removeItem(pn));
 	}
-	function Xn() {
-		Ut({
+	function Yn() {
+		Pt({
 			gistId: "",
 			token: "",
 			autoSync: !1,
 			rememberPassphrase: !1
-		}), nt(""), at("已断开云同步配置");
+		}), rt(""), at("已断开云同步配置");
 	}
-	function Zn(e) {
+	function Xn(e) {
 		Wt(e.data);
-		let t = Array.isArray(e.snapshots) ? e.snapshots.slice(0, mn) : [], n = zn(e.monthlyArchives);
-		Je(t), Qe(n), jt(e.data, !0), window.localStorage.setItem(ln, JSON.stringify(t)), window.localStorage.setItem(un, JSON.stringify(n)), wt.current = Ht(e), Ct.current = !1;
+		let t = Array.isArray(e.snapshots) ? e.snapshots.slice(0, hn) : [], n = zn(e.monthlyArchives);
+		Je(t), Ze(n), jt(e.data, !0), window.localStorage.setItem(un, JSON.stringify(t)), window.localStorage.setItem(dn, JSON.stringify(n)), wt.current = Ut(e), Ct.current = !1;
 	}
-	async function Qn(e = !1, t = Nt()) {
-		if (!B || St.current) return !1;
-		if (!$e.token.trim()) return e || (g((e) => e.includes("cloudSync") ? e : [...e, "cloudSync"]), window.alert("请先填写 GitHub Token。")), !1;
-		if (!tt.trim()) return e || (g((e) => e.includes("cloudSync") ? e : [...e, "cloudSync"]), window.alert("请先填写同步密码。这个密码用于加密云端数据。")), !1;
-		St.current = !0, ct(!0), e || at("正在加密并上传到 GitHub Gist…");
+	async function Zn(e = !1, t = Mt()) {
+		if (!B || xt.current) return !1;
+		if (!et.token.trim()) return e || (g((e) => e.includes("cloudSync") ? e : [...e, "cloudSync"]), window.alert("请先填写 GitHub Token。")), !1;
+		if (!nt.trim()) return e || (g((e) => e.includes("cloudSync") ? e : [...e, "cloudSync"]), window.alert("请先填写同步密码。这个密码用于加密云端数据。")), !1;
+		xt.current = !0, lt(!0), e || at("正在加密并上传到 GitHub Gist…");
 		try {
 			jt(t.data);
 			let n = await er({
 				backup: t,
-				gistId: $e.gistId,
-				passphrase: tt,
-				token: $e.token
+				gistId: et.gistId,
+				passphrase: nt,
+				token: et.token
 			}), r = (/* @__PURE__ */ new Date()).toISOString();
-			Ut({
-				...$e,
+			Pt({
+				...et,
 				gistId: n.id,
 				lastPushedAt: r
-			}), wt.current = Ht(t), Ct.current = !1;
-			let i = Vt(window.localStorage, cn, t.data);
+			}), wt.current = Ut(t), Ct.current = !1;
+			let i = Ht(window.localStorage, ln, t.data);
 			return at(i ? `${e ? "已自动云同步" : "云端保存完成"} · ${Un(r)}` : "上一版已上传，最新本机修改待同步"), i;
 		} catch (t) {
 			return at("云端保存失败，请检查 Token、Gist ID 和网络。"), e || window.alert(t instanceof Error ? t.message : "云端保存失败"), !1;
 		} finally {
-			St.current = !1, ct(!1);
+			xt.current = !1, lt(!1);
 		}
 	}
-	async function $n() {
-		if (!St.current) {
-			if (!$e.gistId.trim()) {
+	async function Qn() {
+		if (!xt.current) {
+			if (!et.gistId.trim()) {
 				window.alert("请先填写 Gist ID，或先上传一次创建云端存档。");
 				return;
 			}
-			if (!$e.token.trim()) {
+			if (!et.token.trim()) {
 				window.alert("请先填写 GitHub Token。");
 				return;
 			}
-			if (!tt.trim()) {
+			if (!nt.trim()) {
 				window.alert("请先填写同步密码。");
 				return;
 			}
 			if (window.confirm("确定从云端覆盖当前本机数据吗？建议覆盖前先导出备份。")) {
-				St.current = !0, ct(!0), at("正在从 GitHub Gist 拉取并解密…");
+				xt.current = !0, lt(!0), at("正在从 GitHub Gist 拉取并解密…");
 				try {
-					Zn(await tr($e.gistId, $e.token, tt));
+					Xn(await tr(et.gistId, et.token, nt));
 					let e = (/* @__PURE__ */ new Date()).toISOString();
-					Ut({
-						...$e,
+					Pt({
+						...et,
 						lastPulledAt: e
-					}), mt("已从云端恢复并自动保存到本机"), at(`云端数据已拉取 · ${Un(e)}`);
+					}), z("已从云端恢复并自动保存到本机"), at(`云端数据已拉取 · ${Un(e)}`);
 				} catch (e) {
 					at("云端拉取失败，请检查同步密码、Token 和 Gist ID。"), window.alert(e instanceof Error ? e.message : "云端拉取失败");
 				} finally {
-					St.current = !1, ct(!1);
+					xt.current = !1, lt(!1);
 				}
 			}
 		}
 	}
-	let U = D.find((e) => e.id === T) ?? D[0], K = U.salary, sr = U.stockIncome, cr = U.otherIncome, lr = U.budgets, ur = K + Math.max(sr, 0) + cr, q = ie(t), Ar = q[t.mode], Ur = t.mode === "normal" ? "普通月" : "出差月", Wr = re(t, Ge), Gr = O.filter((e) => e.includedInPersonal !== !1), Kr = !!s || a.some((e) => e.published && e.module === "accounts"), qr = se(Gr.map((e) => ({
+	let $n = D.find((e) => e.id === T) ?? D[0], rr = $n.salary, K = $n.stockIncome, cr = $n.otherIncome, lr = $n.budgets, ur = rr + Math.max(K, 0) + cr, dr = ie(t), q = dr[t.mode], jr = t.mode === "normal" ? "普通月" : "出差月", Wr = re(t, We), Gr = O.filter((e) => e.includedInPersonal !== !1), Kr = !!s || a.some((e) => e.published && e.module === "accounts"), qr = se(Gr.map((e) => ({
 		...e,
 		reserve: An(e)
 	})), Re), Jr = Gr.filter((e) => An(e) === "应急储备"), J = (() => {
@@ -13940,7 +14042,7 @@ function U() {
 			holdings: A,
 			fxUsd: le,
 			fxHkd: j
-		}), E = A.reduce((e, t) => e + rr(t.cost, t.currency, le, j), 0), D = A.filter((e) => e.market === "A股").reduce((e, t) => e + rr(t.value, t.currency, le, j), 0), ne = A.filter((e) => e.market === "美股").reduce((e, t) => e + rr(t.value, t.currency, le, j), 0), re = A.filter((e) => e.market === "港股").reduce((e, t) => e + rr(t.value, t.currency, le, j), 0), ie = Oe.reduce((e, t) => e + t.amount, 0), O = Ae.reduce((e, t) => e + t.amount, 0), ae = e + te + y + (Jr.length ? 0 : p) + ie, oe = Ge.filter((e) => e.direction === "outflow").reduce((e, t) => e + t.amount, 0), k = (e, t) => He.includes(e) ? 0 : t, se = k("spendingPlan", ee), ce = u.hasTravel ? u.travelActualMonthly : N, ue = u.hasLearning ? u.learningActualMonthly : ye, de = u.hasParent ? u.parentActualMonthly : 0, pe = u.hasPartner ? u.partnerActualMonthly : 0, he = u.hasEmergency ? u.emergencyActualMonthly : 0, _e = u.hasTravel ? u.travelMonthly : N, ve = u.hasLearning ? u.learningMonthly : ye, be = u.hasParent ? u.parentMonthly : 0, P = u.hasPartner ? u.partnerMonthly : 0, Se = t.rows.find((e) => e.id === "emergency")?.[t.mode] ?? 0, Ce = k("travelSaving", ce), we = k("learningSaving", ue), Te = k("parentSaving", de), De = k("partnerSaving", pe), I = k("emergencyFund", he), ke = k("aSharePlan", fe) + k("usSharePlan", me) + k("hkSharePlan", ge), je = Ce + we + Te + De + I + ke + oe, Me = ur - S - je, Ne = ur ? w / ur : 0, Pe = ur ? je / ur : 0, Fe = Math.max(0, Ee), Ie = Fe * F, Re = Fe ? p / Fe : 0, ze = ae ? O / ae : 0, Be = Math.round(Math.max(0, Math.min(25, 25 - Math.max(0, Ne - .35) * 85)) + Math.min(25, Re / Math.max(F, 1) * 25) + (O === 0 ? 20 : Math.max(0, 20 - ze * 50)) + Math.min(20, Pe / .45 * 20) + (te >= E ? 10 : 6));
+		}), E = A.reduce((e, t) => e + ir(t.cost, t.currency, le, j), 0), D = A.filter((e) => e.market === "A股").reduce((e, t) => e + ir(t.value, t.currency, le, j), 0), ne = A.filter((e) => e.market === "美股").reduce((e, t) => e + ir(t.value, t.currency, le, j), 0), re = A.filter((e) => e.market === "港股").reduce((e, t) => e + ir(t.value, t.currency, le, j), 0), ie = Oe.reduce((e, t) => e + t.amount, 0), O = Ae.reduce((e, t) => e + t.amount, 0), ae = e + te + y + (Jr.length ? 0 : p) + ie, oe = We.filter((e) => e.direction === "outflow").reduce((e, t) => e + t.amount, 0), k = (e, t) => He.includes(e) ? 0 : t, se = k("spendingPlan", ee), ce = u.hasTravel ? u.travelActualMonthly : N, ue = u.hasLearning ? u.learningActualMonthly : ye, de = u.hasParent ? u.parentActualMonthly : 0, pe = u.hasPartner ? u.partnerActualMonthly : 0, he = u.hasEmergency ? u.emergencyActualMonthly : 0, _e = u.hasTravel ? u.travelMonthly : N, ve = u.hasLearning ? u.learningMonthly : ye, be = u.hasParent ? u.parentMonthly : 0, P = u.hasPartner ? u.partnerMonthly : 0, Se = t.rows.find((e) => e.id === "emergency")?.[t.mode] ?? 0, Ce = k("travelSaving", ce), we = k("learningSaving", ue), Te = k("parentSaving", de), De = k("partnerSaving", pe), I = k("emergencyFund", he), ke = k("aSharePlan", fe) + k("usSharePlan", me) + k("hkSharePlan", ge), je = Ce + we + Te + De + I + ke + oe, Me = ur - S - je, Ne = ur ? w / ur : 0, Pe = ur ? je / ur : 0, Fe = Math.max(0, Ee), Ie = Fe * F, Re = Fe ? p / Fe : 0, ze = ae ? O / ae : 0, Be = Math.round(Math.max(0, Math.min(25, 25 - Math.max(0, Ne - .35) * 85)) + Math.min(25, Re / Math.max(F, 1) * 25) + (O === 0 ? 20 : Math.max(0, 20 - ze * 50)) + Math.min(20, Pe / .45 * 20) + (te >= E ? 10 : 6));
 		return {
 			accountTotal: e,
 			totalSavingsAccountTotal: r,
@@ -14008,7 +14110,7 @@ function U() {
 		return {
 			id: t,
 			monthId: T,
-			label: U.label,
+			label: $n.label,
 			savedAt: e,
 			income: ur,
 			spending: J.spendingActual,
@@ -14031,14 +14133,14 @@ function U() {
 		};
 	}
 	async function Xr() {
-		let e = (/* @__PURE__ */ new Date()).toISOString(), t = zn([Yr(e, `${T}-${e}`), ...Ye.filter((e) => e.monthId !== T)]);
-		Qe(t), window.localStorage.setItem(un, JSON.stringify(t)), g((e) => e.includes("monthlyArchive") ? e : [...e, "monthlyArchive"]), jt(), mt(`${U.label} 月报已保存，正在同步云端…`), mt(await Qn(!1, Nt({ monthlyArchives: t })) ? `${U.label} 月报已保存并上传云端` : `${U.label} 月报已保存到本机，云端未更新`);
+		let e = (/* @__PURE__ */ new Date()).toISOString(), t = zn([Yr(e, `${T}-${e}`), ...Xe.filter((e) => e.monthId !== T)]);
+		Ze(t), window.localStorage.setItem(dn, JSON.stringify(t)), g((e) => e.includes("monthlyArchive") ? e : [...e, "monthlyArchive"]), jt(), z(`${$n.label} 月报已保存，正在同步云端…`), z(await Zn(!1, Mt({ monthlyArchives: t })) ? `${$n.label} 月报已保存并上传云端` : `${$n.label} 月报已保存到本机，云端未更新`);
 	}
 	function Zr(e) {
-		let t = Ye.filter((t) => t.id !== e);
-		Qe(t), window.localStorage.setItem(un, JSON.stringify(t));
+		let t = Xe.filter((t) => t.id !== e);
+		Ze(t), window.localStorage.setItem(dn, JSON.stringify(t));
 	}
-	let Qr = Yr("current-preview", `current-${T}`), $r = Ye.find((e) => e.monthId === T), ei = $r ?? Qr, ti = qn(Ye, T), ni = Kn(zn([Qr, ...Ye.filter((e) => e.monthId !== T)])), ri = (() => {
+	let Qr = Yr("current-preview", `current-${T}`), $r = Xe.find((e) => e.monthId === T), ei = $r ?? Qr, ti = qn(Xe, T), ni = Kn(zn([Qr, ...Xe.filter((e) => e.monthId !== T)])), ri = (() => {
 		let e = [], t = qr.available;
 		for (let n = 0; n < 6; n += 1) {
 			let r = Sn(Ce().slice(0, 7), n + 1), { inflow: i, outflow: a } = Wr;
@@ -14102,14 +14204,14 @@ function U() {
 	}
 	function ui() {
 		ne((e) => {
-			let n = [...e].sort((e, t) => e.id.localeCompare(t.id)), r = n[n.length - 1] ?? Xt[0], [i, a] = r.id.split("-"), o = new Date(Number(i), Number(a) - 1, 1), s = new Date(o.getFullYear(), o.getMonth() + 1, 1), c = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, "0")}`, l = `${s.getFullYear()}年${s.getMonth() + 1}月`, u = r.budgets.length > 0 ? r.budgets : Jt, d = {
+			let n = [...e].sort((e, t) => e.id.localeCompare(t.id)), r = n[n.length - 1] ?? Zt[0], [i, a] = r.id.split("-"), o = new Date(Number(i), Number(a) - 1, 1), s = new Date(o.getFullYear(), o.getMonth() + 1, 1), c = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, "0")}`, l = `${s.getFullYear()}年${s.getMonth() + 1}月`, u = r.budgets.length > 0 ? r.budgets : Yt, d = {
 				id: c,
 				label: l,
 				salary: t.salary,
 				payday: r.payday,
 				stockIncome: 0,
 				otherIncome: 0,
-				budgets: z(u)
+				budgets: st(u)
 			};
 			return te(c), [...e, d].sort((e, t) => e.id.localeCompare(t.id));
 		});
@@ -14126,7 +14228,7 @@ function U() {
 		});
 	}
 	function fi(e) {
-		e.salary !== t.salary && (ne((t) => Ze(Gt(t, e.salary, Ce().slice(0, 7)), t, l)), f((t) => ({
+		e.salary !== t.salary && (ne((t) => $e(Kt(t, e.salary, Ce().slice(0, 7)), t, l)), f((t) => ({
 			...t,
 			income: e.salary
 		}))), n(e);
@@ -14187,7 +14289,7 @@ function U() {
 		} : e));
 	}
 	function bi(e, t, n, r) {
-		let i = Xe(D, l, e, t, n, r === "unassigned" ? void 0 : r);
+		let i = Qe(D, l, e, t, n, r === "unassigned" ? void 0 : r);
 		jt({
 			...At(),
 			monthlyRecords: i.records,
@@ -14195,7 +14297,7 @@ function U() {
 		}), ne(i.records), u(i.entries);
 	}
 	function xi(e) {
-		let t = Xe(D, l, null, e);
+		let t = Qe(D, l, null, e);
 		jt({
 			...At(),
 			monthlyRecords: t.records,
@@ -14273,7 +14375,7 @@ function U() {
 		Pe((t) => t.length > 1 ? t.filter((t) => t.id !== e) : t);
 	}
 	function Ni(e, n) {
-		n.monthly !== void 0 && Fe.some((t) => t.id === e && ut(t) === "emergency") && fi({
+		n.monthly !== void 0 && Fe.some((t) => t.id === e && ft(t) === "emergency") && fi({
 			...t,
 			rows: t.rows.map((e) => e.id === "emergency" ? {
 				...e,
@@ -14287,7 +14389,7 @@ function U() {
 	}
 	function Pi(e, t) {
 		Ie((n) => {
-			let r = n.find((t) => ut(t) === e);
+			let r = n.find((t) => ft(t) === e);
 			return r ? n.map((e) => e.id === r.id ? {
 				...e,
 				...t
@@ -14361,7 +14463,7 @@ function U() {
 		return () => window.cancelAnimationFrame(e);
 	}, [v]);
 	function Wi() {
-		g(gn.map((e) => e.id));
+		g(_n.map((e) => e.id));
 	}
 	let Gi = Ae.length ? `${Ae.slice(0, 3).map((e) => `${e.name.trim() || "未命名负债"} ${H(e.amount)}`).join(" / ")}${Ae.length > 3 ? " / 更多" : ""}` : "暂无负债", Ki = [
 		`旅游 ${H(J.travelSavings)}`,
@@ -14446,14 +14548,14 @@ function U() {
 			id: "monthly-overview-income",
 			title: "所选月已录收入",
 			value: H(ur),
-			detail: `${U.label}（自然月账本） / 工资 ${H(K)} / 其他及股票收益 ${H(cr + Math.max(sr, 0))}`,
+			detail: `${$n.label}（自然月账本） / 工资 ${H(rr)} / 其他及股票收益 ${H(cr + Math.max(K, 0))}`,
 			tone: "blue"
 		},
 		{
 			id: "monthly-overview-living",
 			title: "所选月已录支出",
 			value: H(J.spendingActual),
-			detail: `${U.label} / 支出账本合计，含已同步周复盘；不再叠加复盘金额`,
+			detail: `${$n.label} / 支出账本合计，含已同步周复盘；不再叠加复盘金额`,
 			tone: "green"
 		},
 		{
@@ -14466,9 +14568,9 @@ function U() {
 		{
 			id: "monthly-overview-remaining",
 			title: "所选月消费预算剩余",
-			value: H(Ar.consumption - J.spendingActual),
-			detail: `${Ur}消费预算 ${H(Ar.consumption)} - 已录支出 ${H(J.spendingActual)}`,
-			tone: J.spendingActual > Ar.consumption ? "red" : "amber"
+			value: H(q.consumption - J.spendingActual),
+			detail: `${jr}消费预算 ${H(q.consumption)} - 已录支出 ${H(J.spendingActual)}`,
+			tone: J.spendingActual > q.consumption ? "red" : "amber"
 		},
 		{
 			title: "当前账户余额",
@@ -14492,12 +14594,12 @@ function U() {
 	], na = [
 		{
 			label: "工资",
-			value: K,
+			value: rr,
 			color: V[0]
 		},
 		{
 			label: "炒股月结",
-			value: Math.max(sr, 0),
+			value: Math.max(K, 0),
 			color: V[1]
 		},
 		{
@@ -14505,7 +14607,7 @@ function U() {
 			value: cr,
 			color: V[3]
 		}
-	], ra = D.filter((e) => e.id >= sn).sort((e, t) => e.id.localeCompare(t.id)), ia = ra.map((e, t) => ({
+	], ra = D.filter((e) => e.id >= cn).sort((e, t) => e.id.localeCompare(t.id)), ia = ra.map((e, t) => ({
 		label: xn(e.label),
 		value: wn(e),
 		color: e.id === T ? V[0] : V[t % V.length],
@@ -14583,7 +14685,7 @@ function U() {
 			name: e.name,
 			amount: e[t.mode],
 			direction: "outflow",
-			source: `${Ur}统一预算${e.kind === "consumption" ? "" : "，划拨后仍属个人资产"}`,
+			source: `${jr}统一预算${e.kind === "consumption" ? "" : "，划拨后仍属个人资产"}`,
 			onAmountChange: (n) => fi({
 				...t,
 				rows: t.rows.map((r) => r.id === e.id ? {
@@ -14592,7 +14694,7 @@ function U() {
 				} : r)
 			})
 		})),
-		...Ge.map((e) => ({
+		...We.map((e) => ({
 			id: e.id,
 			name: e.name,
 			amount: e.amount,
@@ -14646,7 +14748,7 @@ function U() {
 			color: V[3]
 		}
 	], ya = A.map((e) => {
-		let t = rr(e.value, e.currency, le, j), n = rr(e.cost, e.currency, le, j);
+		let t = ir(e.value, e.currency, le, j), n = ir(e.cost, e.currency, le, j);
 		return {
 			label: e.market,
 			value: Math.abs(t - n),
@@ -14706,29 +14808,29 @@ function U() {
 		},
 		{
 			label: "出差净结余",
-			value: Ar.tripNet,
-			kind: Ar.tripNet < 0 ? "negative" : "positive",
+			value: q.tripNet,
+			kind: q.tripNet < 0 ? "negative" : "positive",
 			color: V[1]
 		},
 		{
 			label: "生活消费",
-			value: -Ar.consumption,
+			value: -q.consumption,
 			kind: "negative",
 			color: V[4]
 		},
 		{
 			label: "投资应急",
-			value: -Ar.saving,
+			value: -q.saving,
 			kind: "negative",
 			color: V[2]
 		},
 		{
 			label: "现金余量",
-			value: Ar.surplus,
+			value: q.surplus,
 			kind: "end",
-			color: Ar.surplus < 0 ? V[4] : V[1]
+			color: q.surplus < 0 ? V[4] : V[1]
 		}
-	], wa = q.allocationRows.map((e) => ({
+	], wa = dr.allocationRows.map((e) => ({
 		label: e.name,
 		value: e[t.mode]
 	})).filter((e) => e.value > 0).map((e, t) => ({
@@ -14737,22 +14839,22 @@ function U() {
 	})), Ta = [
 		{
 			label: "生活与消费预留",
-			value: q.annualConsumption,
+			value: dr.annualConsumption,
 			color: V[0]
 		},
 		{
 			label: "投资本金",
-			value: q.annualInvestment,
+			value: dr.annualInvestment,
 			color: V[1]
 		},
 		{
 			label: "新增应急现金",
-			value: q.annualEmergency,
+			value: dr.annualEmergency,
 			color: V[2]
 		},
 		{
 			label: "额外现金余量",
-			value: Math.max(0, q.annualSurplus),
+			value: Math.max(0, dr.annualSurplus),
 			color: V[3]
 		}
 	], Ea = ri.map((e, t) => ({
@@ -14856,8 +14958,8 @@ function U() {
 			detail: `应急目标 ${H(J.emergencyTarget)}，当前 ${H(J.currentEmergencyFund)}；总负债率 ${yn(J.debtRatio)}。`,
 			action: J.emergencyCoverage < 1 ? "先把硬应急金做到 1 个月必要支出，再追求更高投资速度。" : `应急金继续向 ${F} 个月、${H(J.emergencyTarget)} 的统一目标推进；分期余额按实际核对。`
 		}
-	], $a = it(lr), eo = [
-		`${U.label}财务分析报告`,
+	], $a = ot(lr), eo = [
+		`${$n.label}财务分析报告`,
 		"",
 		`1. 净资产与现金：总资产 ${H(J.totalAssets)}，净资产 ${H(J.netWorth)}，可提取现金 ${H(qr.liquidCash)}，扣除专项后可自由动用 ${H(Ga)}。`,
 		`2. 收支：收入 ${H(ur)}，生活支出 ${H(J.spendingActual)}，资产/责任分配 ${H(J.assetOutflow)}，当月余额 ${H(J.monthlySurplus)}。`,
@@ -14886,23 +14988,23 @@ function U() {
 		{
 			id: "salary",
 			name: "工资",
-			amount: K,
+			amount: rr,
 			flow: "收入",
-			source: `${U.label}收入底表`
+			source: `${$n.label}收入底表`
 		},
 		{
 			id: "stock-income",
 			name: "炒股月结",
-			amount: Math.max(sr, 0),
+			amount: Math.max(K, 0),
 			flow: "收入",
-			source: `${U.label}收入底表`
+			source: `${$n.label}收入底表`
 		},
 		{
 			id: "other-income",
 			name: "其他收入",
 			amount: cr,
 			flow: "收入",
-			source: `${U.label}收入底表`
+			source: `${$n.label}收入底表`
 		},
 		{
 			id: "spending-actual",
@@ -15031,33 +15133,33 @@ function U() {
 			color: V[3]
 		}
 	], io = A.map((e, t) => {
-		let n = rr(e.value, e.currency, le, j), r = rr(e.cost, e.currency, le, j), i = J.investmentValue ? n / J.investmentValue * 100 : 0, a = r ? (n - r) / r * 100 : 0;
+		let n = ir(e.value, e.currency, le, j), r = ir(e.cost, e.currency, le, j), i = J.investmentValue ? n / J.investmentValue * 100 : 0, a = r ? (n - r) / r * 100 : 0;
 		return {
 			label: e.market,
-			x: _n(i),
-			y: _n(a + 50),
+			x: U(i),
+			y: U(a + 50),
 			value: `${a.toFixed(1)}% / ${i.toFixed(0)}%`,
 			color: V[t % V.length]
 		};
 	}), ao = [
 		{
 			label: "现金流健康",
-			value: _n((J.monthlySurplus / Math.max(ur, 1) + .2) * 180),
+			value: U((J.monthlySurplus / Math.max(ur, 1) + .2) * 180),
 			color: V[0]
 		},
 		{
 			label: "抗风险能力",
-			value: _n(J.emergencyCoverage / Math.max(F, 1) * 100),
+			value: U(J.emergencyCoverage / Math.max(F, 1) * 100),
 			color: V[1]
 		},
 		{
 			label: "负债风险",
-			value: _n(100 - J.debtRatio * 100),
+			value: U(100 - J.debtRatio * 100),
 			color: V[4]
 		},
 		{
 			label: "增长能力",
-			value: _n(J.savingsRate / .45 * 100),
+			value: U(J.savingsRate / .45 * 100),
 			color: V[3]
 		},
 		{
@@ -15068,35 +15170,35 @@ function U() {
 	], oo = [
 		{
 			label: "固定支出率",
-			x: _n(J.fixedRatio * 120),
-			y: _n(J.fixedRatio > .5 ? 86 : J.fixedRatio > .35 ? 62 : 32),
+			x: U(J.fixedRatio * 120),
+			y: U(J.fixedRatio > .5 ? 86 : J.fixedRatio > .35 ? 62 : 32),
 			value: yn(J.fixedRatio),
 			color: J.fixedRatio > .5 ? V[4] : J.fixedRatio > .35 ? V[2] : V[1]
 		},
 		{
 			label: "应急金缺口",
-			x: _n(100 - J.emergencyCoverage / Math.max(F, 1) * 100),
-			y: _n(80 - J.emergencyCoverage * 10),
+			x: U(100 - J.emergencyCoverage / Math.max(F, 1) * 100),
+			y: U(80 - J.emergencyCoverage * 10),
 			value: `${J.emergencyCoverage.toFixed(1)}月`,
 			color: V[2]
 		},
 		{
 			label: "现金流末余额",
-			x: _n((J.spendingPlan * 4 - (ri[ri.length - 1]?.balance ?? 0)) / Math.max(J.spendingPlan * 4, 1) * 100),
-			y: _n((J.spendingPlan * 3 - (ri[ri.length - 1]?.balance ?? 0)) / Math.max(J.spendingPlan * 3, 1) * 100),
+			x: U((J.spendingPlan * 4 - (ri[ri.length - 1]?.balance ?? 0)) / Math.max(J.spendingPlan * 4, 1) * 100),
+			y: U((J.spendingPlan * 3 - (ri[ri.length - 1]?.balance ?? 0)) / Math.max(J.spendingPlan * 3, 1) * 100),
 			value: H(ri[ri.length - 1]?.balance ?? 0),
 			color: V[0]
 		},
 		{
 			label: "负债率",
-			x: _n(J.debtRatio * 100),
-			y: _n(J.debtRatio * 120),
+			x: U(J.debtRatio * 100),
+			y: U(J.debtRatio * 120),
 			value: yn(J.debtRatio),
 			color: V[4]
 		},
 		{
 			label: "投资波动",
-			x: _n(Math.abs(J.investmentPnL) / Math.max(J.investmentCost, 1) * 100),
+			x: U(Math.abs(J.investmentPnL) / Math.max(J.investmentCost, 1) * 100),
 			y: J.investmentPnL >= 0 ? 34 : 72,
 			value: H(J.investmentPnL),
 			color: J.investmentPnL >= 0 ? V[1] : V[4]
@@ -15127,9 +15229,9 @@ function U() {
 	})), mo = ei.income - (ti?.income ?? 0), ho = ei.spending - (ti?.spending ?? 0), go = ei.accountTotal - (ti?.accountTotal ?? 0), _o = ei.netWorth - (ti?.netWorth ?? 0);
 	async function vo() {
 		try {
-			await navigator.clipboard.writeText(eo), _t("报告已复制到剪贴板");
+			await navigator.clipboard.writeText(eo), gt("报告已复制到剪贴板");
 		} catch {
-			_t("复制失败，可以直接选中文本复制");
+			gt("复制失败，可以直接选中文本复制");
 		}
 	}
 	return /* @__PURE__ */ (0, b.jsxs)("main", {
@@ -15152,7 +15254,7 @@ function U() {
 					onClick: () => Ui("overview"),
 					children: "总览"
 				}),
-				gn.map((e) => /* @__PURE__ */ (0, b.jsx)("button", {
+				_n.map((e) => /* @__PURE__ */ (0, b.jsx)("button", {
 					className: v?.id === e.id ? "active" : "",
 					"aria-current": v?.id === e.id ? "location" : void 0,
 					type: "button",
@@ -15185,29 +15287,29 @@ function U() {
 					"aria-label": "数据保存与备份",
 					children: [/* @__PURE__ */ (0, b.jsxs)("div", {
 						className: "save-indicator",
-						children: [/* @__PURE__ */ (0, b.jsx)("span", { className: B ? "save-dot ready" : "save-dot" }), /* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: pt }), /* @__PURE__ */ (0, b.jsxs)("small", { children: ["本机自动保存 · 每 30 秒检查 · ", rt] })] })]
+						children: [/* @__PURE__ */ (0, b.jsx)("span", { className: B ? "save-dot ready" : "save-dot" }), /* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: pt }), /* @__PURE__ */ (0, b.jsxs)("small", { children: ["本机自动保存 · 每 30 秒检查 · ", it] })] })]
 					}), /* @__PURE__ */ (0, b.jsxs)("div", {
 						className: "data-actions",
 						children: [
 							/* @__PURE__ */ (0, b.jsx)("button", {
 								className: "primary-button",
-								disabled: !B || st,
+								disabled: !B || L,
 								type: "button",
-								onClick: () => void pn(),
+								onClick: () => void rn(),
 								children: "保存当前数据"
 							}),
 							/* @__PURE__ */ (0, b.jsx)("button", {
 								className: "secondary-button",
-								disabled: !B || st,
+								disabled: !B || L,
 								type: "button",
 								onClick: () => void Xr(),
 								children: "保存本月月报"
 							}),
 							/* @__PURE__ */ (0, b.jsx)("button", {
 								className: "secondary-button",
-								disabled: !B || st,
+								disabled: !B || L,
 								type: "button",
-								onClick: () => void hn(),
+								onClick: () => void mn(),
 								children: "保存完整版本"
 							}),
 							/* @__PURE__ */ (0, b.jsx)("button", {
@@ -15220,40 +15322,40 @@ function U() {
 								className: "secondary-button",
 								type: "button",
 								onClick: () => dt((e) => !e),
-								children: ["历史版本 ", L.length > 0 ? `(${L.length})` : ""]
+								children: ["历史版本 ", qe.length > 0 ? `(${qe.length})` : ""]
 							}),
 							/* @__PURE__ */ (0, b.jsx)("button", {
 								className: "secondary-button",
 								type: "button",
-								onClick: Dn,
+								onClick: bn,
 								children: "导出备份"
 							}),
 							/* @__PURE__ */ (0, b.jsx)("button", {
 								className: "secondary-button",
 								type: "button",
-								onClick: () => kt.current?.click(),
+								onClick: () => Dt.current?.click(),
 								children: "导入备份"
 							}),
 							/* @__PURE__ */ (0, b.jsx)("input", {
-								ref: kt,
+								ref: Dt,
 								className: "visually-hidden",
 								accept: "application/json,.json",
 								type: "file",
 								onChange: (e) => {
 									let t = e.target.files?.[0];
-									t && Gn(t);
+									t && Rn(t);
 								}
 							})
 						]
 					})]
 				}),
-				lt && /* @__PURE__ */ (0, b.jsxs)("section", {
+				ut && /* @__PURE__ */ (0, b.jsxs)("section", {
 					className: "history-panel",
 					children: [/* @__PURE__ */ (0, b.jsxs)("div", {
 						className: "history-heading",
 						children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("h2", { children: "历史版本" }), /* @__PURE__ */ (0, b.jsxs)("p", { children: [
 							"最多保留最近 ",
-							mn,
+							hn,
 							" 个手动快照。恢复前可以先保存当前版本。"
 						] })] }), /* @__PURE__ */ (0, b.jsx)("button", {
 							className: "secondary-button",
@@ -15261,12 +15363,12 @@ function U() {
 							onClick: () => dt(!1),
 							children: "关闭"
 						})]
-					}), L.length === 0 ? /* @__PURE__ */ (0, b.jsx)("div", {
+					}), qe.length === 0 ? /* @__PURE__ */ (0, b.jsx)("div", {
 						className: "history-empty",
 						children: "还没有历史版本。点击“保存历史版本”即可创建第一个快照。"
 					}) : /* @__PURE__ */ (0, b.jsx)("div", {
 						className: "history-list",
-						children: L.map((e) => /* @__PURE__ */ (0, b.jsxs)("article", {
+						children: qe.map((e) => /* @__PURE__ */ (0, b.jsxs)("article", {
 							className: "history-item",
 							children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: Un(e.createdAt) }), /* @__PURE__ */ (0, b.jsxs)("span", { children: [
 								e.data.selectedMonth ?? T,
@@ -15278,12 +15380,12 @@ function U() {
 								children: [/* @__PURE__ */ (0, b.jsx)("button", {
 									className: "secondary-button",
 									type: "button",
-									onClick: () => vn(e),
+									onClick: () => gn(e),
 									children: "恢复"
 								}), /* @__PURE__ */ (0, b.jsx)("button", {
 									className: "danger-button",
 									type: "button",
-									onClick: () => bn(e.id),
+									onClick: () => vn(e.id),
 									children: "删除"
 								})]
 							})]
@@ -15295,11 +15397,11 @@ function U() {
 					onChange: fi,
 					saveAction: /* @__PURE__ */ (0, b.jsx)("button", {
 						type: "button",
-						disabled: !B || st,
-						onClick: () => void pn(),
+						disabled: !B || L,
+						onClick: () => void rn(),
 						children: "保存分配预算"
 					}),
-					saveStatus: `${pt} · ${rt}`
+					saveStatus: `${pt} · ${it}`
 				}),
 				/* @__PURE__ */ (0, b.jsxs)("details", {
 					className: "finance-ledger",
@@ -15323,7 +15425,7 @@ function U() {
 										id: "finance-overview-title",
 										children: "账户与收支总览"
 									}), /* @__PURE__ */ (0, b.jsxs)("p", { children: [
-										U.label,
+										$n.label,
 										"账本 · ",
 										s ? `最近整期更新截至 ${s}` : "尚未整期更新",
 										" · 账户与持仓为当前模块余额。"
@@ -15332,7 +15434,7 @@ function U() {
 										children: "公开页已脱敏"
 									})]
 								}),
-								/* @__PURE__ */ (0, b.jsx)(Ot, {
+								/* @__PURE__ */ (0, b.jsx)(kt, {
 									records: r,
 									onOpen: () => Ui("periodReview")
 								}),
@@ -15404,7 +15506,7 @@ function U() {
 											/* @__PURE__ */ (0, b.jsx)(G, {
 												title: "资产结构",
 												summary: `总资产 ${H(J.totalAssets)}`,
-												children: /* @__PURE__ */ (0, b.jsx)(kr, {
+												children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 													data: _a,
 													centerLabel: "总资产",
 													centerValue: H(J.totalAssets)
@@ -15412,51 +15514,51 @@ function U() {
 											}),
 											/* @__PURE__ */ (0, b.jsx)(G, {
 												title: "年度资金分布",
-												summary: `全年全部安排 ${H(q.annualOutflow)}`,
-												children: /* @__PURE__ */ (0, b.jsx)(kr, {
+												summary: `全年全部安排 ${H(dr.annualOutflow)}`,
+												children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 													data: Ta,
-													centerLabel: q.annualSurplus >= 0 ? "可分配资金" : "年度安排",
-													centerValue: H(q.annualSurplus >= 0 ? q.annualIncome : q.annualOutflow)
+													centerLabel: dr.annualSurplus >= 0 ? "可分配资金" : "年度安排",
+													centerValue: H(dr.annualSurplus >= 0 ? dr.annualIncome : dr.annualOutflow)
 												})
 											}),
 											/* @__PURE__ */ (0, b.jsx)(G, {
 												title: "账本支出最高项",
-												summary: `${U.label} / 已花 ${H(J.spendingActual)}`,
+												summary: `${$n.label} / 已花 ${H(J.spendingActual)}`,
 												className: "spending-top-panel",
-												children: /* @__PURE__ */ (0, b.jsx)(jr, {
+												children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 													data: ua,
 													valueFormatter: H
 												})
 											}),
 											/* @__PURE__ */ (0, b.jsx)(G, {
 												title: "账本健康维度",
-												summary: `${U.label} / 综合 ${J.score} 分`,
-												children: /* @__PURE__ */ (0, b.jsx)(jr, {
+												summary: `${$n.label} / 综合 ${J.score} 分`,
+												children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 													data: ao,
 													valueFormatter: (e) => `${e.toFixed(0)}分`,
 													percentMode: !0
 												})
 											}),
 											/* @__PURE__ */ (0, b.jsx)(G, {
-												title: `${Ur}预算现金瀑布`,
-												summary: `全部安排 ${H(Ar.totalOutflow)}`,
-												children: /* @__PURE__ */ (0, b.jsx)(Lr, { data: Ca })
+												title: `${jr}预算现金瀑布`,
+												summary: `全部安排 ${H(q.totalOutflow)}`,
+												children: /* @__PURE__ */ (0, b.jsx)(Rr, { data: Ca })
 											}),
 											/* @__PURE__ */ (0, b.jsx)(G, {
 												title: "账本现金流日历",
-												summary: `${U.label}账本及提醒记录`,
-												children: /* @__PURE__ */ (0, b.jsx)(Ir, { events: ii })
+												summary: `${$n.label}账本及提醒记录`,
+												children: /* @__PURE__ */ (0, b.jsx)(Lr, { events: ii })
 											}),
 											/* @__PURE__ */ (0, b.jsx)(G, {
 												title: "账本风险矩阵",
-												summary: `${U.label}账本模型`,
+												summary: `${$n.label}账本模型`,
 												className: "wide risk-panel",
-												children: /* @__PURE__ */ (0, b.jsx)(Rr, { data: oo })
+												children: /* @__PURE__ */ (0, b.jsx)(zr, { data: oo })
 											}),
 											/* @__PURE__ */ (0, b.jsx)(G, {
-												title: `${Ur}预算流向`,
-												summary: `全部安排 ${H(Ar.totalOutflow)}`,
-												children: /* @__PURE__ */ (0, b.jsx)(zr, {
+												title: `${jr}预算流向`,
+												summary: `全部安排 ${H(q.totalOutflow)}`,
+												children: /* @__PURE__ */ (0, b.jsx)(Br, {
 													data: wa,
 													source: "工资账户",
 													valueFormatter: H
@@ -15467,7 +15569,7 @@ function U() {
 								}),
 								/* @__PURE__ */ (0, b.jsx)("div", {
 									className: "module-grid",
-									children: gn.map((e) => /* @__PURE__ */ (0, b.jsxs)("button", {
+									children: _n.map((e) => /* @__PURE__ */ (0, b.jsxs)("button", {
 										className: `module-card ${h.includes(e.id) ? "selected" : ""}`,
 										onClick: () => Hi(e.id),
 										children: [
@@ -15497,9 +15599,9 @@ function U() {
 								className: "detail-panel",
 								id: `finance-${u}`,
 								tabIndex: -1,
-								"aria-label": gn.find((e) => e.id === u)?.title,
+								"aria-label": _n.find((e) => e.id === u)?.title,
 								children: [
-									u === "income" && /* @__PURE__ */ (0, b.jsxs)(ar, {
+									u === "income" && /* @__PURE__ */ (0, b.jsxs)(or, {
 										title: "收入",
 										desc: "收入只看实际到账；炒股月结算单独记录，不进入现金流预测。",
 										children: [/* @__PURE__ */ (0, b.jsx)(nr, {
@@ -15509,20 +15611,20 @@ function U() {
 												...t,
 												salary: e
 											})
-										}), /* @__PURE__ */ (0, b.jsx)(ir, {
+										}), /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
-												/* @__PURE__ */ (0, b.jsx)(Dt, {
+												/* @__PURE__ */ (0, b.jsx)(Ot, {
 													records: r,
 													flow: "income"
 												}),
-												/* @__PURE__ */ (0, b.jsx)(ot, {
+												/* @__PURE__ */ (0, b.jsx)(ct, {
 													flow: "income",
-													month: U,
+													month: $n,
 													entries: l,
 													onSave: bi,
 													onDelete: xi
-												}, `income-${U.id}`),
-												/* @__PURE__ */ (0, b.jsx)(dr, {
+												}, `income-${$n.id}`),
+												/* @__PURE__ */ (0, b.jsx)(fr, {
 													records: D,
 													selectedMonth: T,
 													onSelect: te,
@@ -15536,8 +15638,8 @@ function U() {
 												children: [
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "收入结构",
-														summary: `${U.label} ${H(ur)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														summary: `${$n.label} ${H(ur)}`,
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: na,
 															centerLabel: "实际收入",
 															centerValue: H(ur)
@@ -15546,7 +15648,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "收入口径",
 														summary: "股票月结不进预测",
-														children: /* @__PURE__ */ (0, b.jsx)(Pr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Fr, {
 															data: na,
 															valueFormatter: H
 														})
@@ -15554,7 +15656,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "月度收入趋势",
 														summary: "按月份分开记录",
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: ia,
 															valueFormatter: H
 														})
@@ -15563,39 +15665,39 @@ function U() {
 											})
 										})]
 									}),
-									u === "spending" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "spending" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "支出",
 										desc: "细项支出按大类归属；学习单列用途，日常使用可按咔皮记账报告核对。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
-												/* @__PURE__ */ (0, b.jsx)(or, {
+												/* @__PURE__ */ (0, b.jsx)(sr, {
 													records: D,
 													selectedMonth: T,
 													onAddMonth: ui,
 													onChange: te,
 													onDeleteSelectedMonth: () => di(T)
 												}),
-												/* @__PURE__ */ (0, b.jsx)(Dt, {
+												/* @__PURE__ */ (0, b.jsx)(Ot, {
 													records: r,
 													flow: "expense"
 												}),
-												/* @__PURE__ */ (0, b.jsx)(ot, {
+												/* @__PURE__ */ (0, b.jsx)(ct, {
 													flow: "expense",
-													month: U,
+													month: $n,
 													entries: l,
 													onSave: bi,
 													onDelete: xi
-												}, `spending-${U.id}`),
-												/* @__PURE__ */ (0, b.jsx)(Vr, {
+												}, `spending-${$n.id}`),
+												/* @__PURE__ */ (0, b.jsx)(Hr, {
 													budgets: lr,
 													deleteBudget: vi,
 													addBudget: _i,
 													addDetailedBudgets: yi,
 													updateBudget: gi
 												}),
-												/* @__PURE__ */ (0, b.jsx)(Hr, {
+												/* @__PURE__ */ (0, b.jsx)(Ur, {
 													budgets: lr,
-													monthLabel: U.label,
+													monthLabel: $n.label,
 													allowance: t.rows.find((e) => e.id === "learning")?.[t.mode] ?? 0
 												})
 											] }),
@@ -15606,7 +15708,7 @@ function U() {
 														title: "实际支出最高8项",
 														summary: `已花 ${H(J.spendingActual)}`,
 														className: "spending-top-panel",
-														children: /* @__PURE__ */ (0, b.jsx)(jr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 															data: ua,
 															valueFormatter: H
 														})
@@ -15614,7 +15716,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "全部实际支出占比",
 														summary: "按实际金额",
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: da,
 															centerLabel: "实际",
 															centerValue: H(J.spendingActual)
@@ -15623,7 +15725,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "分类预算执行",
 														summary: "实际 / 预算 / 按实际金额降序",
-														children: /* @__PURE__ */ (0, b.jsx)(jr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 															data: ca,
 															valueFormatter: H
 														})
@@ -15631,7 +15733,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "预算必要性结构",
 														summary: "必须 vs 可取消",
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: fa,
 															centerLabel: "预算",
 															centerValue: H(J.spendingPlan)
@@ -15640,7 +15742,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "月度支出趋势",
 														summary: "每月实际支出",
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: aa,
 															valueFormatter: H
 														})
@@ -15648,7 +15750,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "月度结余趋势",
 														summary: "收入 - 实际支出",
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: oa,
 															valueFormatter: H
 														})
@@ -15657,12 +15759,12 @@ function U() {
 											})
 										})
 									}),
-									u === "cashflow" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "cashflow" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "当前现金流预测",
 										desc: "当前余额扣除专项占用，再测算六个完整月预算周期；不是本月剩余天数的到账预测。出差补贴未确认到账，不预支；历史账本不参与当前预算。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
-												/* @__PURE__ */ (0, b.jsx)(wr, { liquidity: qr }),
+												/* @__PURE__ */ (0, b.jsx)(Tr, { liquidity: qr }),
 												/* @__PURE__ */ (0, b.jsxs)("label", {
 													className: "field",
 													children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "预测月份类型" }), /* @__PURE__ */ (0, b.jsxs)("select", {
@@ -15682,14 +15784,14 @@ function U() {
 														})]
 													})]
 												}),
-												/* @__PURE__ */ (0, b.jsx)(hr, {
+												/* @__PURE__ */ (0, b.jsx)(gr, {
 													accountTotal: qr.available,
 													addCashflowCustomItem: pi,
 													monthlyInflow: pa,
 													monthlyOutflow: ma,
 													rows: ga
 												}),
-												/* @__PURE__ */ (0, b.jsx)(xr, {
+												/* @__PURE__ */ (0, b.jsx)(Sr, {
 													baseDate: e,
 													reminders: Ne,
 													addReminder: ji,
@@ -15702,8 +15804,8 @@ function U() {
 												children: [
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "可动用余量情景",
-														summary: `${Ur} × 6 个完整周期`,
-														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
+														summary: `${jr} × 6 个完整周期`,
+														children: /* @__PURE__ */ (0, b.jsx)(Pr, {
 															data: ba,
 															valueFormatter: H
 														})
@@ -15711,7 +15813,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "月度流出压力",
 														summary: `每月流出 ${H(ma)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: xa,
 															valueFormatter: H
 														})
@@ -15719,22 +15821,22 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "现金瀑布",
 														summary: "一个完整预算周期",
-														children: /* @__PURE__ */ (0, b.jsx)(Lr, { data: Sa })
+														children: /* @__PURE__ */ (0, b.jsx)(Rr, { data: Sa })
 													}),
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "现金流日历",
 														summary: "事项提醒，不重复扣预算",
-														children: /* @__PURE__ */ (0, b.jsx)(Ir, { events: ii })
+														children: /* @__PURE__ */ (0, b.jsx)(Lr, { events: ii })
 													})
 												]
 											})
 										})
 									}),
-									u === "accounts" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "accounts" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "账户管理",
 										desc: "账户可以新增、删除、编辑和拖动排序，修改后会联动总资产、现金流和图表。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
-											data: /* @__PURE__ */ (0, b.jsx)(b.Fragment, { children: /* @__PURE__ */ (0, b.jsx)(gr, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
+											data: /* @__PURE__ */ (0, b.jsx)(b.Fragment, { children: /* @__PURE__ */ (0, b.jsx)(_r, {
 												accounts: O,
 												addAccount: oi,
 												deleteAccount: si,
@@ -15749,7 +15851,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "账户余额分布",
 														summary: `账户合计 ${H(J.accountTotal)} / 按余额降序`,
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: sa,
 															centerLabel: "账户",
 															centerValue: H(J.accountTotal)
@@ -15758,7 +15860,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "可提取账户余额",
 														summary: `含专项 ${H(qr.liquidCash)} / 自由动用 ${H(qr.available)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(jr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 															data: sa,
 															valueFormatter: H
 														})
@@ -15766,7 +15868,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "账户用途映射",
 														summary: "账户余额流向 / 按余额降序",
-														children: /* @__PURE__ */ (0, b.jsx)(zr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Br, {
 															data: sa,
 															source: "账户池",
 															valueFormatter: H
@@ -15776,10 +15878,10 @@ function U() {
 											})
 										})
 									}),
-									u === "budget" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "budget" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "预算管理",
 										desc: "与首页完整分配表同步，按不出差月份、出差月份及全年预算计算。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
 												/* @__PURE__ */ (0, b.jsxs)("div", {
 													className: "button-row",
@@ -15808,20 +15910,20 @@ function U() {
 													className: "stat-strip",
 													children: [
 														/* @__PURE__ */ (0, b.jsx)(W, {
-															label: `${Ur}可分配资金`,
-															value: H(Ar.income)
+															label: `${jr}可分配资金`,
+															value: H(q.income)
 														}),
 														/* @__PURE__ */ (0, b.jsx)(W, {
-															label: `${Ur}全部分配`,
-															value: H(Ar.totalOutflow)
+															label: `${jr}全部分配`,
+															value: H(q.totalOutflow)
 														}),
 														/* @__PURE__ */ (0, b.jsx)(W, {
-															label: `${Ur}现金余量`,
-															value: H(Ar.surplus)
+															label: `${jr}现金余量`,
+															value: H(q.surplus)
 														}),
 														/* @__PURE__ */ (0, b.jsx)(W, {
 															label: "全年全部分配",
-															value: H(q.annualOutflow)
+															value: H(dr.annualOutflow)
 														})
 													]
 												}),
@@ -15831,11 +15933,11 @@ function U() {
 													titleId: "module-annual-allocation-title",
 													saveAction: /* @__PURE__ */ (0, b.jsx)("button", {
 														type: "button",
-														disabled: !B || st,
-														onClick: () => void pn(),
+														disabled: !B || L,
+														onClick: () => void rn(),
 														children: "保存分配预算"
 													}),
-													saveStatus: `${pt} · ${rt}`
+													saveStatus: `${pt} · ${it}`
 												}),
 												/* @__PURE__ */ (0, b.jsxs)("details", { children: [
 													/* @__PURE__ */ (0, b.jsx)("summary", { children: "查看历史月份预算与实际支出" }),
@@ -15843,12 +15945,12 @@ function U() {
 														className: "ledger-context",
 														children: "以下是已保存月份的账本数据，年度分配表用于当前计划；历史预算金额可在这里单独维护。"
 													}),
-													/* @__PURE__ */ (0, b.jsx)(or, {
+													/* @__PURE__ */ (0, b.jsx)(sr, {
 														records: D,
 														selectedMonth: T,
 														onChange: te
 													}),
-													/* @__PURE__ */ (0, b.jsx)(Vr, {
+													/* @__PURE__ */ (0, b.jsx)(Hr, {
 														budgets: lr,
 														deleteBudget: vi,
 														addBudget: _i,
@@ -15862,34 +15964,34 @@ function U() {
 												children: [
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "年度资金分布",
-														summary: `可分配 ${H(q.annualIncome)} / 全部分配 ${H(q.annualOutflow)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														summary: `可分配 ${H(dr.annualIncome)} / 全部分配 ${H(dr.annualOutflow)}`,
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: Ta,
-															centerLabel: q.annualSurplus >= 0 ? "可分配资金" : "年度安排",
-															centerValue: H(q.annualSurplus >= 0 ? q.annualIncome : q.annualOutflow)
+															centerLabel: dr.annualSurplus >= 0 ? "可分配资金" : "年度安排",
+															centerValue: H(dr.annualSurplus >= 0 ? dr.annualIncome : dr.annualOutflow)
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(G, {
-														title: `${Ur}分类分配`,
-														summary: `合计 ${H(Ar.totalOutflow)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(jr, {
+														title: `${jr}分类分配`,
+														summary: `合计 ${H(q.totalOutflow)}`,
+														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 															data: wa,
 															valueFormatter: H
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(G, {
-														title: `${Ur}现金流核对`,
-														summary: `余量 ${H(Ar.surplus)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Lr, { data: Ca })
+														title: `${jr}现金流核对`,
+														summary: `余量 ${H(q.surplus)}`,
+														children: /* @__PURE__ */ (0, b.jsx)(Rr, { data: Ca })
 													})
 												]
 											})
 										})
 									}),
-									u === "investment" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "investment" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "投资管理",
 										desc: "投资理财单独成栏，A股 / 美股 / 港股分开看；计划投入和市值都能改。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsxs)("div", {
 												className: "form-grid",
 												children: [
@@ -15921,7 +16023,7 @@ function U() {
 														onChange: _e
 													})
 												]
-											}), /* @__PURE__ */ (0, b.jsx)(_r, {
+											}), /* @__PURE__ */ (0, b.jsx)(vr, {
 												holdings: A,
 												addHolding: Ci,
 												deleteHolding: wi,
@@ -15935,7 +16037,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "市场分布",
 														summary: `投资市值 ${H(J.investmentValue)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: va,
 															centerLabel: "投资",
 															centerValue: H(J.investmentValue)
@@ -15944,7 +16046,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "盈亏绝对值",
 														summary: `总盈亏 ${H(J.investmentPnL)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(jr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 															data: ya,
 															valueFormatter: H
 														})
@@ -15952,7 +16054,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "收益率 / 仓位",
 														summary: "横轴仓位，纵轴收益",
-														children: /* @__PURE__ */ (0, b.jsx)(Br, {
+														children: /* @__PURE__ */ (0, b.jsx)(Vr, {
 															data: io,
 															xLabel: "仓位",
 															yLabel: "收益"
@@ -15962,19 +16064,19 @@ function U() {
 											})
 										})
 									}),
-									u === "balance" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "balance" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "资产负债表",
 										desc: "资产项和负债项都支持新增、删除和直接编辑。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
-												/* @__PURE__ */ (0, b.jsx)(vr, {
+												/* @__PURE__ */ (0, b.jsx)(yr, {
 													addBalanceAsset: Ti,
 													balanceAssets: Oe,
 													deleteBalanceAsset: Ei,
 													totalAssets: J.totalAssets,
 													updateBalanceAsset: Y
 												}),
-												/* @__PURE__ */ (0, b.jsx)(yr, {
+												/* @__PURE__ */ (0, b.jsx)(br, {
 													addLiability: Oi,
 													deleteLiability: ki,
 													liabilities: Ae,
@@ -16008,7 +16110,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "资产负债对比",
 														summary: `净资产 ${H(J.netWorth)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(jr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 															data: Da,
 															valueFormatter: H
 														})
@@ -16016,7 +16118,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "负债结构",
 														summary: J.totalDebt ? `负债 ${H(J.totalDebt)}` : "当前无负债",
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: ka,
 															centerLabel: "负债",
 															centerValue: H(J.totalDebt)
@@ -16025,7 +16127,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "资产项结构",
 														summary: `补录资产 ${H(J.manualAssetTotal)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: Oa,
 															centerLabel: "资产项",
 															centerValue: H(J.manualAssetTotal)
@@ -16034,7 +16136,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "净资产趋势",
 														summary: "按 6 个月现金预测推演",
-														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Pr, {
 															data: Ea,
 															valueFormatter: H
 														})
@@ -16043,7 +16145,7 @@ function U() {
 											})
 										})
 									}),
-									u === "emergency" && /* @__PURE__ */ (0, b.jsxs)(ar, {
+									u === "emergency" && /* @__PURE__ */ (0, b.jsxs)(or, {
 										title: "应急&学习金",
 										desc: "预算合并显示，应急储备与学习实际支出分开核算；学习额度不计为应急余额。",
 										children: [/* @__PURE__ */ (0, b.jsxs)("div", {
@@ -16055,14 +16157,14 @@ function U() {
 												label: "每月学习消费预算",
 												value: H(t.rows.find((e) => e.id === "learning")?.[t.mode] ?? 0)
 											})]
-										}), /* @__PURE__ */ (0, b.jsx)(ir, {
+										}), /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
-												/* @__PURE__ */ (0, b.jsx)(br, {
+												/* @__PURE__ */ (0, b.jsx)(xr, {
 													saveAction: /* @__PURE__ */ (0, b.jsx)("button", {
 														className: "primary-button",
-														disabled: !B || st,
+														disabled: !B || L,
 														type: "button",
-														onClick: () => void pn(),
+														onClick: () => void rn(),
 														children: "保存应急设置"
 													}),
 													emergencyFund: J.currentEmergencyFund,
@@ -16079,7 +16181,7 @@ function U() {
 													children: [
 														pt,
 														" · ",
-														rt
+														it
 													]
 												}),
 												/* @__PURE__ */ (0, b.jsxs)("div", {
@@ -16115,9 +16217,9 @@ function U() {
 														}, e.id))
 													})]
 												}),
-												/* @__PURE__ */ (0, b.jsx)(Hr, {
+												/* @__PURE__ */ (0, b.jsx)(Ur, {
 													budgets: lr,
-													monthLabel: U.label,
+													monthLabel: $n.label,
 													allowance: t.rows.find((e) => e.id === "learning")?.[t.mode] ?? 0
 												})
 											] }),
@@ -16126,7 +16228,7 @@ function U() {
 												children: [/* @__PURE__ */ (0, b.jsx)(G, {
 													title: "应急金覆盖",
 													summary: `${J.emergencyCoverage.toFixed(1)} / ${F} 个月`,
-													children: /* @__PURE__ */ (0, b.jsx)(Fr, {
+													children: /* @__PURE__ */ (0, b.jsx)(Ir, {
 														data: [{
 															label: "应急金目标",
 															value: J.currentEmergencyFund,
@@ -16139,7 +16241,7 @@ function U() {
 												}), /* @__PURE__ */ (0, b.jsx)(G, {
 													title: "必要支出压力",
 													summary: `应急基准 ${H(J.emergencyMonthlyNeed)}`,
-													children: /* @__PURE__ */ (0, b.jsx)(jr, {
+													children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 														data: [
 															{
 																label: "应急月均支出",
@@ -16148,12 +16250,12 @@ function U() {
 															},
 															{
 																label: "当前消费预留",
-																value: Ar.consumption,
+																value: q.consumption,
 																color: V[2]
 															},
 															{
 																label: "当前全部安排",
-																value: Ar.totalOutflow,
+																value: q.totalOutflow,
 																color: V[4]
 															}
 														],
@@ -16163,11 +16265,11 @@ function U() {
 											})
 										})]
 									}),
-									u === "reminders" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "reminders" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "账单与提醒",
 										desc: "网页内提醒，默认提前 7 天；金额可先手动维护。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
-											data: /* @__PURE__ */ (0, b.jsx)(xr, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
+											data: /* @__PURE__ */ (0, b.jsx)(Sr, {
 												baseDate: e,
 												reminders: Ne,
 												addReminder: ji,
@@ -16180,7 +16282,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "提醒金额",
 														summary: "避免漏扣",
-														children: /* @__PURE__ */ (0, b.jsx)(jr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 															data: to,
 															valueFormatter: H
 														})
@@ -16188,7 +16290,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "距离到期",
 														summary: `北京时间 ${e} / 仅今日及未来事项`,
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: no,
 															valueFormatter: (e) => `${e.toFixed(0)}天`
 														})
@@ -16196,21 +16298,21 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "提醒日历",
 														summary: "未来关键扣款",
-														children: /* @__PURE__ */ (0, b.jsx)(Ir, { events: ii })
+														children: /* @__PURE__ */ (0, b.jsx)(Lr, { events: ii })
 													})
 												]
 											})
 										})
 									}),
-									u === "goals" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "goals" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "目标管理",
 										desc: "旅游、学习、父母储蓄、伴侣基金和大额支出目标都可以维护目标金额；预期准备用于规划，实际投入用于本月计算。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
-											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(or, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
+											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(sr, {
 												records: D,
 												selectedMonth: T,
 												onChange: te
-											}), /* @__PURE__ */ (0, b.jsx)(Sr, {
+											}), /* @__PURE__ */ (0, b.jsx)(Cr, {
 												goals: Le,
 												accounts: O,
 												addGoal: Ii,
@@ -16223,7 +16325,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "目标进度",
 														summary: "当前 / 目标",
-														children: /* @__PURE__ */ (0, b.jsx)(Fr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ir, {
 															data: Aa,
 															valueFormatter: H
 														})
@@ -16231,7 +16333,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "每月预期准备结构",
 														summary: `预期 ${H(Na)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: Le.map((e, t) => ({
 																label: e.name,
 																value: e.monthly,
@@ -16244,7 +16346,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "月度实际目标投入",
 														summary: `实际投入 ${H(Pa)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: Ia,
 															valueFormatter: H
 														})
@@ -16252,7 +16354,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "支出与投入压力",
 														summary: "实际支出 + 实际投入",
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: La,
 															valueFormatter: H
 														})
@@ -16260,7 +16362,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "累计准备变化",
 														summary: `当前 ${H(ja)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Pr, {
 															data: Ra,
 															valueFormatter: H
 														})
@@ -16269,11 +16371,11 @@ function U() {
 											})
 										})
 									}),
-									u === "fundBuckets" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "fundBuckets" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "大花费项目",
 										desc: "把旅行、搬家、手机分期、应急金和投资待投金拆开，避免同一笔钱被重复占用。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
-											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(wr, { liquidity: qr }), /* @__PURE__ */ (0, b.jsx)(Cr, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
+											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(Tr, { liquidity: qr }), /* @__PURE__ */ (0, b.jsx)(wr, {
 												accounts: O,
 												buckets: za,
 												addFundBucket: zi,
@@ -16289,7 +16391,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "已锁定资金",
 														summary: "可提取现金中的占用，已去重",
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: Ya,
 															centerLabel: "已锁定",
 															centerValue: H(qr.reserved)
@@ -16298,7 +16400,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "大花费项目缺口",
 														summary: `总缺口 ${H(Ha)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(jr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 															data: Xa,
 															valueFormatter: H
 														})
@@ -16306,7 +16408,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "每月补齐压力",
 														summary: `每月需 ${H(Wa)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: Za,
 															valueFormatter: H
 														})
@@ -16323,10 +16425,10 @@ function U() {
 											})
 										})
 									}),
-									u === "periodReview" && /* @__PURE__ */ (0, b.jsxs)(ar, {
+									u === "periodReview" && /* @__PURE__ */ (0, b.jsxs)(or, {
 										title: "周期复盘",
 										desc: "本期实际收支与期末余额；整期更新、历史版本及逐账户变化。",
-										children: [/* @__PURE__ */ (0, b.jsx)(Tt, {
+										children: [/* @__PURE__ */ (0, b.jsx)(Et, {
 											records: r,
 											plan: t,
 											accounts: O,
@@ -16341,16 +16443,16 @@ function U() {
 												current: n
 											})),
 											dashboardAsOf: s,
-											sourceSignature: Mt(At()),
+											sourceSignature: Nt(At()),
 											moduleUpdates: a,
-											moduleSignatures: Object.fromEntries(Object.keys(gt).map((e) => [e, yt(At(), e)])),
+											moduleSignatures: Object.fromEntries(Object.keys(_t).map((e) => [e, bt(At(), e)])),
 											onSaveModule: (e, t, n) => {
-												let { data: r, patch: i } = xt(At(), e, t, n);
-												return jt(r), o(r.reviewUpdates ?? []), ae(r.accounts), ce(r.holdings), ue(r.fxUsd), de(r.fxHkd), ke(r.balanceAssets), Me(r.liabilities), Pe(r.reminders), ze(r.fundBuckets), Ie(r.goals), ne(r.monthlyRecords), r.selectedMonth && te(r.selectedMonth), mt(`${gt[t]}已更新并保存到本机`), {
+												let { data: r, patch: i } = St(At(), e, t, n);
+												return jt(r), o(r.reviewUpdates ?? []), ae(r.accounts), ce(r.holdings), ue(r.fxUsd), de(r.fxHkd), ke(r.balanceAssets), Me(r.liabilities), Pe(r.reminders), ze(r.fundBuckets), Ie(r.goals), ne(r.monthlyRecords), r.selectedMonth && te(r.selectedMonth), z(`${_t[t]}已更新并保存到本机`), {
 													patch: i,
-													moduleSignature: yt(r, t),
-													sourceSignature: Mt(r),
-													goalsSignature: yt(r, "goals")
+													moduleSignature: bt(r, t),
+													sourceSignature: Nt(r),
+													goalsSignature: bt(r, "goals")
 												};
 											},
 											ledgerMonths: D,
@@ -16386,22 +16488,22 @@ function U() {
 											},
 											onOpenModule: Ui,
 											onChange: (e, t) => {
-												let n = Ft(At(), e, t ?? { publish: !1 });
-												return jt(n), i(n.financeReviews ?? []), o(n.reviewUpdates ?? []), c(n.dashboardAsOf), t?.publish && (ne(n.monthlyRecords), te(n.selectedMonth), ae(n.accounts), ce(n.holdings), ue(n.fxUsd), de(n.fxHkd), ke(n.balanceAssets), Me(n.liabilities), Pe(n.reminders), ze(n.fundBuckets), Ie(n.goals)), mt("本期数据与更新前后历史已保存到本机"), {
-													sourceSignature: Mt(n),
+												let n = It(At(), e, t ?? { publish: !1 });
+												return jt(n), i(n.financeReviews ?? []), o(n.reviewUpdates ?? []), c(n.dashboardAsOf), t?.publish && (ne(n.monthlyRecords), te(n.selectedMonth), ae(n.accounts), ce(n.holdings), ue(n.fxUsd), de(n.fxHkd), ke(n.balanceAssets), Me(n.liabilities), Pe(n.reminders), ze(n.fundBuckets), Ie(n.goals)), z("本期数据与更新前后历史已保存到本机"), {
+													sourceSignature: Nt(n),
 													record: t ? n.financeReviews?.find((e) => e.id === t.record.id) : void 0,
-													moduleSignatures: Object.fromEntries(Object.keys(gt).map((e) => [e, yt(n, e)]))
+													moduleSignatures: Object.fromEntries(Object.keys(_t).map((e) => [e, bt(n, e)]))
 												};
 											}
-										}), /* @__PURE__ */ (0, b.jsx)(It, {
+										}), /* @__PURE__ */ (0, b.jsx)(Lt, {
 											updates: a,
-											onExport: Rn
+											onExport: Dn
 										})]
 									}),
-									u === "reports" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "reports" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "财务报表",
 										desc: "每月自动生成完整分析报告，覆盖净资产、现金流、投资、大花费项目、家庭责任和风险。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
 												/* @__PURE__ */ (0, b.jsxs)("div", {
 													className: "stat-strip",
@@ -16424,13 +16526,13 @@ function U() {
 														})
 													]
 												}),
-												/* @__PURE__ */ (0, b.jsx)(Tr, {
+												/* @__PURE__ */ (0, b.jsx)(Er, {
 													copyStatus: ht,
 													reportText: eo,
 													sections: Qa,
 													onCopy: vo
 												}),
-												/* @__PURE__ */ (0, b.jsx)(Er, {
+												/* @__PURE__ */ (0, b.jsx)(Dr, {
 													allocation: J.assetOutflow,
 													income: ur,
 													rows: X,
@@ -16444,7 +16546,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "本月资金流向",
 														summary: `储蓄率 ${yn(J.savingsRate)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: ro,
 															valueFormatter: H
 														})
@@ -16452,7 +16554,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "月度收支对比",
 														summary: "收入和支出分月查看",
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: [...ia, ...aa],
 															valueFormatter: H
 														})
@@ -16460,7 +16562,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "现金流未来趋势",
 														summary: `6个月末 ${H(ri[ri.length - 1]?.balance ?? 0)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Pr, {
 															data: ba,
 															valueFormatter: H
 														})
@@ -16468,23 +16570,23 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "资金瀑布复盘",
 														summary: "收入、支出、分配",
-														children: /* @__PURE__ */ (0, b.jsx)(Lr, { data: Sa })
+														children: /* @__PURE__ */ (0, b.jsx)(Rr, { data: Sa })
 													}),
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "风险矩阵",
 														summary: "下月关注点",
-														children: /* @__PURE__ */ (0, b.jsx)(Rr, { data: oo })
+														children: /* @__PURE__ */ (0, b.jsx)(zr, { data: oo })
 													})
 												]
 											})
 										})
 									}),
-									u === "monthlyArchive" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "monthlyArchive" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "月度存档",
 										desc: "每月底保存一次月报，用来追踪收入、支出、账户余额和净资产的环比变化。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
-												/* @__PURE__ */ (0, b.jsx)(or, {
+												/* @__PURE__ */ (0, b.jsx)(sr, {
 													records: D,
 													selectedMonth: T,
 													onAddMonth: ui,
@@ -16512,15 +16614,15 @@ function U() {
 														})
 													]
 												}),
-												/* @__PURE__ */ (0, b.jsx)(pr, {
-													archives: Ye,
+												/* @__PURE__ */ (0, b.jsx)(mr, {
+													archives: Xe,
 													currentArchive: Qr,
 													deleteMonthlyArchive: Zr,
 													saveMonthlyArchive: Xr,
 													selectedMonth: T,
 													onSelectMonth: te
 												}),
-												/* @__PURE__ */ (0, b.jsx)(mr, {
+												/* @__PURE__ */ (0, b.jsx)(hr, {
 													currentArchive: ei,
 													previousArchive: ti
 												})
@@ -16531,7 +16633,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "存档收入趋势",
 														summary: `${ni.length} 个月 / 当前 ${H(ur)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: co,
 															valueFormatter: H
 														})
@@ -16539,7 +16641,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "存档支出趋势",
 														summary: `当前支出 ${H(J.spendingActual)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
 															data: lo,
 															valueFormatter: H
 														})
@@ -16547,7 +16649,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "账户余额变化",
 														summary: `当前账户 ${H(J.accountTotal)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Pr, {
 															data: fo,
 															valueFormatter: H
 														})
@@ -16555,7 +16657,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "净资产变化",
 														summary: `当前净资产 ${H(J.netWorth)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Pr, {
 															data: uo,
 															valueFormatter: H
 														})
@@ -16563,7 +16665,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "当月余额变化",
 														summary: "收入 - 支出 - 分配",
-														children: /* @__PURE__ */ (0, b.jsx)(Nr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Pr, {
 															data: po,
 															valueFormatter: H
 														})
@@ -16572,40 +16674,40 @@ function U() {
 											})
 										})
 									}),
-									u === "cloudSync" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "cloudSync" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "云同步",
 										desc: "点击保存会把加密数据写入 GitHub Gist；另一台电脑可从这里恢复同一份数据。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
-											data: /* @__PURE__ */ (0, b.jsx)(fr, {
-												cloudPassphrase: tt,
-												cloudStatus: rt,
-												cloudSyncing: st,
-												clearCloudSyncSettings: Xn,
-												downloadCloudSync: $n,
-												settings: $e,
-												setCloudPassphrase: Yn,
-												updateCloudSyncSettings: Jn,
-												uploadCloudSync: () => void Qn(!1)
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
+											data: /* @__PURE__ */ (0, b.jsx)(pr, {
+												cloudPassphrase: nt,
+												cloudStatus: it,
+												cloudSyncing: L,
+												clearCloudSyncSettings: Yn,
+												downloadCloudSync: Qn,
+												settings: et,
+												setCloudPassphrase: Jn,
+												updateCloudSyncSettings: Gn,
+												uploadCloudSync: () => void Zn(!1)
 											}),
 											charts: /* @__PURE__ */ (0, b.jsxs)("div", {
 												className: "chart-grid two",
 												children: [/* @__PURE__ */ (0, b.jsx)(G, {
 													title: "同步状态",
-													summary: $e.gistId ? "已配置 Gist" : "未创建云端存档",
+													summary: et.gistId ? "已配置 Gist" : "未创建云端存档",
 													children: /* @__PURE__ */ (0, b.jsxs)("div", {
 														className: "cloud-status-board",
 														children: [
-															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "云端 Gist" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: $e.gistId || "未创建" })] }),
-															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "自动同步" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: $e.autoSync ? "开启" : "关闭" })] }),
-															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "打开自动恢复" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: $e.rememberPassphrase ? "开启" : "关闭" })] }),
-															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "上次上传" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: $e.lastPushedAt ? Un($e.lastPushedAt) : "暂无" })] }),
-															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "上次拉取" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: $e.lastPulledAt ? Un($e.lastPulledAt) : "暂无" })] })
+															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "云端 Gist" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: et.gistId || "未创建" })] }),
+															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "自动同步" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: et.autoSync ? "开启" : "关闭" })] }),
+															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "打开自动恢复" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: et.rememberPassphrase ? "开启" : "关闭" })] }),
+															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "上次上传" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: et.lastPushedAt ? Un(et.lastPushedAt) : "暂无" })] }),
+															/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "上次拉取" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: et.lastPulledAt ? Un(et.lastPulledAt) : "暂无" })] })
 														]
 													})
 												}), /* @__PURE__ */ (0, b.jsx)(G, {
 													title: "本机数据包",
-													summary: `${D.length} 个月 / ${Ye.length} 条月报`,
-													children: /* @__PURE__ */ (0, b.jsx)(jr, {
+													summary: `${D.length} 个月 / ${Xe.length} 条月报`,
+													children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 														data: [
 															{
 																label: "收入月份",
@@ -16614,12 +16716,12 @@ function U() {
 															},
 															{
 																label: "月度存档",
-																value: Ye.length,
+																value: Xe.length,
 																color: V[1]
 															},
 															{
 																label: "完整版本",
-																value: L.length,
+																value: qe.length,
 																color: V[3]
 															},
 															{
@@ -16634,17 +16736,17 @@ function U() {
 											})
 										})
 									}),
-									u === "health" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "health" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "财务健康评分",
 										desc: "100 分制，用现金流、应急金、负债、增长和趋势综合判断。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
 												/* @__PURE__ */ (0, b.jsxs)("div", {
 													className: "health-score",
 													style: { "--score": `${J.score}%` },
 													children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: J.score }), /* @__PURE__ */ (0, b.jsx)("span", { children: "财务健康分" })]
 												}),
-												/* @__PURE__ */ (0, b.jsx)(Dr, {
+												/* @__PURE__ */ (0, b.jsx)(Or, {
 													emergencyMonthlyNeed: Ee,
 													emergencyMonths: F,
 													addLiability: Oi,
@@ -16682,7 +16784,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "健康维度拆解",
 														summary: "五项分数",
-														children: /* @__PURE__ */ (0, b.jsx)(jr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 															data: ao,
 															valueFormatter: (e) => `${e.toFixed(0)}分`,
 															percentMode: !0
@@ -16691,7 +16793,7 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "资产抗风险结构",
 														summary: "账户 / 应急 / 负债",
-														children: /* @__PURE__ */ (0, b.jsx)(kr, {
+														children: /* @__PURE__ */ (0, b.jsx)(Ar, {
 															data: _a,
 															centerLabel: "覆盖",
 															centerValue: `${J.emergencyCoverage.toFixed(1)}月`
@@ -16700,17 +16802,17 @@ function U() {
 													/* @__PURE__ */ (0, b.jsx)(G, {
 														title: "风险矩阵",
 														summary: "影响 × 紧迫",
-														children: /* @__PURE__ */ (0, b.jsx)(Rr, { data: oo })
+														children: /* @__PURE__ */ (0, b.jsx)(zr, { data: oo })
 													})
 												]
 											})
 										})
 									}),
-									u === "future" && /* @__PURE__ */ (0, b.jsx)(ar, {
+									u === "future" && /* @__PURE__ */ (0, b.jsx)(or, {
 										title: "数据能力",
 										desc: "债务、保险、数据质量、规则引擎先放结构，等后续数据补齐再激活。",
-										children: /* @__PURE__ */ (0, b.jsx)(ir, {
-											data: /* @__PURE__ */ (0, b.jsx)(Or, {
+										children: /* @__PURE__ */ (0, b.jsx)(ar, {
+											data: /* @__PURE__ */ (0, b.jsx)(kr, {
 												capabilities: Be,
 												updateCapability: Vi
 											}),
@@ -16719,7 +16821,7 @@ function U() {
 												children: [/* @__PURE__ */ (0, b.jsx)(G, {
 													title: "能力成熟度",
 													summary: "未来模块占位评分",
-													children: /* @__PURE__ */ (0, b.jsx)(jr, {
+													children: /* @__PURE__ */ (0, b.jsx)(Mr, {
 														data: so,
 														valueFormatter: (e) => `${e.toFixed(0)}分`,
 														percentMode: !0
@@ -16727,7 +16829,7 @@ function U() {
 												}), /* @__PURE__ */ (0, b.jsx)(G, {
 													title: "规则覆盖路线",
 													summary: "自动分类 / 校验 / 提醒",
-													children: /* @__PURE__ */ (0, b.jsx)(Pr, {
+													children: /* @__PURE__ */ (0, b.jsx)(Fr, {
 														data: so,
 														valueFormatter: (e) => `${e.toFixed(0)}分`
 													})
@@ -16744,10 +16846,10 @@ function U() {
 		})]
 	});
 }
-function rr(e, t, n, r) {
+function ir(e, t, n, r) {
 	return t === "USD" ? e * n : t === "HKD" ? e * r : e;
 }
-function ir({ data: e, charts: t }) {
+function ar({ data: e, charts: t }) {
 	return /* @__PURE__ */ (0, b.jsxs)("div", {
 		className: "data-chart-layout",
 		children: [/* @__PURE__ */ (0, b.jsxs)("section", {
@@ -16765,7 +16867,7 @@ function ir({ data: e, charts: t }) {
 		})]
 	});
 }
-function ar({ title: e, desc: t, children: n }) {
+function or({ title: e, desc: t, children: n }) {
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)("div", {
 		className: "section-title",
 		children: /* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("h2", { children: e }), /* @__PURE__ */ (0, b.jsx)("p", { children: t })] })
@@ -16780,7 +16882,7 @@ function W({ label: e, value: t }) {
 		children: [/* @__PURE__ */ (0, b.jsx)("span", { children: e }), /* @__PURE__ */ (0, b.jsx)("strong", { children: t })]
 	});
 }
-function or({ records: e, selectedMonth: t, onAddMonth: n, onChange: r, onDeleteSelectedMonth: i }) {
+function sr({ records: e, selectedMonth: t, onAddMonth: n, onChange: r, onDeleteSelectedMonth: i }) {
 	return /* @__PURE__ */ (0, b.jsxs)("div", {
 		className: "month-selector-shell",
 		children: [/* @__PURE__ */ (0, b.jsx)("div", {
@@ -16831,7 +16933,7 @@ function K({ value: e, onChange: t, min: n = 0, max: r, step: i = 100, ariaLabel
 		onChange: (e) => t(vn(e.target.value))
 	});
 }
-function sr({ value: e, onChange: t, ariaLabel: n, placeholder: r }) {
+function cr({ value: e, onChange: t, ariaLabel: n, placeholder: r }) {
 	return /* @__PURE__ */ (0, b.jsx)("input", {
 		"aria-label": n,
 		className: "table-input text",
@@ -16841,7 +16943,7 @@ function sr({ value: e, onChange: t, ariaLabel: n, placeholder: r }) {
 		onChange: (e) => t(e.target.value)
 	});
 }
-function cr({ value: e, onChange: t, ariaLabel: n }) {
+function lr({ value: e, onChange: t, ariaLabel: n }) {
 	return /* @__PURE__ */ (0, b.jsx)("input", {
 		"aria-label": n,
 		className: "table-input",
@@ -16853,7 +16955,7 @@ function cr({ value: e, onChange: t, ariaLabel: n }) {
 		onChange: (e) => t(e.target.value)
 	});
 }
-function lr({ value: e, options: t, onChange: n, ariaLabel: r }) {
+function ur({ value: e, options: t, onChange: n, ariaLabel: r }) {
 	return /* @__PURE__ */ (0, b.jsx)("select", {
 		className: "table-input",
 		"aria-label": r,
@@ -16865,7 +16967,7 @@ function lr({ value: e, options: t, onChange: n, ariaLabel: r }) {
 		}, e))
 	});
 }
-function ur({ checked: e, onChange: t, ariaLabel: n }) {
+function dr({ checked: e, onChange: t, ariaLabel: n }) {
 	return /* @__PURE__ */ (0, b.jsx)("input", {
 		"aria-label": n,
 		checked: e,
@@ -16880,7 +16982,7 @@ function q({ title: e, meta: t, action: n }) {
 		children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: e }), /* @__PURE__ */ (0, b.jsx)("span", { children: t })] }), n]
 	});
 }
-function dr({ records: e, selectedMonth: t, onSelect: n, addMonthRecord: r, deleteMonthRecord: i, updateMonthRecord: a }) {
+function fr({ records: e, selectedMonth: t, onSelect: n, addMonthRecord: r, deleteMonthRecord: i, updateMonthRecord: a }) {
 	let o = e.find((e) => e.id === t) ?? e[0];
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "月度收入底表",
@@ -16956,7 +17058,7 @@ function dr({ records: e, selectedMonth: t, onSelect: n, addMonthRecord: r, dele
 		})
 	})] });
 }
-function fr({ settings: e, cloudPassphrase: t, cloudStatus: n, cloudSyncing: r, updateCloudSyncSettings: i, setCloudPassphrase: a, uploadCloudSync: o, downloadCloudSync: s, clearCloudSyncSettings: c }) {
+function pr({ settings: e, cloudPassphrase: t, cloudStatus: n, cloudSyncing: r, updateCloudSyncSettings: i, setCloudPassphrase: a, uploadCloudSync: o, downloadCloudSync: s, clearCloudSyncSettings: c }) {
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "云同步连接",
 		meta: e.gistId ? `Gist ${e.gistId}` : "首次上传会自动创建私密 Gist",
@@ -17056,7 +17158,7 @@ function fr({ settings: e, cloudPassphrase: t, cloudStatus: n, cloudSyncing: r, 
 		]
 	})] });
 }
-function pr({ archives: e, currentArchive: t, selectedMonth: n, saveMonthlyArchive: r, deleteMonthlyArchive: i, onSelectMonth: a }) {
+function mr({ archives: e, currentArchive: t, selectedMonth: n, saveMonthlyArchive: r, deleteMonthlyArchive: i, onSelectMonth: a }) {
 	let o = [...e].sort((e, t) => t.monthId.localeCompare(e.monthId) || t.savedAt.localeCompare(e.savedAt)), s = e.find((e) => e.monthId === n), c = qn(e, n), l = c ? t.income - c.income : 0, u = c ? t.spending - c.spending : 0, d = c ? t.accountTotal - c.accountTotal : 0, f = c ? t.netWorth - c.netWorth : 0;
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
 		/* @__PURE__ */ (0, b.jsx)(q, {
@@ -17205,7 +17307,7 @@ function pr({ archives: e, currentArchive: t, selectedMonth: n, saveMonthlyArchi
 		})
 	] });
 }
-function mr({ currentArchive: e, previousArchive: t }) {
+function hr({ currentArchive: e, previousArchive: t }) {
 	let n = new Map(e.accounts.map((e) => [e.id, e])), r = new Map((t?.accounts ?? []).map((e) => [e.id, e])), i = Array.from(new Set([...n.keys(), ...r.keys()])).map((e) => {
 		let t = n.get(e), i = r.get(e), a = t?.balance ?? 0, o = i?.balance ?? 0;
 		return {
@@ -17263,7 +17365,7 @@ function mr({ currentArchive: e, previousArchive: t }) {
 		})
 	})] });
 }
-function hr({ accountTotal: e, addCashflowCustomItem: t, monthlyInflow: n, monthlyOutflow: r, rows: i }) {
+function gr({ accountTotal: e, addCashflowCustomItem: t, monthlyInflow: n, monthlyOutflow: r, rows: i }) {
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "现金流参数底表",
 		meta: `月流入 ${H(n)} / 月流出 ${H(r)} / 期初现金 ${H(e)}`,
@@ -17287,7 +17389,7 @@ function hr({ accountTotal: e, addCashflowCustomItem: t, monthlyInflow: n, month
 				colSpan: 4,
 				children: "暂无现金流行，点击新增现金流开始录入。"
 			}) }), i.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
-				/* @__PURE__ */ (0, b.jsx)("td", { children: e.onNameChange ? /* @__PURE__ */ (0, b.jsx)(sr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: e.onNameChange ? /* @__PURE__ */ (0, b.jsx)(cr, {
 					ariaLabel: `${e.name} 项目`,
 					value: e.name,
 					onChange: e.onNameChange
@@ -17300,7 +17402,7 @@ function hr({ accountTotal: e, addCashflowCustomItem: t, monthlyInflow: n, month
 					value: e.amount,
 					onChange: e.onAmountChange
 				}) }),
-				/* @__PURE__ */ (0, b.jsx)("td", { children: e.onDirectionChange ? /* @__PURE__ */ (0, b.jsx)(lr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: e.onDirectionChange ? /* @__PURE__ */ (0, b.jsx)(ur, {
 					ariaLabel: `${e.name} 口径`,
 					options: ["现金流出", "计入预测"],
 					value: e.direction === "inflow" ? "计入预测" : "现金流出",
@@ -17319,7 +17421,7 @@ function hr({ accountTotal: e, addCashflowCustomItem: t, monthlyInflow: n, month
 		})
 	})] });
 }
-function gr({ accounts: e, total: t, liquidAccountTotal: n, updateAccount: r, addAccount: i, deleteAccount: a, reorderAccount: o }) {
+function _r({ accounts: e, total: t, liquidAccountTotal: n, updateAccount: r, addAccount: i, deleteAccount: a, reorderAccount: o }) {
 	let [s, c] = (0, _.useState)(null);
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "账户底表",
@@ -17377,12 +17479,12 @@ function gr({ accounts: e, total: t, liquidAccountTotal: n, updateAccount: r, ad
 							children: "⋮⋮"
 						})
 					}),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 						ariaLabel: `${t.name} 账户名称`,
 						value: t.name,
 						onChange: (e) => r(t.id, { name: e })
 					}) }),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 						ariaLabel: `${t.name} 类型`,
 						value: t.type,
 						onChange: (e) => r(t.id, { type: e })
@@ -17392,17 +17494,17 @@ function gr({ accounts: e, total: t, liquidAccountTotal: n, updateAccount: r, ad
 						value: t.balance,
 						onChange: (e) => r(t.id, { balance: e })
 					}) }),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 						ariaLabel: `${t.name} 用途`,
 						value: t.purpose,
 						onChange: (e) => r(t.id, { purpose: e })
 					}) }),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(ur, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(dr, {
 						ariaLabel: `${t.name} 可提取`,
 						checked: t.liquid,
 						onChange: (e) => r(t.id, { liquid: e })
 					}) }),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(ur, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(dr, {
 						ariaLabel: `${t.name} 计入个人现金`,
 						checked: t.includedInPersonal !== !1,
 						onChange: (e) => r(t.id, { includedInPersonal: e })
@@ -17419,8 +17521,8 @@ function gr({ accounts: e, total: t, liquidAccountTotal: n, updateAccount: r, ad
 		})
 	})] });
 }
-function _r({ holdings: e, fxUsd: t, fxHkd: n, updateHolding: r, addHolding: i, deleteHolding: a }) {
-	let o = e.reduce((e, r) => e + rr(r.value, r.currency, t, n), 0);
+function vr({ holdings: e, fxUsd: t, fxHkd: n, updateHolding: r, addHolding: i, deleteHolding: a }) {
+	let o = e.reduce((e, r) => e + ir(r.value, r.currency, t, n), 0);
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "投资持仓底表",
 		meta: `持仓 ${e.length} 项 / 市值 ${H(o)}`,
@@ -17444,14 +17546,14 @@ function _r({ holdings: e, fxUsd: t, fxHkd: n, updateHolding: r, addHolding: i, 
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "盈亏" }),
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "操作" })
 			] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.map((i) => {
-				let o = rr(i.value, i.currency, t, n), s = rr(i.cost, i.currency, t, n);
+				let o = ir(i.value, i.currency, t, n), s = ir(i.cost, i.currency, t, n);
 				return /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 						ariaLabel: `${i.name} 名称`,
 						value: i.name,
 						onChange: (e) => r(i.id, { name: e })
 					}) }),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(lr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(ur, {
 						ariaLabel: `${i.name} 市场`,
 						options: [
 							"A股",
@@ -17461,7 +17563,7 @@ function _r({ holdings: e, fxUsd: t, fxHkd: n, updateHolding: r, addHolding: i, 
 						value: i.market,
 						onChange: (e) => r(i.id, { market: e })
 					}) }),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(lr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(ur, {
 						ariaLabel: `${i.name} 币种`,
 						options: [
 							"CNY",
@@ -17501,7 +17603,7 @@ function _r({ holdings: e, fxUsd: t, fxHkd: n, updateHolding: r, addHolding: i, 
 		})
 	})] });
 }
-function vr({ balanceAssets: e, totalAssets: t, updateBalanceAsset: n, addBalanceAsset: r, deleteBalanceAsset: i }) {
+function yr({ balanceAssets: e, totalAssets: t, updateBalanceAsset: n, addBalanceAsset: r, deleteBalanceAsset: i }) {
 	let a = e.reduce((e, t) => e + t.amount, 0);
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "资产底表",
@@ -17523,7 +17625,7 @@ function vr({ balanceAssets: e, totalAssets: t, updateBalanceAsset: n, addBalanc
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "占总资产" }),
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "操作" })
 			] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.map((r) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
-				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 					ariaLabel: `${r.name} 资产项`,
 					value: r.name,
 					onChange: (e) => n(r.id, { name: e })
@@ -17533,7 +17635,7 @@ function vr({ balanceAssets: e, totalAssets: t, updateBalanceAsset: n, addBalanc
 					value: r.amount,
 					onChange: (e) => n(r.id, { amount: e })
 				}) }),
-				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 					ariaLabel: `${r.name} 资产说明`,
 					value: r.note,
 					onChange: (e) => n(r.id, { note: e })
@@ -17553,7 +17655,7 @@ function vr({ balanceAssets: e, totalAssets: t, updateBalanceAsset: n, addBalanc
 		})
 	})] });
 }
-function yr({ liabilities: e, updateLiability: t, addLiability: n, deleteLiability: r }) {
+function br({ liabilities: e, updateLiability: t, addLiability: n, deleteLiability: r }) {
 	let i = e.reduce((e, t) => e + t.amount, 0);
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "负债底表",
@@ -17574,7 +17676,7 @@ function yr({ liabilities: e, updateLiability: t, addLiability: n, deleteLiabili
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "占比" }),
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "操作" })
 			] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.map((n) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
-				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 					ariaLabel: `${n.name} 负债项`,
 					value: n.name,
 					onChange: (e) => t(n.id, { name: e })
@@ -17599,7 +17701,7 @@ function yr({ liabilities: e, updateLiability: t, addLiability: n, deleteLiabili
 		})
 	})] });
 }
-function br({ saveAction: e, accountCount: t, emergencyFund: n, setEmergencyFund: r, emergencyMonths: i, setEmergencyMonths: a, emergencyMonthlyNeed: o, setEmergencyMonthlyNeed: s }) {
+function xr({ saveAction: e, accountCount: t, emergencyFund: n, setEmergencyFund: r, emergencyMonths: i, setEmergencyMonths: a, emergencyMonthlyNeed: o, setEmergencyMonthlyNeed: s }) {
 	let c = o * i;
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "应急金底表",
@@ -17662,7 +17764,7 @@ function br({ saveAction: e, accountCount: t, emergencyFund: n, setEmergencyFund
 		})
 	})] });
 }
-function xr({ baseDate: e, reminders: t, updateReminder: n, addReminder: r, deleteReminder: i }) {
+function Sr({ baseDate: e, reminders: t, updateReminder: n, addReminder: r, deleteReminder: i }) {
 	let a = t.reduce((e, t) => e + t.amount, 0);
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "提醒底表",
@@ -17685,12 +17787,12 @@ function xr({ baseDate: e, reminders: t, updateReminder: n, addReminder: r, dele
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "距离" }),
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "操作" })
 			] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: t.map((r) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
-				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 					ariaLabel: `${r.name} 事项`,
 					value: r.name,
 					onChange: (e) => n(r.id, { name: e })
 				}) }),
-				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(lr, {
 					ariaLabel: `${r.name} 日期`,
 					value: r.date,
 					onChange: (e) => n(r.id, { date: e })
@@ -17700,7 +17802,7 @@ function xr({ baseDate: e, reminders: t, updateReminder: n, addReminder: r, dele
 					value: r.amount,
 					onChange: (e) => n(r.id, { amount: e })
 				}) }),
-				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 					ariaLabel: `${r.name} 类型`,
 					value: r.kind,
 					onChange: (e) => n(r.id, { kind: e })
@@ -17720,7 +17822,7 @@ function xr({ baseDate: e, reminders: t, updateReminder: n, addReminder: r, dele
 		})
 	})] });
 }
-function Sr({ goals: e, accounts: t, updateGoal: n, addGoal: r, deleteGoal: i }) {
+function Cr({ goals: e, accounts: t, updateGoal: n, addGoal: r, deleteGoal: i }) {
 	let a = e.reduce((e, t) => e + t.target, 0), o = e.reduce((e, t) => e + t.current, 0), s = e.reduce((e, t) => e + t.actualMonthly, 0);
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "目标底表",
@@ -17744,7 +17846,7 @@ function Sr({ goals: e, accounts: t, updateGoal: n, addGoal: r, deleteGoal: i })
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "进度" }),
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "操作" })
 			] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.map((r) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
-				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 					ariaLabel: `${r.name} 名称`,
 					value: r.name,
 					onChange: (e) => n(r.id, { name: e })
@@ -17754,9 +17856,9 @@ function Sr({ goals: e, accounts: t, updateGoal: n, addGoal: r, deleteGoal: i })
 					value: r.target,
 					onChange: (e) => n(r.id, { target: e })
 				}) }),
-				/* @__PURE__ */ (0, b.jsx)("td", { children: dt(r, e, t).mode === "accounts" ? /* @__PURE__ */ (0, b.jsxs)("span", {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: pt(r, e, t).mode === "accounts" ? /* @__PURE__ */ (0, b.jsxs)("span", {
 					className: "calculated-cell",
-					children: [H(r.current), /* @__PURE__ */ (0, b.jsx)("small", { children: dt(r, e, t).label })]
+					children: [H(r.current), /* @__PURE__ */ (0, b.jsx)("small", { children: pt(r, e, t).label })]
 				}) : /* @__PURE__ */ (0, b.jsx)(K, {
 					ariaLabel: `${r.name} 当前金额`,
 					value: r.current,
@@ -17787,7 +17889,7 @@ function Sr({ goals: e, accounts: t, updateGoal: n, addGoal: r, deleteGoal: i })
 		})
 	})] });
 }
-function Cr({ accounts: e, buckets: t, updateFundBucket: n, addFundBucket: r, deleteFundBucket: i, investmentReserve: a, liquidAfterBuckets: o, monthlyNeed: s }) {
+function wr({ accounts: e, buckets: t, updateFundBucket: n, addFundBucket: r, deleteFundBucket: i, investmentReserve: a, liquidAfterBuckets: o, monthlyNeed: s }) {
 	let c = t.reduce((e, t) => e + t.target, 0), l = t.reduce((e, t) => e + t.current, 0);
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
 		/* @__PURE__ */ (0, b.jsx)(q, {
@@ -17821,18 +17923,18 @@ function Cr({ accounts: e, buckets: t, updateFundBucket: n, addFundBucket: r, de
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "备注" }),
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "操作" })
 				] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: t.map((r) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 						ariaLabel: `${r.name} 名称`,
 						value: r.name,
 						onChange: (e) => n(r.id, { name: e })
 					}) }),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(lr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(ur, {
 						ariaLabel: `${r.name} 类型`,
-						options: nn,
+						options: rn,
 						value: r.kind,
 						onChange: (e) => n(r.id, { kind: e })
 					}) }),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(lr, {
 						ariaLabel: `${r.name} 截止日期`,
 						value: r.dueDate,
 						onChange: (e) => n(r.id, { dueDate: e })
@@ -17881,12 +17983,12 @@ function Cr({ accounts: e, buckets: t, updateFundBucket: n, addFundBucket: r, de
 						className: "calculated-cell",
 						children: H(r.monthlyNeed)
 					}),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(ur, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(dr, {
 						ariaLabel: `${r.name} 锁定`,
 						checked: r.locked,
 						onChange: (e) => n(r.id, { locked: e })
 					}) }),
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 						ariaLabel: `${r.name} 备注`,
 						value: r.note,
 						onChange: (e) => n(r.id, { note: e })
@@ -17903,7 +18005,7 @@ function Cr({ accounts: e, buckets: t, updateFundBucket: n, addFundBucket: r, de
 		})
 	] });
 }
-function wr({ liquidity: e }) {
+function Tr({ liquidity: e }) {
 	return /* @__PURE__ */ (0, b.jsxs)("section", {
 		className: "liquidity-summary",
 		"aria-label": "可动用现金核对",
@@ -17975,7 +18077,7 @@ function wr({ liquidity: e }) {
 		]
 	});
 }
-function Tr({ sections: e, reportText: t, copyStatus: n, onCopy: r }) {
+function Er({ sections: e, reportText: t, copyStatus: n, onCopy: r }) {
 	return /* @__PURE__ */ (0, b.jsxs)("section", {
 		className: "monthly-report-panel",
 		children: [
@@ -18007,7 +18109,7 @@ function Tr({ sections: e, reportText: t, copyStatus: n, onCopy: r }) {
 		]
 	});
 }
-function Er({ rows: e, income: t, spending: n, allocation: r, surplus: i }) {
+function Dr({ rows: e, income: t, spending: n, allocation: r, surplus: i }) {
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "报表自动同步表",
 		meta: `收入 ${H(t)} / 支出 ${H(n)} / 分配 ${H(r)} / 余额 ${H(i)}`
@@ -18040,7 +18142,7 @@ function Er({ rows: e, income: t, spending: n, allocation: r, surplus: i }) {
 		})
 	})] });
 }
-function Dr({ emergencyMonths: e, setEmergencyMonths: t, emergencyMonthlyNeed: n, setEmergencyMonthlyNeed: r, liabilities: i, updateLiability: a, addLiability: o, deleteLiability: s }) {
+function Or({ emergencyMonths: e, setEmergencyMonths: t, emergencyMonthlyNeed: n, setEmergencyMonthlyNeed: r, liabilities: i, updateLiability: a, addLiability: o, deleteLiability: s }) {
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "健康评分输入底表",
 		meta: `目标覆盖 ${e} 月 / 负债 ${H(i.reduce((e, t) => e + t.amount, 0))}`,
@@ -18088,7 +18190,7 @@ function Dr({ emergencyMonths: e, setEmergencyMonths: t, emergencyMonthlyNeed: n
 					})
 				] }),
 				i.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
-					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+					/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 						ariaLabel: `健康 ${e.name} 负债项`,
 						value: e.name,
 						onChange: (t) => a(e.id, { name: t })
@@ -18111,7 +18213,7 @@ function Dr({ emergencyMonths: e, setEmergencyMonths: t, emergencyMonthlyNeed: n
 		})
 	})] });
 }
-function Or({ capabilities: e, updateCapability: t }) {
+function kr({ capabilities: e, updateCapability: t }) {
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(q, {
 		title: "数据能力底表",
 		meta: `平均成熟度 ${(e.reduce((e, t) => e + t.score, 0) / Math.max(e.length, 1)).toFixed(0)} 分`
@@ -18124,7 +18226,7 @@ function Or({ capabilities: e, updateCapability: t }) {
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "成熟度" }),
 				/* @__PURE__ */ (0, b.jsx)("th", { children: "状态" })
 			] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
-				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(sr, {
+				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(cr, {
 					ariaLabel: `${e.name} 名称`,
 					value: e.name,
 					onChange: (n) => t(e.id, { name: n })
@@ -18134,7 +18236,7 @@ function Or({ capabilities: e, updateCapability: t }) {
 					max: 100,
 					step: 1,
 					value: e.score,
-					onChange: (n) => t(e.id, { score: _n(n) })
+					onChange: (n) => t(e.id, { score: U(n) })
 				}) }),
 				/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)("span", {
 					className: e.score >= 70 ? "pill good" : e.score >= 40 ? "pill warn" : "pill",
@@ -18144,7 +18246,7 @@ function Or({ capabilities: e, updateCapability: t }) {
 		})
 	})] });
 }
-function kr({ data: e, centerLabel: t, centerValue: n }) {
+function Ar({ data: e, centerLabel: t, centerValue: n }) {
 	let r = e.filter((e) => e.value > 0), i = r.reduce((e, t) => e + t.value, 0), a = r.map((e) => i ? e.value / i * 100 : 0), o = a.map((e, t) => a.slice(0, t).reduce((e, t) => e + t, 0)), s = r.map((e, t) => {
 		let n = a[t] ?? 0, r = o[t] ?? 0, i = ((r + n / 2) / 100 * 360 - 90) * (Math.PI / 180), s = Math.cos(i), c = Math.sin(i), l = s >= 0 ? "right" : "left";
 		return {
@@ -18159,7 +18261,7 @@ function kr({ data: e, centerLabel: t, centerValue: n }) {
 			labelX: l === "right" ? 174 : 46,
 			lineEndX: l === "right" ? 164 : 56,
 			side: l,
-			y: _n(66 + c * 53, 18, 114)
+			y: U(66 + c * 53, 18, 114)
 		};
 	}), c = (e) => {
 		let t = [...e].sort((e, t) => e.y - t.y), n = 18, r = t.map((e) => {
@@ -18248,13 +18350,13 @@ function kr({ data: e, centerLabel: t, centerValue: n }) {
 					children: t
 				})
 			]
-		}), /* @__PURE__ */ (0, b.jsx)(Ar, {
+		}), /* @__PURE__ */ (0, b.jsx)(jr, {
 			data: u,
 			valueFormatter: H
 		})]
 	});
 }
-function Ar({ data: e, valueFormatter: t }) {
+function jr({ data: e, valueFormatter: t }) {
 	return /* @__PURE__ */ (0, b.jsx)("div", {
 		className: "legend",
 		children: e.map((e, n) => /* @__PURE__ */ (0, b.jsxs)("div", {
@@ -18269,12 +18371,12 @@ function Ar({ data: e, valueFormatter: t }) {
 		}, e.label))
 	});
 }
-function jr({ data: e, valueFormatter: t, percentMode: n = !1 }) {
+function Mr({ data: e, valueFormatter: t, percentMode: n = !1 }) {
 	let r = Math.max(...e.map((e) => e.max ?? e.value), n ? 100 : 1);
 	return /* @__PURE__ */ (0, b.jsx)("div", {
 		className: "horizontal-bars",
 		children: e.map((e, n) => {
-			let i = e.max ?? r, a = _n(e.value / Math.max(i, 1) * 100);
+			let i = e.max ?? r, a = U(e.value / Math.max(i, 1) * 100);
 			return /* @__PURE__ */ (0, b.jsxs)("div", {
 				className: "bar-row",
 				children: [/* @__PURE__ */ (0, b.jsxs)("div", {
@@ -18295,12 +18397,12 @@ function jr({ data: e, valueFormatter: t, percentMode: n = !1 }) {
 		})
 	});
 }
-function Mr({ data: e, valueFormatter: t }) {
+function Nr({ data: e, valueFormatter: t }) {
 	let n = Math.max(...e.map((e) => e.value), 1);
 	return /* @__PURE__ */ (0, b.jsx)("div", {
 		className: "vertical-bars",
 		children: e.map((e, r) => {
-			let i = _n(e.value / n * 100, 4, 100);
+			let i = U(e.value / n * 100, 4, 100);
 			return /* @__PURE__ */ (0, b.jsxs)("div", {
 				className: "vbar",
 				children: [
@@ -18322,7 +18424,7 @@ function Mr({ data: e, valueFormatter: t }) {
 		})
 	});
 }
-function Nr({ data: e, valueFormatter: t }) {
+function Pr({ data: e, valueFormatter: t }) {
 	let n = e.map((e) => e.value), r = Math.min(...n, 0), i = Math.max(...n, 1), a = Math.max(i - r, 1), o = e.map((t, n) => ({
 		x: 34 + n / Math.max(e.length - 1, 1) * 312,
 		y: 182 - (t.value - r) / a * 152,
@@ -18368,7 +18470,7 @@ function Nr({ data: e, valueFormatter: t }) {
 		})]
 	});
 }
-function Pr({ data: e, valueFormatter: t }) {
+function Fr({ data: e, valueFormatter: t }) {
 	let n = e.filter((e) => e.value > 0), r = n.reduce((e, t) => e + t.value, 0);
 	return /* @__PURE__ */ (0, b.jsxs)("div", {
 		className: "stacked-wrap",
@@ -18385,7 +18487,7 @@ function Pr({ data: e, valueFormatter: t }) {
 				width: "100%",
 				backgroundColor: "#d8e2ee"
 			} })
-		}), /* @__PURE__ */ (0, b.jsx)(Ar, {
+		}), /* @__PURE__ */ (0, b.jsx)(jr, {
 			data: n.length ? n : [{
 				label: "暂无数据",
 				value: 0,
@@ -18395,11 +18497,11 @@ function Pr({ data: e, valueFormatter: t }) {
 		})]
 	});
 }
-function Fr({ data: e, valueFormatter: t }) {
+function Ir({ data: e, valueFormatter: t }) {
 	return /* @__PURE__ */ (0, b.jsx)("div", {
 		className: "progress-list",
 		children: e.map((e, n) => {
-			let r = _n(e.value / Math.max(e.max ?? e.value, 1) * 100);
+			let r = U(e.value / Math.max(e.max ?? e.value, 1) * 100);
 			return /* @__PURE__ */ (0, b.jsxs)("div", {
 				className: "progress-row",
 				children: [
@@ -18423,7 +18525,7 @@ function Fr({ data: e, valueFormatter: t }) {
 		})
 	});
 }
-function Ir({ events: e }) {
+function Lr({ events: e }) {
 	return /* @__PURE__ */ (0, b.jsx)("div", {
 		className: "cashflow-calendar",
 		children: e.map((e) => /* @__PURE__ */ (0, b.jsxs)("article", {
@@ -18443,7 +18545,7 @@ function Ir({ events: e }) {
 		}, `${e.date}-${e.item}`))
 	});
 }
-function Lr({ data: e }) {
+function Rr({ data: e }) {
 	let t = e.reduce((e, t) => {
 		let n = e.at(-1)?.after ?? 0, r = t.kind === "start" || t.kind === "end" ? 0 : n, i = t.kind === "start" || t.kind === "end" ? t.value : n + t.value;
 		return [...e, {
@@ -18491,7 +18593,7 @@ function Lr({ data: e }) {
 		})]
 	});
 }
-function Rr({ data: e }) {
+function zr({ data: e }) {
 	return /* @__PURE__ */ (0, b.jsxs)("div", {
 		className: "matrix-layout",
 		children: [/* @__PURE__ */ (0, b.jsxs)("svg", {
@@ -18555,7 +18657,7 @@ function Rr({ data: e }) {
 					children: "紧迫"
 				}),
 				e.map((e) => {
-					let t = 56 + _n(e.x) / 100 * 248, n = 304 - _n(e.y) / 100 * 248;
+					let t = 56 + U(e.x) / 100 * 248, n = 304 - U(e.y) / 100 * 248;
 					return /* @__PURE__ */ (0, b.jsxs)("g", { children: [/* @__PURE__ */ (0, b.jsx)("circle", {
 						cx: t,
 						cy: n,
@@ -18569,7 +18671,7 @@ function Rr({ data: e }) {
 					})] }, e.label);
 				})
 			]
-		}), /* @__PURE__ */ (0, b.jsx)(Ar, {
+		}), /* @__PURE__ */ (0, b.jsx)(jr, {
 			data: e.map((e) => ({
 				label: e.label,
 				value: 0,
@@ -18580,7 +18682,7 @@ function Rr({ data: e }) {
 		})]
 	});
 }
-function zr({ data: e, source: t, valueFormatter: n }) {
+function Br({ data: e, source: t, valueFormatter: n }) {
 	let r = Math.max(...e.map((e) => e.value), 1);
 	return /* @__PURE__ */ (0, b.jsxs)("div", {
 		className: "flow-map",
@@ -18593,7 +18695,7 @@ function zr({ data: e, source: t, valueFormatter: n }) {
 				className: "flow-row",
 				children: [
 					/* @__PURE__ */ (0, b.jsx)("span", { style: {
-						width: `${_n(e.value / r * 100, 4, 100)}%`,
+						width: `${U(e.value / r * 100, 4, 100)}%`,
 						backgroundColor: e.color ?? V[t % V.length]
 					} }),
 					/* @__PURE__ */ (0, b.jsx)("strong", { children: e.label }),
@@ -18603,7 +18705,7 @@ function zr({ data: e, source: t, valueFormatter: n }) {
 		})]
 	});
 }
-function Br({ data: e, xLabel: t, yLabel: n }) {
+function Vr({ data: e, xLabel: t, yLabel: n }) {
 	return /* @__PURE__ */ (0, b.jsxs)("div", {
 		className: "matrix-layout",
 		children: [/* @__PURE__ */ (0, b.jsxs)("svg", {
@@ -18646,7 +18748,7 @@ function Br({ data: e, xLabel: t, yLabel: n }) {
 					children: n
 				}),
 				e.map((e) => {
-					let t = 28 + _n(e.x) / 100 * 164, n = 192 - _n(e.y) / 100 * 164;
+					let t = 28 + U(e.x) / 100 * 164, n = 192 - U(e.y) / 100 * 164;
 					return /* @__PURE__ */ (0, b.jsxs)("g", { children: [/* @__PURE__ */ (0, b.jsx)("circle", {
 						cx: t,
 						cy: n,
@@ -18660,7 +18762,7 @@ function Br({ data: e, xLabel: t, yLabel: n }) {
 					})] }, e.label);
 				})
 			]
-		}), /* @__PURE__ */ (0, b.jsx)(Ar, {
+		}), /* @__PURE__ */ (0, b.jsx)(jr, {
 			data: e.map((e) => ({
 				label: e.label,
 				value: 0,
@@ -18671,7 +18773,7 @@ function Br({ data: e, xLabel: t, yLabel: n }) {
 		})]
 	});
 }
-function Vr({ budgets: e, updateBudget: t, addBudget: n, deleteBudget: r, addDetailedBudgets: i }) {
+function Hr({ budgets: e, updateBudget: t, addBudget: n, deleteBudget: r, addDetailedBudgets: i }) {
 	let [a, o] = (0, _.useState)(!1), s = e.reduce((e, t) => e + t.plan, 0), c = e.reduce((e, t) => e + t.actual, 0);
 	return /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
 		/* @__PURE__ */ (0, b.jsx)(q, {
@@ -18709,12 +18811,12 @@ function Vr({ budgets: e, updateBudget: t, addBudget: n, deleteBudget: r, addDet
 			children: "投资基金、应急储备属于划拨，不计消费；应急&学习金在此仅统计学习消费。周复盘汇总由对应复盘修订，不能在此重复新增。"
 		}),
 		[
-			...tt.slice(0, 2),
+			...rt.slice(0, 2),
 			{
 				id: "investment",
 				name: "投资基金"
 			},
-			...tt.slice(2),
+			...rt.slice(2),
 			{
 				id: "unassigned",
 				name: "待归类（保留原始记录）"
@@ -18725,7 +18827,7 @@ function Vr({ budgets: e, updateBudget: t, addBudget: n, deleteBudget: r, addDet
 				/* @__PURE__ */ (0, b.jsxs)("summary", { children: [
 					n.name,
 					" · ",
-					n.id === "investment" ? "划拨，不计消费" : `${P(e.filter((e) => nt(e) === n.id).reduce((e, t) => e + Math.round(t.actual * 100), 0) / 100)} · ${e.filter((e) => nt(e) === n.id).length} 项`
+					n.id === "investment" ? "划拨，不计消费" : `${P(e.filter((e) => it(e) === n.id).reduce((e, t) => e + Math.round(t.actual * 100), 0) / 100)} · ${e.filter((e) => it(e) === n.id).length} 项`
 				] }),
 				n.id === "investment" && /* @__PURE__ */ (0, b.jsx)("p", {
 					className: "spending-detail-note",
@@ -18745,12 +18847,12 @@ function Vr({ budgets: e, updateBudget: t, addBudget: n, deleteBudget: r, addDet
 							/* @__PURE__ */ (0, b.jsx)("th", { children: "必须" }),
 							/* @__PURE__ */ (0, b.jsx)("th", { children: "固定" }),
 							/* @__PURE__ */ (0, b.jsx)("th", { children: "操作" })
-						] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.filter((e) => nt(e) === n.id).map((n) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
+						] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.filter((e) => it(e) === n.id).map((n) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 							/* @__PURE__ */ (0, b.jsx)("td", { children: n.reviewPeriod ? /* @__PURE__ */ (0, b.jsxs)("span", { children: [n.name, /* @__PURE__ */ (0, b.jsxs)("small", { children: [
 								n.reviewPeriod.start,
 								" 至 ",
 								n.reviewPeriod.end
-							] })] }) : /* @__PURE__ */ (0, b.jsx)(sr, {
+							] })] }) : /* @__PURE__ */ (0, b.jsx)(cr, {
 								ariaLabel: `${n.name} 分类`,
 								value: n.name,
 								onChange: (e) => t(n.id, { name: e })
@@ -18759,12 +18861,12 @@ function Vr({ budgets: e, updateBudget: t, addBudget: n, deleteBudget: r, addDet
 								className: "table-input",
 								disabled: !!n.reviewPeriod,
 								"aria-label": `${n.name} 所属大类`,
-								value: nt(n),
+								value: it(n),
 								onChange: (e) => t(n.id, { group: e.target.value }),
 								children: [/* @__PURE__ */ (0, b.jsx)("option", {
 									value: "unassigned",
 									children: "待归类"
-								}), tt.map((e) => /* @__PURE__ */ (0, b.jsx)("option", {
+								}), rt.map((e) => /* @__PURE__ */ (0, b.jsx)("option", {
 									value: e.id,
 									children: e.name
 								}, e.id))]
@@ -18787,18 +18889,18 @@ function Vr({ budgets: e, updateBudget: t, addBudget: n, deleteBudget: r, addDet
 							}),
 							/* @__PURE__ */ (0, b.jsx)("td", {
 								className: "spending-purpose",
-								children: /* @__PURE__ */ (0, b.jsx)(sr, {
+								children: /* @__PURE__ */ (0, b.jsx)(cr, {
 									ariaLabel: `${n.name} 具体用途`,
 									value: n.note ?? "",
 									onChange: (e) => t(n.id, { note: e })
 								})
 							}),
-							/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(ur, {
+							/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(dr, {
 								ariaLabel: `${n.name} 必须`,
 								checked: n.required,
 								onChange: (e) => t(n.id, { required: e })
 							}) }),
-							/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(ur, {
+							/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)(dr, {
 								ariaLabel: `${n.name} 固定`,
 								checked: n.fixed,
 								onChange: (e) => t(n.id, { fixed: e })
@@ -18817,8 +18919,8 @@ function Vr({ budgets: e, updateBudget: t, addBudget: n, deleteBudget: r, addDet
 		}, n.id))
 	] });
 }
-function Hr({ budgets: e, monthLabel: t, allowance: n }) {
-	let r = it(e);
+function Ur({ budgets: e, monthLabel: t, allowance: n }) {
+	let r = ot(e);
 	return /* @__PURE__ */ (0, b.jsxs)("section", {
 		className: "learning-usage",
 		"aria-label": `${t}学习用途`,
@@ -18860,6 +18962,6 @@ function Hr({ budgets: e, monthLabel: t, allowance: n }) {
 }
 //#endregion
 //#region app/static-entry.tsx
-var Ur = document.getElementById("root");
-Ur && (0, v.createRoot)(Ur).render(/* @__PURE__ */ (0, b.jsx)(_.StrictMode, { children: /* @__PURE__ */ (0, b.jsx)(U, {}) }));
+var Wr = document.getElementById("root");
+Wr && (0, v.createRoot)(Wr).render(/* @__PURE__ */ (0, b.jsx)(_.StrictMode, { children: /* @__PURE__ */ (0, b.jsx)(rr, {}) }));
 //#endregion
