@@ -1123,6 +1123,25 @@ select {
   stroke-width: 1;
 }
 
+.waterfall-connector {
+  stroke: #9aaabe;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.waterfall-values {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.waterfall-values > div {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
 .waterfall-label,
 .matrix-axis,
 .matrix-point-label {

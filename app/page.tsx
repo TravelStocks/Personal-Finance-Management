@@ -10,6 +10,7 @@ import DatedLedgerEditor from "./dated-ledger-editor";
 import WeeklyLedgerView from "./weekly-ledger-view";
 import ReviewOverview from "./review-overview";
 import {monthlyBudgetUsage} from "./monthly-budget-usage";
+import {financeChartData, financeHealth, waterfallSteps} from "./finance-chart-model";
 import ReviewUpdateHistory from "./review-update-history";
 import {commitReviewUpdate, dashboardSourceSignature, parseReviewUpdates, type ReviewUpdate} from "./review-dashboard-sync";
 import {commitReviewModule, reviewModuleLabels, reviewModuleSignature, type ReviewModule} from "./review-module-sync";
@@ -1637,7 +1638,7 @@ export default function FinanceDashboard() {
     const budgetUsage = monthlyBudgetUsage(actualIncome, spendingActual, annualBudgetPlan);
     const spendingPlan = budgets.reduce((sum, item) => sum + item.plan, 0);
     const budgetRemaining = budgetUsage.remaining;
-    const fixedSpending = budgets.filter((item) => item.fixed).reduce((sum, item) => sum + item.plan, 0);
+    const fixedSpending = budgets.filter((item) => item.fixed).reduce((sum, item) => sum + item.actual, 0);
     const requiredSpending = budgets.filter((item) => item.required).reduce((sum, item) => sum + item.plan, 0);
     const investmentValue = reviewInvestmentTotal({holdings,fxUsd,fxHkd});
     const investmentCost = holdings.reduce((sum, item) => sum + toCny(item.cost, item.currency, fxUsd, fxHkd), 0);
@@ -1681,18 +1682,14 @@ export default function FinanceDashboard() {
       customOutflow;
     const monthlySurplus = budgetUsage.surplus;
     const fixedRatio = actualIncome ? fixedSpending / actualIncome : 0;
-    const savingsRate = actualIncome ? assetOutflow / actualIncome : 0;
+    const savingsRate = actualIncome ? budgetUsage.reserved / actualIncome : 0;
     const emergencyNeed = Math.max(0, emergencyMonthlyNeed);
     const emergencyTarget = emergencyNeed * emergencyMonths;
     const emergencyCoverage = emergencyNeed ? currentEmergencyFund / emergencyNeed : 0;
     const debtRatio = totalAssets ? totalDebt / totalAssets : 0;
-    const score = Math.round(
-      Math.max(0, Math.min(25, 25 - Math.max(0, fixedRatio - 0.35) * 85)) +
-        Math.min(25, (emergencyCoverage / Math.max(emergencyMonths, 1)) * 25) +
-        (totalDebt === 0 ? 20 : Math.max(0, 20 - debtRatio * 50)) +
-        Math.min(20, savingsRate / 0.45 * 20) +
-        (investmentValue >= investmentCost ? 10 : 6),
-    );
+    const health = financeHealth(actualIncome, monthlySurplus, budgetUsage.reserved, emergencyCoverage,
+      emergencyMonths, debtRatio, investmentValue, investmentCost);
+    const score = health.score;
     return {
       accountTotal,
       totalSavingsAccountTotal,
@@ -1753,6 +1750,7 @@ export default function FinanceDashboard() {
       currentEmergencyFund,
       debtRatio,
       score,
+      health,
       emergencyMonthlyNeed: emergencyNeed,
       emergencyTarget,
     };
@@ -1849,6 +1847,20 @@ export default function FinanceDashboard() {
     ].filter(event => event.date >= reviewToday()).sort((a, b) => a.date.localeCompare(b.date));
     return events;
   })();
+  const ledgerEvents: CashflowEvent[] = [
+    ...datedEntries.filter(row => row.date.startsWith(selectedMonth + "-")).map(row => ({
+      date: row.date,
+      item: row.flow === "income" ? (row.categoryId === "salary" ? "工资" : "其他收入")
+        : budgets.find(item => item.id === row.categoryId)?.name ?? "支出",
+      inflow: row.flow === "income" ? row.amount : 0,
+      outflow: row.flow === "expense" ? row.amount : 0,
+      kind: "已记账",
+    })),
+    ...reminders.filter(row => row.date.startsWith(selectedMonth + "-")).map(row => ({
+      date: row.date, item: row.name, inflow: row.kind === "定存" ? row.amount : 0,
+      outflow: row.kind === "定存" ? 0 : row.amount, kind: "提醒，非新增记账",
+    })),
+  ].sort((a, b) => a.date.localeCompare(b.date));
 
   function updateAccount(id: string, patch: Partial<Account>) {
     setAccounts((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -2422,43 +2434,14 @@ export default function FinanceDashboard() {
       color: palette[index % palette.length],
       detail: item.type.trim() || "未分类",
     }));
-  const spendingChartData = budgets
-    .map((item, index) => ({ item, index }))
-    .sort((left, right) => right.item.actual - left.item.actual || right.item.plan - left.item.plan || left.index - right.index)
-    .map(({ item }, index) => ({
-      label: item.name.trim() || "未命名支出",
-      value: item.actual,
-      max: Math.max(item.plan, item.actual, 1),
-      color: item.actual > item.plan ? palette[4] : palette[index % palette.length],
-      detail: `${money(item.actual)} / ${money(item.plan)}`,
-    }));
-  const actualSpendingItems = budgets
-    .map((item, index) => ({
-      label: item.name.trim() || "未命名支出",
-      value: item.actual,
-      plan: item.plan,
-      color: palette[index % palette.length],
-      detail: `${item.required ? "必须" : "可取消"} / ${item.fixed ? "固定" : "弹性"}`,
-    }))
-    .filter((item) => item.value > 0)
-    .sort((a, b) => b.value - a.value);
-  const topSpendingData = actualSpendingItems.length
-    ? actualSpendingItems.slice(0, 8).map((item) => ({
-        label: item.label,
-        value: item.value,
-        color: item.color,
-      }))
-    : [{ label: "暂无实际支出", value: 0, max: 1, color: "#b8c4d4", detail: "本月未记录" }];
-  const spendingShareData = actualSpendingItems.map((item) => ({
-    label: item.label,
-    value: item.value,
-    color: item.color,
-    detail: `${percent(item.value / Math.max(totals.spendingActual, 1))} / ${money(item.value)}`,
-  }));
-  const requiredData = [
-    { label: "必须支出", value: totals.requiredSpending, color: palette[1] },
-    { label: "可取消支出", value: Math.max(totals.spendingPlan - totals.requiredSpending, 0), color: palette[2] },
-  ];
+  const chartModel = financeChartData(actualIncome, budgets, annualBudgetPlan);
+  const monthlyFundData = chartModel.monthly.map((item, index) => ({...item, color: palette[index % palette.length],
+    detail: `${money(item.value)}${item.id === "investment" || item.id === "emergency" ? " · 预留" : ""}`}));
+  const topSpendingData = [...monthlyFundData].sort((a, b) => b.value - a.value);
+  const spendingChartData = monthlyFundData.map(item => ({...item,
+    max: Math.max(item.plan, Math.abs(item.value), 1), detail: `${money(item.value)} / ${money(item.plan)}`}));
+  const spendingShareData = monthlyFundData.map(item => ({...item,
+    detail: item.id === "investment" || item.id === "emergency" ? "预算预留" : "已记净消费"}));
   const cashflowMonthlyInflow = cashflowScenario.inflow;
   const cashflowMonthlyOutflow = cashflowScenario.outflow;
   const cashflowExpectedIncrease = cashflowMonthlyInflow - cashflowMonthlyOutflow;
@@ -2512,6 +2495,7 @@ export default function FinanceDashboard() {
       detail: item.source,
     }));
   const assetStructureData = totalAssetBreakdown
+    .filter(item => item !== parentSavingsBreakdown)
     .map((item, index) => ({ item, index }))
     .sort((left, right) => right.item.value - left.item.value || left.index - right.index)
     .map(({ item }) => ({
@@ -2551,19 +2535,16 @@ export default function FinanceDashboard() {
   ];
   const cashPlanWaterfall: WaterfallDatum[] = [
     {label: "工资", value: annualBudgetPlan.salary, kind: "positive", color: palette[0]},
-    {label: "出差净结余", value: cashPlanTotals.tripNet, kind: cashPlanTotals.tripNet < 0 ? "negative" : "positive", color: palette[1]},
     {label: "生活消费", value: -cashPlanTotals.consumption, kind: "negative", color: palette[4]},
-    {label: "投资应急", value: -cashPlanTotals.saving, kind: "negative", color: palette[2]},
-    {label: "现金余量", value: cashPlanTotals.surplus, kind: "end", color: cashPlanTotals.surplus < 0 ? palette[4] : palette[1]},
+    {label: "投资预留", value: -totals.budgetUsage.investment, kind: "negative", color: palette[2]},
+    {label: "应急预留", value: -totals.budgetUsage.emergency, kind: "negative", color: palette[3]},
+    {label: "现金余量", value: annualBudgetPlan.salary - cashPlanTotals.totalOutflow, kind: "end"},
   ];
+  const monthlyWaterfall: WaterfallDatum[] = chartModel.waterfall.map((item, index) => ({...item,
+    color: item.kind === "end" ? (item.value < 0 ? palette[4] : palette[1]) : palette[[0, 4, 2, 3][index]]}));
   const cashPlanFlow = annualPlanTotals.allocationRows.map(row => ({label: row.name, value: row[annualBudgetPlan.mode]}))
     .filter(item => item.value > 0).map((item, index) => ({...item, color: palette[index % palette.length]}));
-  const annualPlanDistribution = [
-    {label: "生活与消费预留", value: annualPlanTotals.annualConsumption, color: palette[0]},
-    {label: "投资本金", value: annualPlanTotals.annualInvestment, color: palette[1]},
-    {label: "新增应急现金", value: annualPlanTotals.annualEmergency, color: palette[2]},
-    {label: "额外现金余量", value: Math.max(0, annualPlanTotals.annualSurplus), color: palette[3]},
-  ];
+  const annualPlanDistribution = chartModel.annual.map((row, index) => ({...row, color: palette[index % palette.length]}));
   const netWorthTrend = forecast.map((item, index) => ({
     label: item.month,
     value: totals.netWorth + (index + 1) * (cashflowScenario.inflow - cashflowScenario.consumption - cashflowScenario.extraOutflow),
@@ -2778,13 +2759,8 @@ export default function FinanceDashboard() {
       color: palette[index % palette.length],
     };
   });
-  const healthDimensions = [
-    { label: "现金流健康", value: clamp(((totals.monthlySurplus / Math.max(actualIncome, 1)) + 0.2) * 180), color: palette[0] },
-    { label: "抗风险能力", value: clamp((totals.emergencyCoverage / Math.max(emergencyMonths, 1)) * 100), color: palette[1] },
-    { label: "负债风险", value: clamp(100 - totals.debtRatio * 100), color: palette[4] },
-    { label: "增长能力", value: clamp((totals.savingsRate / 0.45) * 100), color: palette[3] },
-    { label: "投资表现", value: totals.investmentValue >= totals.investmentCost ? 82 : 58, color: palette[2] },
-  ];
+  const healthDimensions = totals.health.dimensions.map((row, index) => ({...row,
+    detail: `${row.value.toFixed(0)}分 · 权重 ${row.weight}%`, color: palette[index % palette.length]}));
   const riskMatrixData: MatrixPoint[] = [
     {
       label: "固定支出率",
@@ -2801,9 +2777,9 @@ export default function FinanceDashboard() {
       color: palette[2],
     },
     {
-      label: "现金流末余额",
-      x: clamp((totals.spendingPlan * 4 - (forecast[forecast.length - 1]?.balance ?? 0)) / Math.max(totals.spendingPlan * 4, 1) * 100),
-      y: clamp((totals.spendingPlan * 3 - (forecast[forecast.length - 1]?.balance ?? 0)) / Math.max(totals.spendingPlan * 3, 1) * 100),
+      label: "预测期末余量",
+      x: clamp((cashflowMonthlyOutflow * 4 - (forecast[forecast.length - 1]?.balance ?? 0)) / Math.max(cashflowMonthlyOutflow * 4, 1) * 100),
+      y: clamp((cashflowMonthlyOutflow * 3 - (forecast[forecast.length - 1]?.balance ?? 0)) / Math.max(cashflowMonthlyOutflow * 3, 1) * 100),
       value: money(forecast[forecast.length - 1]?.balance ?? 0),
       color: palette[0],
     },
@@ -3038,7 +3014,7 @@ export default function FinanceDashboard() {
             <div className="section-title compact">
               <div>
                 <h2>图表分析区</h2>
-                <p>年度资金分布、现金瀑布和资金流向使用同一份年度方案；账本图表注明所选月份。</p>
+                <p>年度预算与本月账本分开统计；本月支出含投资和应急预留，账户余额按最新数据统计。</p>
               </div>
             </div>
             <div className="chart-grid four">
@@ -3046,25 +3022,25 @@ export default function FinanceDashboard() {
                 <DonutChart data={assetStructureData} centerLabel="总资产" centerValue={money(totals.totalAssets)} />
               </ChartPanel>
               <ChartPanel title="年度资金分布" summary={`全年全部安排 ${money(annualPlanTotals.annualOutflow)}`}>
-                <DonutChart data={annualPlanDistribution} centerLabel={annualPlanTotals.annualSurplus >= 0 ? "可分配资金" : "年度安排"} centerValue={money(annualPlanTotals.annualSurplus >= 0 ? annualPlanTotals.annualIncome : annualPlanTotals.annualOutflow)} />
+                <DonutChart data={annualPlanDistribution} centerLabel="年度预算" centerValue={money(annualPlanTotals.annualOutflow)} />
               </ChartPanel>
-              <ChartPanel title="账本支出最高项" summary={`${activeMonth.label} / 已花 ${money(totals.spendingActual)}`} className="spending-top-panel">
+              <ChartPanel title="本月支出与基金预留" summary={`${activeMonth.label} / 合计 ${money(totals.budgetUsage.spending)}`} className="spending-top-panel">
                 <HorizontalBarChart data={topSpendingData} valueFormatter={money} />
               </ChartPanel>
               <ChartPanel title="账本健康维度" summary={`${activeMonth.label} / 综合 ${totals.score} 分`}>
                 <HorizontalBarChart data={healthDimensions} valueFormatter={(value) => `${value.toFixed(0)}分`} percentMode />
               </ChartPanel>
-              <ChartPanel title={`${budgetModeName}预算现金瀑布`} summary={`全部安排 ${money(cashPlanTotals.totalOutflow)}`}>
-                <WaterfallChart data={cashPlanWaterfall} />
+              <ChartPanel title="本月收支现金瀑布" summary={`${activeMonth.label} / 含基金预留；非账户余额`}>
+                <WaterfallChart data={monthlyWaterfall} />
               </ChartPanel>
               <ChartPanel title="账本现金流日历" summary={`${activeMonth.label}账本及提醒记录`}>
-                <CashflowCalendar events={cashflowEvents} />
+                <CashflowCalendar events={ledgerEvents} />
               </ChartPanel>
               <ChartPanel title="账本风险矩阵" summary={`${activeMonth.label}账本模型`} className="wide risk-panel">
                 <RiskMatrix data={riskMatrixData} />
               </ChartPanel>
-              <ChartPanel title={`${budgetModeName}预算流向`} summary={`全部安排 ${money(cashPlanTotals.totalOutflow)}`}>
-                <FlowMap data={cashPlanFlow} source="工资账户" valueFormatter={money} />
+              <ChartPanel title="本月资金去向" summary={`已记消费及预留 ${money(totals.budgetUsage.spending)}`}>
+                <HorizontalBarChart data={monthlyFundData} valueFormatter={money} />
               </ChartPanel>
             </div>
           </section>
@@ -3159,17 +3135,19 @@ export default function FinanceDashboard() {
                       }
                       charts={
                         <div className="chart-grid two">
-                          <ChartPanel title="实际支出最高8项" summary={`已花 ${money(totals.spendingActual)}`} className="spending-top-panel">
+                          <ChartPanel title="支出与基金预留分类" summary={`合计 ${money(totals.budgetUsage.spending)}`} className="spending-top-panel">
                             <HorizontalBarChart data={topSpendingData} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="全部实际支出占比" summary="按实际金额">
-                            <DonutChart data={spendingShareData} centerLabel="实际" centerValue={money(totals.spendingActual)} />
+                          <ChartPanel title="支出与预留占比" summary="已记净消费 + 当前基金预留">
+                            {spendingShareData.some(row => row.value < 0)
+                              ? <HorizontalBarChart data={spendingShareData} valueFormatter={money} />
+                              : <DonutChart data={spendingShareData} centerLabel="含基金预留" centerValue={money(totals.budgetUsage.spending)} />}
                           </ChartPanel>
-                          <ChartPanel title="分类预算执行" summary="实际 / 预算 / 按实际金额降序">
+                          <ChartPanel title="分类预算执行" summary="已记消费或基金预留 / 当前预算">
                             <HorizontalBarChart data={spendingChartData} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="预算必要性结构" summary="必须 vs 可取消">
-                            <DonutChart data={requiredData} centerLabel="预算" centerValue={money(totals.spendingPlan)} />
+                          <ChartPanel title="当前月预算结构" summary={budgetModeName}>
+                            <DonutChart data={cashPlanFlow} centerLabel="全部预算" centerValue={money(totals.budgetUsage.budget)} />
                           </ChartPanel>
                           <ChartPanel title="月度支出趋势" summary="实际消费 + 当前方案基金预留；历史存档不变">
                             <VerticalBarChart data={monthlySpendingTrend} valueFormatter={money} />
@@ -3287,13 +3265,13 @@ export default function FinanceDashboard() {
                       }
                       charts={
                         <div className="chart-grid two">
-                          <ChartPanel title="年度资金分布" summary={`可分配 ${money(annualPlanTotals.annualIncome)} / 全部分配 ${money(annualPlanTotals.annualOutflow)}`}>
-                            <DonutChart data={annualPlanDistribution} centerLabel={annualPlanTotals.annualSurplus >= 0 ? "可分配资金" : "年度安排"} centerValue={money(annualPlanTotals.annualSurplus >= 0 ? annualPlanTotals.annualIncome : annualPlanTotals.annualOutflow)} />
+                          <ChartPanel title="年度资金分布" summary={`全年预算 ${money(annualPlanTotals.annualOutflow)}`}>
+                            <DonutChart data={annualPlanDistribution} centerLabel="年度预算" centerValue={money(annualPlanTotals.annualOutflow)} />
                           </ChartPanel>
                           <ChartPanel title={`${budgetModeName}分类分配`} summary={`合计 ${money(cashPlanTotals.totalOutflow)}`}>
                             <HorizontalBarChart data={cashPlanFlow} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title={`${budgetModeName}现金流核对`} summary={`余量 ${money(cashPlanTotals.surplus)}`}>
+                          <ChartPanel title={`${budgetModeName}现金流核对`} summary={`工资预算口径 / 不含未到账出差补贴`}>
                             <WaterfallChart data={cashPlanWaterfall} />
                           </ChartPanel>
                         </div>
@@ -3630,7 +3608,7 @@ export default function FinanceDashboard() {
                       }
                       charts={
                         <div className="chart-grid two">
-                          <ChartPanel title="本月资金流向" summary={`储蓄率 ${percent(totals.savingsRate)}`}>
+                          <ChartPanel title="本月资金流向" summary={`基金预留占收入 ${percent(totals.savingsRate)}`}>
                             <VerticalBarChart data={reportData} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="月度收支对比" summary="收入和支出分月查看">
@@ -3639,8 +3617,8 @@ export default function FinanceDashboard() {
                           <ChartPanel title="现金流未来趋势" summary={`6个月末 ${money(forecast[forecast.length - 1]?.balance ?? 0)}`}>
                             <LineChart data={cashflowLine} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="资金瀑布复盘" summary="收入、支出、分配">
-                            <WaterfallChart data={waterfallData} />
+                          <ChartPanel title="资金瀑布复盘" summary={`${activeMonth.label} / 已记消费及基金预留`}>
+                            <WaterfallChart data={monthlyWaterfall} />
                           </ChartPanel>
                           <ChartPanel title="风险矩阵" summary="下月关注点">
                             <RiskMatrix data={riskMatrixData} />
@@ -5489,12 +5467,12 @@ function HorizontalBarChart({
   valueFormatter: (value: number) => string;
   percentMode?: boolean;
 }) {
-  const max = Math.max(...data.map((item) => item.max ?? item.value), percentMode ? 100 : 1);
+  const max = Math.max(...data.map((item) => item.max ?? Math.abs(item.value)), percentMode ? 100 : 1);
   return (
     <div className="horizontal-bars">
       {data.map((item, index) => {
         const denominator = item.max ?? max;
-        const width = clamp((item.value / Math.max(denominator, 1)) * 100);
+        const width = clamp((Math.abs(item.value) / Math.max(denominator, 1)) * 100);
         return (
           <div className="bar-row" key={item.label}>
             <div className="bar-meta">
@@ -5504,7 +5482,7 @@ function HorizontalBarChart({
             <div className="bar-track" aria-label={`${item.label} ${valueFormatter(item.value)}`}>
               <span
                 className="bar-fill"
-                style={{ width: `${width}%`, backgroundColor: item.color ?? palette[index % palette.length] }}
+                style={{ width: `${width}%`, minWidth: item.value === 0 ? 0 : undefined, backgroundColor: item.color ?? palette[index % palette.length] }}
               />
             </div>
           </div>
@@ -5633,15 +5611,16 @@ function ProgressList({ data, valueFormatter }: { data: ChartDatum[]; valueForma
 function CashflowCalendar({ events }: { events: CashflowEvent[] }) {
   return (
     <div className="cashflow-calendar">
-      {events.map((event) => (
-        <article className="calendar-event" key={`${event.date}-${event.item}`}>
+      {!events.length && <p className="muted">暂无日期明细或提醒</p>}
+      {events.map((event, index) => (
+        <article className="calendar-event" key={`${event.date}-${event.item}-${index}`}>
           <span>{event.date.slice(5)}</span>
           <strong>{event.item}</strong>
           <div>
-            {event.inflow > 0 && <em className="positive">+{money(event.inflow)}</em>}
-            {event.outflow > 0 && <em className="negative">-{money(event.outflow)}</em>}
+            {event.inflow !== 0 && <em className={event.inflow > 0 ? "positive" : "negative"}>{money(event.inflow)}</em>}
+            {event.outflow !== 0 && <em className={event.outflow > 0 ? "negative" : "positive"}>{money(-event.outflow)}</em>}
           </div>
-          <small>事项金额，非额外预算</small>
+          <small>{event.kind === "已记账" ? "已记账，包含在月合计中" : "提醒金额，非新增记账"}</small>
         </article>
       ))}
     </div>
@@ -5652,29 +5631,28 @@ function WaterfallChart({ data }: { data: WaterfallDatum[] }) {
   const width = 420;
   const height = 230;
   const pad = 32;
-  const bars = data.reduce<Array<WaterfallDatum & { before: number; after: number }>>((items, item) => {
-    const running = items.at(-1)?.after ?? 0;
-    const before = item.kind === "start" || item.kind === "end" ? 0 : running;
-    const after = item.kind === "start" || item.kind === "end" ? item.value : running + item.value;
-    return [...items, { ...item, before, after }];
-  }, []);
+  const bars = waterfallSteps(data);
   const values = bars.flatMap((item) => [item.before, item.after, 0]);
   const min = Math.min(...values);
   const max = Math.max(...values, 1);
   const span = Math.max(max - min, 1);
   const scaleY = (value: number) => height - pad - ((value - min) / span) * (height - pad * 2);
-  const barWidth = (width - pad * 2) / Math.max(bars.length, 1) * 0.58;
+  const slotWidth = (width - pad * 2) / Math.max(bars.length, 1);
+  const barWidth = slotWidth * 0.58;
 
   return (
     <div className="waterfall-wrap">
       <svg className="waterfall-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="现金瀑布图">
         <line className="axis-line" x1={pad} x2={width - pad} y1={scaleY(0)} y2={scaleY(0)} />
         {bars.map((item, index) => {
-          const x = pad + index * ((width - pad * 2) / Math.max(bars.length - 1, 1)) - barWidth / 2;
+          const x = pad + (index + 0.5) * slotWidth - barWidth / 2;
           const y = Math.min(scaleY(item.before), scaleY(item.after));
-          const rectHeight = Math.max(4, Math.abs(scaleY(item.before) - scaleY(item.after)));
+          const rectHeight = Math.max(1, Math.abs(scaleY(item.before) - scaleY(item.after)));
           return (
             <g key={item.label}>
+              <title>{item.label} {money(item.value)}；累计 {money(item.after)}</title>
+              {index < bars.length - 1 && <line className="waterfall-connector" x1={x + barWidth} x2={x + slotWidth}
+                y1={scaleY(item.after)} y2={scaleY(item.after)} />}
               <rect
                 fill={item.color ?? (item.value >= 0 ? palette[1] : palette[4])}
                 height={rectHeight}
@@ -5683,6 +5661,7 @@ function WaterfallChart({ data }: { data: WaterfallDatum[] }) {
                 x={x}
                 y={y}
               />
+              <text className="waterfall-label" x={x + barWidth / 2} y={y - 7}>{money(item.value)}</text>
               <text className="waterfall-label" x={x + barWidth / 2} y={height - 6}>
                 {item.label}
               </text>
@@ -5693,6 +5672,9 @@ function WaterfallChart({ data }: { data: WaterfallDatum[] }) {
       <div className="chart-caption">
         <span>流入 {money(data.filter((item) => item.value > 0 && item.kind !== "start" && item.kind !== "end").reduce((sum, item) => sum + item.value, 0))}</span>
         <span>流出 {money(Math.abs(data.filter((item) => item.value < 0 && item.kind !== "start" && item.kind !== "end").reduce((sum, item) => sum + item.value, 0)))}</span>
+      </div>
+      <div className="waterfall-values">
+        {bars.map(item => <div key={item.label}><span>{item.label}</span><strong>{money(item.value)}</strong></div>)}
       </div>
     </div>
   );
