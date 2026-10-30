@@ -2988,7 +2988,7 @@ export default function FinanceDashboard() {
             </div>
             <span className="pill good">公开页已脱敏</span>
           </div>
-          <ReviewOverview records={financeReviews} onOpen={() => navigateToSection("periodReview")} />
+          <ReviewOverview records={financeReviews} accounts={accounts} onOpen={() => navigateToSection("periodReview")} />
           <article className="total-assets-hero">
             <div className="total-assets-main">
               <span>当前总资产与负债</span>

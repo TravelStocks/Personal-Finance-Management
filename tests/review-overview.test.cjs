@@ -38,7 +38,8 @@ test('saved revisions immediately change overview, excluding transfers from cons
   assert.match(html,/本周实际消费/);
   assert.match(html,/123\.00/);
   assert.match(html,/877\.00/);
-  assert.match(html,/13,877\.00/);
+  assert.match(html,/日常灵活资金/);
+  assert.doesNotMatch(html,/复盘期末净资产/);
   assert.match(html,/天数不同/);
   const changed={...current,amounts:{...current.amounts,daily:200}};
   rows=m.upsertFinanceReview(rows,changed);
@@ -50,7 +51,26 @@ test('overview restored from stored review records retains amounts and first bas
   const rows=m.parseFinanceReviews(JSON.parse(JSON.stringify([record('2026-10-29')])));
   assert.match(render(rows),/首次基准/);
   assert.match(render(rows),/2026-10-26 至 2026-10-29/);
-  assert.match(render(rows),/13,000\.00/);
+  assert.match(render(rows),/待关联账户/);
+});
+
+test('flexible daily money sums only eligible daily accounts and uses live balances',()=>{
+  const accounts=[{id:'salary',name:'工资卡',purpose:'工资主账户-日常使用',balance:2759.3},
+    {id:'small',name:'微信',purpose:'小额支付',balance:189},
+    ...['投资基金','应急基金','旅游基金','学习基金','父母储蓄','伴侣基金'].map((purpose,i)=>({id:String(i),name:purpose,purpose,balance:10000})),
+    {id:'excluded',name:'其他',purpose:'日常使用',balance:900,includedInPersonal:false},
+    {id:'locked',name:'冻结',purpose:'小额支付',balance:800,liquid:false}];
+  const before=structuredClone(accounts);
+  assert.equal(m.dailyFlexibleCash(accounts).total,2948.3);
+  const prior=accounts.slice(0,2).map(row=>({...row,balance:100}));
+  assert.equal(m.dailyFlexibleCashChange(accounts,prior).delta,2748.3);
+  assert.equal(m.dailyFlexibleCashChange(accounts,prior.slice(0,1)).delta,null);
+  assert.equal(m.dailyFlexibleCash([{...accounts[0],balance:0}]).total,0);
+  assert.equal(m.dailyFlexibleCash([]).total,null);
+  const html=renderToStaticMarkup(React.createElement(exported.default,{records:[record('2026-10-29')],accounts,onOpen:()=>{}}));
+  assert.match(html,/2,948\.30/);
+  assert.match(html,/当前账户余额/);
+  assert.deepEqual(accounts,before);
 });
 
 test('weekly trend excludes transfers, shows exact cents and compares only adjacent equal-length weeks',()=>{

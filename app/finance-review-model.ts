@@ -320,6 +320,20 @@ export function latestWeeklyReview(records: FinanceReview[]) {
   return records.filter(record => record.type === "week")
     .sort((a, b) => b.end.localeCompare(a.end) || b.savedAt.localeCompare(a.savedAt))[0];
 }
+export type DailyCashAccount = {id:string;name:string;purpose:string;balance:number;included?:boolean;includedInPersonal?:boolean;liquid?:boolean};
+export function dailyFlexibleCash(accounts:DailyCashAccount[] = []) {
+  const rows=accounts.filter(row=>{
+    if(row.included===false || row.includedInPersonal===false || row.liquid===false)return false;
+    const text=`${row.name} ${row.purpose}`;
+    return /工资主账户|日常使用|小额支付|日常零钱/.test(text) && !/投资|证券|股票|应急|学习|旅游|旅行|父母|伴侣/.test(text);
+  });
+  return {rows,total:rows.length ? sum(rows.map(row=>row.balance)) : null};
+}
+export function dailyFlexibleCashChange(accounts:DailyCashAccount[],previous?:DailyCashAccount[]) {
+  const current=dailyFlexibleCash(accounts),prior=dailyFlexibleCash(previous);
+  const comparable=current.total!==null && prior.total!==null && current.rows.length===prior.rows.length && current.rows.every(row=>prior.rows.some(old=>old.id===row.id));
+  return {...current,delta:comparable ? sum([current.total!,-prior.total!]) : null};
+}
 export function reviewIncomeRows(record:Pick<FinanceReview,"ledger" | "incomeLedger">) {
   return (record.ledger ?? record.incomeLedger)?.filter(row=>row.flow==="income");
 }
