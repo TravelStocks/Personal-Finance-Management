@@ -9,6 +9,7 @@ import FinanceReviewPanel from "./finance-review-panel";
 import DatedLedgerEditor from "./dated-ledger-editor";
 import WeeklyLedgerView from "./weekly-ledger-view";
 import ReviewOverview from "./review-overview";
+import {monthlyBudgetUsage} from "./monthly-budget-usage";
 import ReviewUpdateHistory from "./review-update-history";
 import {commitReviewUpdate, dashboardSourceSignature, parseReviewUpdates, type ReviewUpdate} from "./review-dashboard-sync";
 import {commitReviewModule, reviewModuleLabels, reviewModuleSignature, type ReviewModule} from "./review-module-sync";
@@ -1633,8 +1634,9 @@ export default function FinanceDashboard() {
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings - (emergencyAccounts.length ? currentEmergencyFund : 0);
     const liquidAccountTotal = personalAccounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
     const spendingActual = budgets.reduce((sum, item) => sum + item.actual, 0);
+    const budgetUsage = monthlyBudgetUsage(actualIncome, spendingActual, annualBudgetPlan);
     const spendingPlan = budgets.reduce((sum, item) => sum + item.plan, 0);
-    const budgetRemaining = spendingPlan - spendingActual;
+    const budgetRemaining = budgetUsage.remaining;
     const fixedSpending = budgets.filter((item) => item.fixed).reduce((sum, item) => sum + item.plan, 0);
     const requiredSpending = budgets.filter((item) => item.required).reduce((sum, item) => sum + item.plan, 0);
     const investmentValue = reviewInvestmentTotal({holdings,fxUsd,fxHkd});
@@ -1677,7 +1679,7 @@ export default function FinanceDashboard() {
       emergencyAllocation +
       investmentSavingAllocation +
       customOutflow;
-    const monthlySurplus = actualIncome - spendingActual - assetOutflow;
+    const monthlySurplus = budgetUsage.surplus;
     const fixedRatio = actualIncome ? fixedSpending / actualIncome : 0;
     const savingsRate = actualIncome ? assetOutflow / actualIncome : 0;
     const emergencyNeed = Math.max(0, emergencyMonthlyNeed);
@@ -1702,6 +1704,7 @@ export default function FinanceDashboard() {
       accountSpecialSavings,
       liquidAccountTotal,
       spendingActual,
+      budgetUsage,
       spendingPlan,
       budgetRemaining,
       fixedSpending,
@@ -1763,7 +1766,7 @@ export default function FinanceDashboard() {
       savedAt,
       income: actualIncome,
       spending: totals.spendingActual,
-      allocation: totals.assetOutflow,
+      allocation: totals.budgetUsage.reserved,
       surplus: totals.monthlySurplus,
       accountTotal: totals.accountTotal,
       totalAssets: totals.totalAssets,
@@ -2344,24 +2347,24 @@ export default function FinanceDashboard() {
     },
     {
       id: "monthly-overview-living",
-      title: "所选月已录支出",
-      value: money(totals.spendingActual),
-      detail: `${activeMonth.label} / 支出账本合计，含已同步周复盘；不再叠加复盘金额`,
+      title: "所选月支出（含基金预留）",
+      value: money(totals.budgetUsage.spending),
+      detail: `${activeMonth.label} / 实际消费 ${money(totals.spendingActual)} + 投资预留 ${money(totals.budgetUsage.investment)} + 应急预留 ${money(totals.budgetUsage.emergency)}`,
       tone: "green" as Tone,
     },
     {
       id: "monthly-overview-surplus",
       title: "所选月收支结余",
-      value: money(actualIncome - totals.spendingActual),
-      detail: "已录收入减支出；不扣预算预留，不等于账户可用余额",
+      value: money(totals.monthlySurplus),
+      detail: "收入 - 实际消费 - 投资及应急预留；基金每月扣一次，不减少净资产",
       tone: "violet" as Tone,
     },
     {
       id: "monthly-overview-remaining",
-      title: "所选月消费预算剩余",
-      value: money(cashPlanTotals.consumption - totals.spendingActual),
-      detail: `${budgetModeName}消费预算 ${money(cashPlanTotals.consumption)} - 已录支出 ${money(totals.spendingActual)}`,
-      tone: totals.spendingActual > cashPlanTotals.consumption ? ("red" as Tone) : ("amber" as Tone),
+      title: "所选月可花预算剩余",
+      value: money(totals.budgetUsage.remaining),
+      detail: `${budgetModeName}总预算 ${money(totals.budgetUsage.budget)} - 含预留支出 ${money(totals.budgetUsage.spending)}`,
+      tone: totals.budgetUsage.remaining < 0 ? ("red" as Tone) : ("amber" as Tone),
     },
     {
       title: "当前账户余额",
@@ -2400,15 +2403,15 @@ export default function FinanceDashboard() {
   }));
   const monthlySpendingTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: recordSpendingActual(record),
+    value: monthlyBudgetUsage(recordIncome(record), recordSpendingActual(record), annualBudgetPlan).spending,
     color: record.id === selectedMonth ? palette[4] : palette[index % palette.length],
-    detail: record.id === selectedMonth ? "当前月" : "月度",
+    detail: "按当前基金预留方案测算",
   }));
   const monthlySurplusTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: Math.max(recordIncome(record) - recordSpendingActual(record), 0),
+    value: monthlyBudgetUsage(recordIncome(record), recordSpendingActual(record), annualBudgetPlan).surplus,
     color: record.id === selectedMonth ? palette[1] : palette[index % palette.length],
-    detail: record.id === selectedMonth ? "当前月" : "月度",
+    detail: "已扣当前方案基金预留",
   }));
   const accountChartData = personalAccounts
     .map((item, index) => ({ item, index }))
@@ -2637,8 +2640,7 @@ export default function FinanceDashboard() {
   const liquidAfterBuckets = liquidity.available;
   const monthlyInvestmentPlan = annualBudgetPlan.rows.find(row => row.id === "investment")?.[annualBudgetPlan.mode] ?? 0;
   const investmentReserveCoverage = monthlyInvestmentPlan ? totals.investmentReserve / monthlyInvestmentPlan : 0;
-  const cashAfterFamily = actualIncome - totals.spendingActual - totals.parentAllocation - totals.partnerAllocation;
-  const cashAfterFamilyAndInvestment = cashAfterFamily - totals.investmentSavingAllocation;
+  const cashAfterFamilyAndInvestment = totals.monthlySurplus;
   const fundBucketChartData = liquidity.deductions.map((item, index) => ({label: item.name, value: item.amount, color: palette[index % palette.length], detail: item.source}));
   const fundBucketGapData = fundBucketRows
     .filter((item) => item.gap > 0)
@@ -2666,8 +2668,8 @@ export default function FinanceDashboard() {
           : cashAfterFamilyAndInvestment < monthlyFundBucketNeed
             ? ("amber" as Tone)
             : ("green" as Tone),
-      summary: `当月余额 ${money(totals.monthlySurplus)}，家庭与投资后可用 ${money(cashAfterFamilyAndInvestment)}`,
-      detail: `收入 ${money(actualIncome)}，生活支出 ${money(totals.spendingActual)}，家庭责任 ${money(totals.parentAllocation + totals.partnerAllocation)}，投资计划 ${money(totals.investmentSavingAllocation)}。`,
+      summary: `扣除消费与基金预留后可用 ${money(totals.monthlySurplus)}`,
+      detail: `收入 ${money(actualIncome)}，实际消费 ${money(totals.spendingActual)}，投资预留 ${money(totals.budgetUsage.investment)}，应急预留 ${money(totals.budgetUsage.emergency)}；已记入消费的家用不再扣一次。`,
       action:
         totals.monthlySurplus < 0
           ? "先把当月余额转正，暂停非必要小旅行和新增非刚性支出。"
@@ -2713,7 +2715,7 @@ export default function FinanceDashboard() {
     `${activeMonth.label}财务分析报告`,
     "",
     `1. 净资产与现金：总资产 ${money(totals.totalAssets)}，净资产 ${money(totals.netWorth)}，可提取现金 ${money(liquidity.liquidCash)}，扣除专项后可自由动用 ${money(liquidAfterBuckets)}。`,
-    `2. 收支：收入 ${money(actualIncome)}，生活支出 ${money(totals.spendingActual)}，资产/责任分配 ${money(totals.assetOutflow)}，当月余额 ${money(totals.monthlySurplus)}。`,
+    `2. 收支：收入 ${money(actualIncome)}，实际消费 ${money(totals.spendingActual)}，投资及应急预留 ${money(totals.budgetUsage.reserved)}，含预留支出 ${money(totals.budgetUsage.spending)}，当月可用结余 ${money(totals.monthlySurplus)}。预留仍属个人资产，每月扣一次。`,
     `3. 家庭责任：父母 ${money(totals.parentAllocation)}，伴侣 ${money(totals.partnerAllocation)}，合计占收入 ${percent((totals.parentAllocation + totals.partnerAllocation) / Math.max(actualIncome, 1))}。`,
     `4. 大花费项目：目标 ${money(fundBucketTargetTotal)}，实际 ${money(fundBucketPreparedTotal)}，缺口 ${money(fundBucketGapTotal)}，其中两个月内缺口 ${money(urgentFundBucketGap)}。`,
     `5. 投资：投资市值 ${money(totals.investmentValue)}，待投资金 ${money(totals.investmentReserve)}，计划覆盖 ${investmentReserveCoverage.toFixed(1)} 个月，浮动盈亏 ${money(totals.investmentPnL)}。`,
@@ -2739,8 +2741,11 @@ export default function FinanceDashboard() {
     { id: "stock-income", name: "炒股月结", amount: Math.max(stockIncome, 0), flow: "收入", source: `${activeMonth.label}收入底表` },
     { id: "other-income", name: "其他收入", amount: otherIncome, flow: "收入", source: `${activeMonth.label}收入底表` },
     { id: "spending-actual", name: "生活实际支出", amount: totals.spendingActual, flow: "支出", source: "支出预算底表实际汇总" },
-    { id: "spending-plan", name: "生活支出预算", amount: totals.spendingPlan, flow: "预算", source: "支出预算底表预算汇总" },
-    { id: "budget-remaining", name: "本月预算剩余", amount: totals.budgetRemaining, flow: "可转储蓄", source: "生活支出预算 - 实际支出" },
+    { id: "investment-earmark", name: "投资基金预留", amount: totals.budgetUsage.investment, flow: "支出", source: "当前预算方案，每月预留一次；非消费" },
+    { id: "emergency-earmark", name: "应急基金预留", amount: totals.budgetUsage.emergency, flow: "支出", source: "当前预算方案，每月预留一次；非消费" },
+    { id: "spending-total", name: "支出合计（含预留）", amount: totals.budgetUsage.spending, flow: "合计", source: "实际消费 + 投资预留 + 应急预留，不再叠加划拨" },
+    { id: "spending-plan", name: "总预算（含基金）", amount: totals.budgetUsage.budget, flow: "预算", source: "当前年度方案月度分配" },
+    { id: "budget-remaining", name: "可花预算剩余", amount: totals.budgetRemaining, flow: "可转储蓄", source: "总预算 - 含预留支出" },
     { id: "travel-saving", name: "旅游储蓄", amount: totals.travelAllocationSource, flow: "资产分配", source: "目标管理本月实际投入" },
     { id: "learning-saving", name: "学习储蓄", amount: totals.learningAllocationSource, flow: "资产分配", source: "目标管理本月实际投入" },
     { id: "parent-saving", name: "父母储蓄", amount: totals.parentAllocationSource, flow: "资产分配", source: "目标管理本月实际投入" },
@@ -2752,13 +2757,13 @@ export default function FinanceDashboard() {
     { id: "investment-reserve", name: "投资待投金", amount: totals.investmentReserve, flow: "大花费项目", source: "账户用途自动识别：A股待投 + 美股待投" },
     { id: "fund-bucket-gap", name: "大花费项目缺口", amount: fundBucketGapTotal, flow: "大花费项目", source: "大花费项目目标 - 实际金额" },
     { id: "liquid-after-buckets", name: "可自由动用现金", amount: liquidAfterBuckets, flow: "安全垫", source: "可提取账户 - 专项账户占用 - 项目追加锁定（关联后去重）" },
-    { id: "monthly-surplus", name: "当月余额", amount: totals.monthlySurplus, flow: "结余", source: "收入 - 实际支出 - 实际资产分配" },
+    { id: "monthly-surplus", name: "当月可用结余", amount: totals.monthlySurplus, flow: "结余", source: "收入 - 实际消费 - 投资及应急预留；其他分配明细不再扣减" },
   ];
   const reportData = [
     { label: "收入", value: actualIncome, color: palette[0] },
-    { label: "支出", value: totals.spendingActual, color: palette[4] },
-    { label: "资产分配", value: totals.assetOutflow, color: palette[1] },
-    { label: "月结余", value: Math.max(totals.monthlySurplus, 0), color: palette[3] },
+    { label: "实际消费", value: totals.spendingActual, color: palette[4] },
+    { label: "投资及应急预留", value: totals.budgetUsage.reserved, color: palette[1] },
+    { label: "月结余", value: totals.monthlySurplus, color: palette[3] },
   ];
   const investmentScatter = holdings.map((item, index) => {
     const valueCny = toCny(item.value, item.currency, fxUsd, fxHkd);
@@ -3139,6 +3144,14 @@ export default function FinanceDashboard() {
                             onDeleteSelectedMonth={() => deleteMonthRecord(selectedMonth)}
                           />
                           <WeeklyLedgerView records={financeReviews} flow="expense"/>
+                          <div className="stat-strip" aria-label="月度支出与基金预留">
+                            <Stat label="实际消费" value={money(totals.spendingActual)} />
+                            <Stat label="投资基金预留" value={money(totals.budgetUsage.investment)} />
+                            <Stat label="应急基金预留" value={money(totals.budgetUsage.emergency)} />
+                            <Stat label="支出合计（含预留）" value={money(totals.budgetUsage.spending)} />
+                            <Stat label="可花预算剩余" value={money(totals.budgetUsage.remaining)} />
+                          </div>
+                          <p>基金按当前预算方案每月自动预留一次，转入账户不再另记消费；以下账本保留实际消费明细。</p>
                           <DatedLedgerEditor key={`spending-${activeMonth.id}`} flow="expense" month={activeMonth} entries={datedEntries} onSave={saveDatedEntry} onDelete={deleteDatedEntry}/>
                           <EditableBudgetTable budgets={budgets} deleteBudget={deleteBudget} addBudget={addBudget} addDetailedBudgets={addDetailedBudgets} updateBudget={updateBudget} />
                           <LearningUsage budgets={budgets} monthLabel={activeMonth.label} allowance={annualBudgetPlan.rows.find(row => row.id === "learning")?.[annualBudgetPlan.mode] ?? 0}/>
@@ -3158,10 +3171,10 @@ export default function FinanceDashboard() {
                           <ChartPanel title="预算必要性结构" summary="必须 vs 可取消">
                             <DonutChart data={requiredData} centerLabel="预算" centerValue={money(totals.spendingPlan)} />
                           </ChartPanel>
-                          <ChartPanel title="月度支出趋势" summary="每月实际支出">
+                          <ChartPanel title="月度支出趋势" summary="实际消费 + 当前方案基金预留；历史存档不变">
                             <VerticalBarChart data={monthlySpendingTrend} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="月度结余趋势" summary="收入 - 实际支出">
+                          <ChartPanel title="月度结余趋势" summary="收入 - 实际消费 - 当前方案基金预留">
                             <VerticalBarChart data={monthlySurplusTrend} valueFormatter={money} />
                           </ChartPanel>
                         </div>
@@ -3596,7 +3609,7 @@ export default function FinanceDashboard() {
                         <>
                           <div className="stat-strip">
                             <Stat label="收入" value={money(actualIncome)} />
-                            <Stat label="支出" value={money(totals.spendingActual)} />
+                            <Stat label="支出（含基金预留）" value={money(totals.budgetUsage.spending)} />
                             <Stat label="结余" value={money(totals.monthlySurplus)} />
                             <Stat label="项目后现金" value={money(liquidAfterBuckets)} />
                           </div>
@@ -3607,10 +3620,10 @@ export default function FinanceDashboard() {
                             onCopy={copyMonthlyAnalysisReport}
                           />
                           <ReportAutoSyncTable
-                            allocation={totals.assetOutflow}
+                            allocation={totals.budgetUsage.reserved}
                             income={actualIncome}
                             rows={reportRows}
-                            spending={totals.spendingActual}
+                            spending={totals.budgetUsage.spending}
                             surplus={totals.monthlySurplus}
                           />
                         </>
@@ -5177,7 +5190,7 @@ function ReportAutoSyncTable({
     <>
       <TableToolbar
         title="报表自动同步表"
-        meta={`收入 ${money(income)} / 支出 ${money(spending)} / 分配 ${money(allocation)} / 余额 ${money(surplus)}`}
+        meta={`收入 ${money(income)} / 含预留支出 ${money(spending)}（其中基金预留 ${money(allocation)}）/ 可用结余 ${money(surplus)}`}
       />
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table">
@@ -5810,10 +5823,10 @@ function EditableBudgetTable({
       />
       <label className="spending-reference-toggle"><input type="checkbox" checked={showReference} onChange={event => setShowReference(event.target.checked)}/>细项参考额度</label>
       <p className="spending-detail-note">日常使用账户单笔超过 10 元以咔皮记录核对；小额支付另做汇总。旧汇总与新细项不重复录入，未覆盖的小额支出不自动视为 0。学习填写课程、书籍、工具或会员名称。</p>
-      <p className="spending-detail-note">投资基金、应急储备属于划拨，不计消费；应急&学习金在此仅统计学习消费。周复盘汇总由对应复盘修订，不能在此重复新增。</p>
+      <p className="spending-detail-note">投资和应急基金已在上方按月预留，计入月度支出占用与结余；下方仅记实际消费，转入基金不重复记账。周复盘汇总由对应复盘修订。</p>
       {[...spendingGroups.slice(0,2),{id:"investment",name:"投资基金"},...spendingGroups.slice(2),{id:"unassigned",name:"待归类（保留原始记录）"}].map(group=><details key={group.id} className="review-method">
-      <summary>{group.name} · {group.id==="investment" ? "划拨，不计消费" : `${reviewMoney(budgets.filter(row=>getSpendingGroup(row)===group.id).reduce((sum,row)=>sum+Math.round(row.actual*100),0)/100)} · ${budgets.filter(row=>getSpendingGroup(row)===group.id).length} 项`}</summary>
-      {group.id==="investment"&&<p className="spending-detail-note">投资净投入保留在周期复盘中，不重复加入消费金额。</p>}
+      <summary>{group.name} · {group.id==="investment" ? "已按月预留" : `${reviewMoney(budgets.filter(row=>getSpendingGroup(row)===group.id).reduce((sum,row)=>sum+Math.round(row.actual*100),0)/100)} · ${budgets.filter(row=>getSpendingGroup(row)===group.id).length} 项`}</summary>
+      {group.id==="investment"&&<p className="spending-detail-note">月度投资预留已计入上方支出合计，实际净投入在周期复盘核对，不重复扣减。</p>}
       <div className="table-wrap spreadsheet-wrap">
         <table className={`spreadsheet-table spending-detail-table${showReference ? " with-reference" : ""}`}>
           <thead>
