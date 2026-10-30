@@ -1129,6 +1129,50 @@ select {
   stroke-dasharray: 3 3;
 }
 
+.review-activity {
+  min-width: 0;
+  margin: 16px 0;
+}
+
+.review-activity .section-title {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.review-activity label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.review-activity select {
+  max-width: 100%;
+}
+
+.review-activity td:last-child {
+  min-width: 180px;
+  max-width: 420px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.review-activity table {
+  min-width: 680px;
+}
+
+.review-activity th small,
+.review-activity td small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .waterfall-values {
   display: grid;
   gap: 8px;

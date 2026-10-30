@@ -9,6 +9,7 @@ import FinanceReviewPanel from "./finance-review-panel";
 import DatedLedgerEditor from "./dated-ledger-editor";
 import WeeklyLedgerView from "./weekly-ledger-view";
 import ReviewOverview from "./review-overview";
+import ReviewActivity from "./review-activity";
 import {monthlyBudgetUsage} from "./monthly-budget-usage";
 import {financeChartData, financeHealth, waterfallSteps} from "./finance-chart-model";
 import ReviewUpdateHistory from "./review-update-history";
@@ -2964,7 +2965,13 @@ export default function FinanceDashboard() {
             </div>
             <span className="pill good">公开页已脱敏</span>
           </div>
+          <div className="overview-grid" aria-label="所选月收支概览">
+            {overviewCards.slice(0, 4).map(item => <article key={item.id} data-testid={item.id} className={`overview-card ${item.tone}`}>
+              <span>{item.title}</span><strong>{item.value}</strong><small>{item.detail}</small>
+            </article>)}
+          </div>
           <ReviewOverview records={financeReviews} accounts={accounts} onOpen={() => navigateToSection("periodReview")} />
+          <ReviewActivity records={financeReviews} updates={reviewUpdates} />
           <article className="total-assets-hero">
             <div className="total-assets-main">
               <span>当前总资产与负债</span>
@@ -2986,7 +2993,7 @@ export default function FinanceDashboard() {
             </div>
           </article>
           <div className="overview-grid">
-            {overviewCards.map((item) => (
+            {overviewCards.slice(4).map((item) => (
               <article data-testid={item.id} className={`overview-card ${item.tone} ${item.items ? "with-line-items" : ""}`.trim()} key={item.title}>
                 <span>{item.title}</span>
                 <strong>{item.value}</strong>
