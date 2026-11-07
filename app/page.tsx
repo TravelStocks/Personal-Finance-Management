@@ -11,6 +11,7 @@ import WeeklyLedgerView from "./weekly-ledger-view";
 import ReviewOverview from "./review-overview";
 import ReviewActivity from "./review-activity";
 import {monthlyBudgetUsage} from "./monthly-budget-usage";
+import {planYearLabel, planYearProgress} from "./plan-year";
 import {financeChartData, financeHealth, waterfallSteps} from "./finance-chart-model";
 import ReviewUpdateHistory from "./review-update-history";
 import {commitReviewUpdate, dashboardSourceSignature, parseReviewUpdates, type ReviewUpdate} from "./review-dashboard-sync";
@@ -2546,6 +2547,11 @@ export default function FinanceDashboard() {
   const cashPlanFlow = annualPlanTotals.allocationRows.map(row => ({label: row.name, value: row[annualBudgetPlan.mode]}))
     .filter(item => item.value > 0).map((item, index) => ({...item, color: palette[index % palette.length]}));
   const annualPlanDistribution = chartModel.annual.map((row, index) => ({...row, color: palette[index % palette.length]}));
+  const planProgress = planYearProgress(currentDate, monthlyRecords, datedEntries);
+  const annualDistributionPanel = <ChartPanel title="年度资金分布" summary={planYearLabel}>
+    <DonutChart data={annualPlanDistribution} centerLabel="12个月预算" centerValue={money(annualPlanTotals.annualOutflow)} />
+    <p>{planProgress.status} · 期内已记净消费 {reviewMoney(planProgress.spending)}（不含基金预留）{planProgress.undated ? "；跨界未标日期的金额暂不计入" : ""}</p>
+  </ChartPanel>;
   const netWorthTrend = forecast.map((item, index) => ({
     label: item.month,
     value: totals.netWorth + (index + 1) * (cashflowScenario.inflow - cashflowScenario.consumption - cashflowScenario.extraOutflow),
@@ -3028,9 +3034,7 @@ export default function FinanceDashboard() {
               <ChartPanel title="资产结构" summary={`总资产 ${money(totals.totalAssets)}`}>
                 <DonutChart data={assetStructureData} centerLabel="总资产" centerValue={money(totals.totalAssets)} />
               </ChartPanel>
-              <ChartPanel title="年度资金分布" summary={`全年全部安排 ${money(annualPlanTotals.annualOutflow)}`}>
-                <DonutChart data={annualPlanDistribution} centerLabel="年度预算" centerValue={money(annualPlanTotals.annualOutflow)} />
-              </ChartPanel>
+              {annualDistributionPanel}
               <ChartPanel title="本月支出与基金预留" summary={`${activeMonth.label} / 合计 ${money(totals.budgetUsage.spending)}`} className="spending-top-panel">
                 <HorizontalBarChart data={topSpendingData} valueFormatter={money} />
               </ChartPanel>
@@ -3272,9 +3276,7 @@ export default function FinanceDashboard() {
                       }
                       charts={
                         <div className="chart-grid two">
-                          <ChartPanel title="年度资金分布" summary={`全年预算 ${money(annualPlanTotals.annualOutflow)}`}>
-                            <DonutChart data={annualPlanDistribution} centerLabel="年度预算" centerValue={money(annualPlanTotals.annualOutflow)} />
-                          </ChartPanel>
+                          {annualDistributionPanel}
                           <ChartPanel title={`${budgetModeName}分类分配`} summary={`合计 ${money(cashPlanTotals.totalOutflow)}`}>
                             <HorizontalBarChart data={cashPlanFlow} valueFormatter={money} />
                           </ChartPanel>

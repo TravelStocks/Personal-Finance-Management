@@ -1,5 +1,6 @@
 "use client";
 import type {ReactNode} from "react";
+import {planYearLabel} from "./plan-year";
 import {calculateAnnualAccumulation, calculateAnnualBudgetPlan, normalizeAnnualBudgetPlan, updateAnnualBudgetAmount, type AnnualBudgetPlan, type BudgetMonthMode} from "./annual-budget-model";
 import "./annual-budget-plan.css";
 
@@ -73,7 +74,7 @@ export function AnnualBudgetAllocationTable({plan, onChange, titleId, saveAction
   </tr>;
   return <section className="annual-allocation" aria-labelledby={titleId}>
     <div className="annual-subheading annual-table-heading"><div><h3 id={titleId}>完整月度与年度分配表</h3>
-      <p>全年预算 = 不出差月份金额 × {totals.normalMonths} + 出差月份金额 × {plan.awayMonths}。<span className="annual-mobile-hint">左右滑动表格查看金额列。</span></p></div>
+      <p>{planYearLabel} · 全年预算 = 不出差月份金额 × {totals.normalMonths} + 出差月份金额 × {plan.awayMonths}。<span className="annual-mobile-hint">左右滑动表格查看金额列。</span></p></div>
       {saveAction}</div>
     <div className="annual-table-scroll" tabIndex={0} role="region" aria-label="完整分配表横向滚动区域"><table className="annual-budget-table annual-allocation-table" aria-labelledby={titleId}>
       <thead><tr><th scope="col">项目</th><th scope="col">不出差月份</th><th scope="col">出差月份</th><th scope="col">全年预算</th></tr></thead>
@@ -111,7 +112,7 @@ export default function AnnualBudgetPlanner({plan, onChange, saveAction, saveSta
     {label: "额外现金余量", amount: Math.max(0, totals.annualSurplus), className: "surplus"},
   ];
   return <details className="annual-budget" aria-labelledby="annual-budget-toggle">
-    <summary className="annual-budget-toggle" id="annual-budget-toggle">全年预算参考 · 12个月</summary>
+    <summary className="annual-budget-toggle" id="annual-budget-toggle">全年预算参考 · 12个月（{planYearLabel}）</summary>
     <header className="annual-budget-heading">
       <div><h2 id="annual-budget-title">普通月收支与全年积累</h2>
         <p>{totals.normalMonths}个普通月 + {plan.awayMonths}个出差月；全年{plan.paidDays}个领补贴日，出差期间工资照常发放。</p>
