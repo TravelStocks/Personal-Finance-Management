@@ -7,6 +7,7 @@ const {loadModel}=require('../scripts/finance-review.cjs');
 const m=loadModel('finance-review-model');
 const d=loadModel('review-dashboard-sync');
 const modules=loadModel('review-module-sync');
+const notes=loadModel('review-note-model');
 const compiled=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../app/finance-review-panel.tsx'),'utf8'),{
   compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}
 }).outputText;
@@ -35,6 +36,10 @@ function harness(fail=false) {
     return require(name);
   });
   function updateProps(){props={records:state.financeReviews,plan:{mode:'normal',rows:[]},accounts:state.accounts,
+    weeklyNotes:notes.parseWeeklyNotes(state.weeklyNotes),onSaveNote:(week,text)=>{
+      if(fail)throw new Error('Storage quota exceeded');
+      state={...state,...notes.saveWeeklyNote(state.financeReviews,state.weeklyNotes ?? {},week,text)};
+    },
     moduleUpdates:state.reviewUpdates ?? [],moduleSignatures:Object.fromEntries(Object.keys(modules.reviewModuleLabels).map(key=>[key,modules.reviewModuleSignature(state,key)])),
     onSaveModule:(draft,module,signature)=>{
       if(fail)throw new Error('Storage quota exceeded');
@@ -70,8 +75,30 @@ function harness(fail=false) {
   }
   function submit(invalid=null){const form=find(n=>n.type==='form');assert.equal(form.props.noValidate,true);form.props.onSubmit({preventDefault:()=>{},currentTarget:{querySelector:()=>invalid}});render();}
   updateProps();render();
-  return {prepare,submit,button,input,find,state:()=>state,refresh:()=>{updateProps();render();}};
+  return {prepare,submit,button,input,find,state:()=>state,refresh:()=>{updateProps();render();},reopen:()=>{slots.length=0;state=JSON.parse(JSON.stringify(state));updateProps();render();}};
 }
+
+test('standalone note save requires no amounts, does not submit other edits, and restores in the same week',()=>{
+  const h=harness();const field=()=>h.find(n=>n.type==='textarea'&&n.props['aria-label']==='整体变化说明情况');
+  h.input('家用本期金额','123');field().props.onChange({target:{value:'这周减少了外卖。'}});h.refresh();
+  h.button('保存并更新说明');assert.equal(h.state().financeReviews.length,0);
+  assert.deepEqual(h.state().monthlyRecords[0].budgets,[]);assert.equal(h.state().accounts[0].balance,100);
+  assert.equal(h.find(n=>n.props?.['aria-label']==='家用本期金额').props.value,123);
+  assert.equal(h.find(n=>n.props?.id==='review-result-title').props.children,'保存并更新完毕');
+  h.reopen();assert.equal(field().props.value,'这周减少了外卖。');
+  h.prepare();h.submit();h.refresh();assert.equal(h.state().financeReviews[0].overallChange,'这周减少了外卖。');
+  h.button('修订本期');h.button('确认');const original=structuredClone(h.state().financeReviews[0]);
+  field().props.onChange({target:{value:'本周修订'}});h.refresh();h.button('保存并更新说明');
+  assert.deepEqual(h.state().financeReviews,[{...original,overallChange:'本周修订'}]);
+  field().props.onChange({target:{value:''}});h.refresh();h.button('保存并更新说明');assert.equal(h.state().financeReviews[0].overallChange,undefined);
+});
+
+test('standalone note write failure keeps the input and does not report success',()=>{
+  const h=harness(true);const field=()=>h.find(n=>n.type==='textarea'&&n.props['aria-label']==='整体变化说明情况');
+  field().props.onChange({target:{value:'待保存'}});h.refresh();h.button('保存并更新说明');
+  assert.equal(field().props.value,'待保存');assert.equal(h.state().weeklyNotes,undefined);
+  assert.equal(h.find(n=>n.props?.id==='review-result-title').props.children,'未保存，请检查');
+});
 
 test('successful UI save retains committed balances, report and source baseline after parent refresh',()=>{
   const h=harness();h.prepare();h.submit();

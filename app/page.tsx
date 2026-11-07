@@ -10,6 +10,7 @@ import DatedLedgerEditor from "./dated-ledger-editor";
 import WeeklyLedgerView from "./weekly-ledger-view";
 import ReviewOverview from "./review-overview";
 import ReviewActivity from "./review-activity";
+import {parseWeeklyNotes, saveWeeklyNote, type WeeklyNotes} from "./review-note-model";
 import {monthlyBudgetUsage} from "./monthly-budget-usage";
 import {planYearLabel, planYearProgress} from "./plan-year";
 import {financeChartData, financeHealth, waterfallSteps} from "./finance-chart-model";
@@ -175,6 +176,7 @@ type PersistedFinanceData = {
   salarySettingsVersion?: number;
   annualBudgetPlan?: AnnualBudgetPlan;
   financeReviews?: FinanceReview[];
+  weeklyNotes?: WeeklyNotes;
   datedEntries?: DatedEntry[];
   monthlyCashPlan?: MonthlyCashPlan;
   period?: Period;
@@ -1044,6 +1046,7 @@ export default function FinanceDashboard() {
   const currentDate = useFinanceToday();
   const [annualBudgetPlan, setAnnualBudgetPlan] = useState<AnnualBudgetPlan>(initialAnnualBudgetPlan);
   const [financeReviews, setFinanceReviews] = useState<FinanceReview[]>([]);
+  const [weeklyNotes, setWeeklyNotes] = useState<WeeklyNotes>({});
   const [reviewUpdates,setReviewUpdates] = useState<ReviewUpdate[]>([]);
   const [dashboardAsOf,setDashboardAsOf] = useState<string | undefined>();
   const [datedEntries, setDatedEntries] = useState<DatedEntry[]>([]);
@@ -1104,6 +1107,7 @@ export default function FinanceDashboard() {
       salarySettingsVersion,
       annualBudgetPlan,
       financeReviews,
+      weeklyNotes,
       reviewUpdates,
       dashboardAsOf,
       datedEntries,
@@ -1163,6 +1167,7 @@ export default function FinanceDashboard() {
   function applyPersistedFinanceData(saved: Partial<PersistedFinanceData>) {
     const restoredUpdates=parseReviewUpdates(saved.reviewUpdates);
     const restoredReviews = saved.financeReviews === undefined ? undefined : parseFinanceReviews(saved.financeReviews);
+    const restoredNotes = parseWeeklyNotes(saved.weeklyNotes);
     const restoredEntries = parseDatedEntries(saved.datedEntries);
     const restoredPlan = normalizeAnnualBudgetPlan(saved.annualBudgetPlan);
     const salaryData = migrateSalarySettings(Array.isArray(saved.monthlyRecords) ? saved.monthlyRecords : initialMonthRecords, restoredPlan.salary, saved.salarySettingsVersion);
@@ -1170,6 +1175,7 @@ export default function FinanceDashboard() {
     setDashboardAsOf(saved.dashboardAsOf);
     setAnnualBudgetPlan({...restoredPlan, salary: salaryData.salary});
     if (restoredReviews) setFinanceReviews(restoredReviews);
+    setWeeklyNotes(restoredNotes);
     setMonthlyCashPlan({...normalizeMonthlyCashPlan(saved.monthlyCashPlan), income: salaryData.salary});
     if (saved.period) setPeriod(saved.period);
     if (saved.selectedMonth) setSelectedMonth(saved.selectedMonth);
@@ -1348,6 +1354,7 @@ export default function FinanceDashboard() {
     savedDataReady,
     annualBudgetPlan,
     financeReviews,
+    weeklyNotes,
     reviewUpdates,
     dashboardAsOf,
     datedEntries,
@@ -3557,6 +3564,11 @@ export default function FinanceDashboard() {
                 {moduleId === "periodReview" && (
                   <Module title="周期复盘" desc="本期实际收支与期末余额；整期更新、历史版本及逐账户变化。">
                     <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} investments={{holdings,fxUsd,fxHkd}} goals={plannedGoals.map(({id,name,current})=>({id,name,current}))} dashboardAsOf={dashboardAsOf} sourceSignature={dashboardSourceSignature(getPersistedFinanceData())}
+                      weeklyNotes={weeklyNotes} onSaveNote={(week,text)=>{
+                        const saved=saveWeeklyNote(financeReviews,weeklyNotes,week,text);
+                        persistLocalFinanceData({...getPersistedFinanceData(),...saved});
+                        setWeeklyNotes(saved.weeklyNotes);setFinanceReviews(saved.financeReviews);
+                      }}
                       moduleUpdates={reviewUpdates} moduleSignatures={Object.fromEntries((Object.keys(reviewModuleLabels) as ReviewModule[]).map(key=>[key,reviewModuleSignature(getPersistedFinanceData(),key)])) as Record<ReviewModule,string>}
                       onSaveModule={(draft,module,signature)=>{
                         const {data:next,patch}=commitReviewModule(getPersistedFinanceData(),draft,module,signature);
@@ -3575,7 +3587,9 @@ export default function FinanceDashboard() {
                         debts:liabilities.map(({id,name,amount})=>({id,name,amount})), holdings:totals.investmentValue,
                       }} onOpenModule={navigateToSection} onChange={(records, update) => {
                       const next=commitReviewUpdate(getPersistedFinanceData(),records,update ?? {publish:false});
+                      next.weeklyNotes = Object.fromEntries(Object.entries(weeklyNotes).filter(([week])=>!records.some(row=>row.id===`week:${week}`)));
                       persistLocalFinanceData(next);
+                      setWeeklyNotes(next.weeklyNotes);
                       setFinanceReviews(next.financeReviews ?? []);setReviewUpdates(next.reviewUpdates ?? []);setDashboardAsOf(next.dashboardAsOf);
                       if(update?.publish) {
                         setMonthlyRecords(next.monthlyRecords);setSelectedMonth(next.selectedMonth!);setAccounts(next.accounts);
