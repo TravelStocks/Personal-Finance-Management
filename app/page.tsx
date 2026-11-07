@@ -2877,7 +2877,7 @@ export default function FinanceDashboard() {
         <header className="topbar">
           <div>
             <h1>长期个人财务管理系统</h1>
-            <p>先核对全年安排与月份周转，再查看账本、账户与资产。</p>
+            <p>平时先用手机上的「咔皮记账」记录支出，每周复盘时再同步到这里。早餐、地铁通勤和零食等小额支出不在 App 里逐笔记录，只在这里按周汇总。</p>
           </div>
           <div className="period-tabs" aria-label="时间视图">
             {(["周", "月", "季", "年"] as Period[]).map((item) => (
