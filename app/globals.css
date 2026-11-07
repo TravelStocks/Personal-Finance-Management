@@ -1152,6 +1152,13 @@ select {
   max-width: 100%;
 }
 
+.weekly-note-history ol { list-style: none; padding: 0; margin: 0; }
+.weekly-note-history li { display: grid; grid-template-columns: minmax(14rem, 1fr) 3fr; gap: 12px 20px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.weekly-note-history small { display: block; margin-top: 5px; color: var(--muted); }
+.weekly-note-history p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.weekly-note-history details { margin-top: 14px; }
+@media (max-width: 680px) { .weekly-note-history li { grid-template-columns: 1fr; } }
+
 .review-activity td:last-child {
   min-width: 180px;
   max-width: 420px;

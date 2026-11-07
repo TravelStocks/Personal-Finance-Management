@@ -2,6 +2,18 @@ import {reviewPeriod, type FinanceReview} from "./finance-review-model";
 
 export type WeeklyNotes = Record<string, string>;
 
+export function weeklyNoteHistory(records: FinanceReview[], pending: WeeklyNotes) {
+  const weeks = new Map<string, {start:string; note:string; reportEnd?:string}>();
+  for (const [start, note] of Object.entries(pending)) {
+    if (note.trim()) weeks.set(start, {start, note});
+  }
+  // A full report supersedes a standalone note, even if the text was subsequently cleared.
+  for (const record of records) {
+    if (record.type === "week") weeks.set(record.start, {start:record.start, note:record.overallChange ?? "", reportEnd:record.end});
+  }
+  return [...weeks.values()].sort((a,b)=>b.start.localeCompare(a.start)).map(row=>({...row, end:reviewPeriod("week",row.start).limit}));
+}
+
 export function parseWeeklyNotes(value: unknown): WeeklyNotes {
   if (value === undefined) return {};
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("周说明格式无效");

@@ -10,6 +10,7 @@ import DatedLedgerEditor from "./dated-ledger-editor";
 import WeeklyLedgerView from "./weekly-ledger-view";
 import ReviewOverview from "./review-overview";
 import ReviewActivity from "./review-activity";
+import WeeklyNoteHistory from "./weekly-note-history";
 import {parseWeeklyNotes, saveWeeklyNote, type WeeklyNotes} from "./review-note-model";
 import {monthlyBudgetUsage} from "./monthly-budget-usage";
 import {planYearLabel, planYearProgress} from "./plan-year";
@@ -41,6 +42,7 @@ type ModuleId =
   | "fundBuckets"
   | "reports"
   | "periodReview"
+  | "weeklyChanges"
   | "monthlyArchive"
   | "cloudSync"
   | "health"
@@ -506,6 +508,7 @@ const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "fundBuckets", title: "大花费项目", desc: "旅行、搬家、分期、应急金和待投资金隔离" },
   { id: "reports", title: "财务报表", desc: "收入、支出、结余、投资表现" },
   { id: "periodReview", title: "周期复盘", desc: "九类数据更新、周月季度对比和下期动作" },
+  { id: "weeklyChanges", title: "每周整体变化说明", desc: "按周回看财务变化、原因和下周安排" },
   { id: "monthlyArchive", title: "月度存档", desc: "保存每月收入、支出、账户余额和净资产变化" },
   { id: "cloudSync", title: "云同步", desc: "用加密 GitHub Gist 跨电脑保存和恢复数据" },
   { id: "health", title: "健康评分", desc: "100 分制财务健康状态" },
@@ -3561,6 +3564,9 @@ export default function FinanceDashboard() {
                   </Module>
                 )}
 
+                {moduleId === "weeklyChanges" && <Module title="每周整体变化说明" desc="按周排列，最近的记录在前。">
+                  <WeeklyNoteHistory records={financeReviews} notes={weeklyNotes}/>
+                </Module>}
                 {moduleId === "periodReview" && (
                   <Module title="周期复盘" desc="本期实际收支与期末余额；整期更新、历史版本及逐账户变化。">
                     <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} investments={{holdings,fxUsd,fxHkd}} goals={plannedGoals.map(({id,name,current})=>({id,name,current}))} dashboardAsOf={dashboardAsOf} sourceSignature={dashboardSourceSignature(getPersistedFinanceData())}
