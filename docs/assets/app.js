@@ -9450,7 +9450,8 @@ function Me(e = "week", t = Oe(), n = 1) {
 			otherAssets: null,
 			debt: null
 		},
-		summary: ""
+		summary: "",
+		...e === "week" ? { overallChange: "" } : {}
 	};
 }
 function Ne(e) {
@@ -9561,6 +9562,7 @@ function Fe(e) {
 		summary: typeof t.summary == "string" ? t.summary : "",
 		...d ? { budget: d } : {},
 		...u ? { accounts: u } : {},
+		...n === "week" && typeof t.overallChange == "string" && t.overallChange.trim() ? { overallChange: t.overallChange } : {},
 		...t.focus === void 0 ? {} : { focus: Pe(t.focus) }
 	};
 	if (t.investments !== void 0) {
@@ -9881,6 +9883,11 @@ function qe(e, t) {
 		`# ${de[e.type]} · ${e.start} 至 ${e.end}`,
 		r ? `对比：${r.start} 至 ${r.end}` : "本期建立首次基准。",
 		"",
+		...e.overallChange ? [
+			"## 整体变化说明情况",
+			e.overallChange,
+			""
+		] : [],
 		`收入 ${P(a.income)} · 实际消费 ${P(a.spending)} · 收支结余 ${P(a.surplus)}`,
 		`期末净资产 ${P(a.netWorth)} · 较上期余额 ${Te(n.netWorthDelta)}`,
 		`日均消费 ${P(a.spending / a.days)}${i ? `；上期 ${P(i.spending / i.days)}` : ""}`,
@@ -11168,7 +11175,7 @@ function Nt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 		...e,
 		focus: ye(e.focus, u)
 	}));
-	let kt = A || x.income !== null || Object.values(x.amounts).some((e) => e !== null) || Object.values(x.balances).some((e) => e !== null) || !!x.summary || Object.values(x.notes).some(Boolean) || Object.values(x.focus?.checks ?? {}).some(Boolean) || Object.values(x.focus?.notes ?? {}).some(Boolean);
+	let kt = A || x.income !== null || Object.values(x.amounts).some((e) => e !== null) || Object.values(x.balances).some((e) => e !== null) || !!(x.summary || x.overallChange) || Object.values(x.notes).some(Boolean) || Object.values(x.focus?.checks ?? {}).some(Boolean) || Object.values(x.focus?.notes ?? {}).some(Boolean);
 	(0, _.useEffect)(() => {
 		nt ? Ge.current?.showModal() : Ge.current?.close();
 	}, [nt]), (0, _.useEffect)(() => {
@@ -11622,6 +11629,19 @@ function Nt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 							x.end,
 							" · 人民币 · 填该日期范围内的发生额，不填跨期累计数。没有发生填 0，空白保留为待补。"
 						]
+					}),
+					x.type === "week" && /* @__PURE__ */ (0, b.jsxs)("label", {
+						className: "field",
+						children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "整体变化说明情况（可选）" }), /* @__PURE__ */ (0, b.jsx)("textarea", {
+							rows: 3,
+							"aria-label": "整体变化说明情况",
+							value: x.overallChange ?? "",
+							placeholder: "这周我的钱主要花在哪里？和上周相比，什么变了？下周想做哪一个调整？",
+							onChange: (e) => S({
+								...x,
+								overallChange: e.target.value
+							})
+						})]
 					}),
 					x.type === "month" && /* @__PURE__ */ (0, b.jsxs)("label", {
 						className: "field",
@@ -12250,6 +12270,16 @@ function Nt({ records: e, plan: t, accounts: n, investments: r, goals: i, dashbo
 					/* @__PURE__ */ (0, b.jsx)("p", {
 						className: "review-caption",
 						children: it.previous ? `对比上期：${it.previous.start} 至 ${it.previous.end}` : "首次基准，暂无上期对比"
+					}),
+					L.type === "week" && L.overallChange && /* @__PURE__ */ (0, b.jsxs)("section", {
+						"aria-label": "整体变化说明情况",
+						children: [/* @__PURE__ */ (0, b.jsx)("h3", { children: "整体变化说明情况" }), /* @__PURE__ */ (0, b.jsx)("p", {
+							style: {
+								whiteSpace: "pre-wrap",
+								overflowWrap: "anywhere"
+							},
+							children: L.overallChange
+						})]
 					}),
 					L.type === "month" && /* @__PURE__ */ (0, b.jsx)("p", {
 						className: "review-caption",

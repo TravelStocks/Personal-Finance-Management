@@ -60,6 +60,7 @@ function run(args) {
     const template = [
       `# ${model.reviewTypeNames[type]}数据更新`, `期间：${draft.start} 至 ${draft.end}（人民币）`,
       previous ? `上期基准：${previous.start} 至 ${previous.end}；期末净资产 ${model.reviewMoney(model.reviewTotals(previous).netWorth)}` : '暂无同类上期，本次建立首次基准。', '',
+      ...(type==='week'?['整体变化说明情况（可选）：', '']:[]),
       '本期外部收入：', '工资与其他到账请分别提供实际日期、金额和事项；未到账的工资规划不计收入。', '', '| 项目 | 本期金额 | 发生事项（可选） |', '|---|---:|---|',
       ...model.reviewCategories.map(row=>`| ${row.name}${row.flow==='transfer'?'（净划拨）':''} | | |`), '',
       '## 本期期末账户', '| 账户编号 / 名称 | 期末余额 | 计入个人现金 | 本期变动说明 |', '|---|---:|---|---|',

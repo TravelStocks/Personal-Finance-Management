@@ -97,6 +97,21 @@ test('persistence failures keep inputs and never show a successful save',()=>{
   assert.equal(h.find(n=>n.props?.['aria-label']==='Test bank复盘期末余额').props.value,450.5);
 });
 
+test('weekly reflection survives save, export and revision without affecting amounts or old reviews',()=>{
+  const h=harness(); h.prepare();
+  const note='本周有一笔临时开销。\n下周先核对交通支出。';
+  const field=()=>h.find(n=>n.type==='textarea' && n.props['aria-label']==='整体变化说明情况');
+  field().props.onChange({target:{value:note}}); h.refresh(); h.submit(); h.refresh();
+  const restored=m.parseFinanceReviews(JSON.parse(JSON.stringify(h.state().financeReviews)))[0];
+  assert.equal(restored.overallChange,note);
+  assert.match(m.financeReviewReport(restored,[restored]),/## 整体变化说明情况\n本周有一笔临时开销。\n下周先核对交通支出。/);
+  h.find(n=>n.type==='section' && n.props['aria-label']==='整体变化说明情况');
+  h.button('修订本期'); h.button('确认'); assert.equal(field().props.value,note);
+  const old=m.parseFinanceReview({...restored,overallChange:undefined,summary:'旧的补充事项'});
+  assert.equal(old.summary,'旧的补充事项'); assert.equal(old.overallChange,undefined);
+  assert.deepEqual(m.reviewTotals(old),m.reviewTotals(restored));
+});
+
 test('invalid controls including collapsed fields produce an explicit error before any write',()=>{
   const h=harness();
   h.submit({getAttribute:()=> 'Test bank复盘期末余额',type:'number',validationMessage:'Please fill out this field.'});

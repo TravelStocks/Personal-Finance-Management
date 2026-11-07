@@ -100,7 +100,7 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
   if (followsSource && (!draft.focus || !reviewFocusMatchesSource(draft.focus, focusSource))) {
     setDraft(current=>({...current, focus: syncReviewFocus(current.focus, focusSource)}));
   }
-  const hasDraft = incomePending || draft.income !== null || Object.values(draft.amounts).some(value => value !== null) || Object.values(draft.balances).some(value => value !== null) || Boolean(draft.summary) || Object.values(draft.notes).some(Boolean) || Object.values(draft.focus?.checks ?? {}).some(Boolean) || Object.values(draft.focus?.notes ?? {}).some(Boolean);
+  const hasDraft = incomePending || draft.income !== null || Object.values(draft.amounts).some(value => value !== null) || Object.values(draft.balances).some(value => value !== null) || Boolean(draft.summary || draft.overallChange) || Object.values(draft.notes).some(Boolean) || Object.values(draft.focus?.checks ?? {}).some(Boolean) || Object.values(draft.focus?.notes ?? {}).some(Boolean);
 
   useEffect(() => {
     if (confirmation) confirmDialog.current?.showModal();
@@ -349,6 +349,11 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
         <label className="field"><span>本期外部收入</span><input aria-label="本期外部收入" type="number" step="0.01" required readOnly={boundIncome} value={draft.income ?? ""} onChange={event => setDraft({...draft, income:numeric(event.target.value)})}/></label>
       </div>
       <p className="review-caption">{draft.start} 至 {draft.end} · 人民币 · 填该日期范围内的发生额，不填跨期累计数。没有发生填 0，空白保留为待补。</p>
+      {draft.type === "week" && <label className="field"><span>整体变化说明情况（可选）</span>
+        <textarea rows={3} aria-label="整体变化说明情况" value={draft.overallChange ?? ""}
+          placeholder="这周我的钱主要花在哪里？和上周相比，什么变了？下周想做哪一个调整？"
+          onChange={event => setDraft({...draft, overallChange:event.target.value})}/>
+      </label>}
       {draft.type==="month"&&<label className="field"><span>月度起算日</span><select aria-label="月度起算日" value={draft.monthStartDay ?? 1} onChange={event=>resetDraft(draft.type,draft.end,Number(event.target.value) as 1|10)}><option value="10">每月10日至下月9日</option><option value="1">自然月（保留旧口径）</option></select></label>}
       <section className="review-income" aria-label="复盘收入录入" data-review-module="income">
         <div className="review-toolbar"><h3>本期收入 · 工资与其他到账</h3><span className="review-caption">{draft.start} 至 {draft.end}</span></div>
@@ -428,6 +433,8 @@ export default function FinanceReviewPanel({records, plan, accounts, investments
           <button className="secondary-button" type="button" onClick={() => download(`finance-${selected.type}-${selected.start}.md`,financeReviewReport(selected,records),"text/markdown;charset=utf-8")}>下载报告</button></div>
       </div>
       <p className="review-caption">{analysis.previous ? `对比上期：${analysis.previous.start} 至 ${analysis.previous.end}` : "首次基准，暂无上期对比"}</p>
+      {selected.type === "week" && selected.overallChange && <section aria-label="整体变化说明情况"><h3>整体变化说明情况</h3>
+        <p style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{selected.overallChange}</p></section>}
       {selected.type==="month"&&<p className="review-caption">{selected.monthStartDay===10 ? "10号账期：每月10日至下月9日" : "自然月报告：沿用原口径"}</p>}
       {selected.incomeLedger&&<><p className="review-caption">收入来源：保存时的到账明细快照</p><LedgerRows rows={selected.incomeLedger}/></>}
       {selected.ledger&&<><p className="review-caption">收支来源：保存时的日期明细快照 · {selected.ledger.length} 笔</p><LedgerRows rows={selected.ledger}/></>}

@@ -89,6 +89,7 @@ export type FinanceReview = {
   notes: Partial<Record<ReviewCategory, string>>;
   balances: ReviewBalances;
   summary: string;
+  overallChange?: string;
   budget?: ReviewBudget;
   accounts?: ReviewAccount[];
   focus?: ReviewFocus;
@@ -170,7 +171,7 @@ export function newReviewDraft(type: ReviewType = "week", end = reviewToday(), m
   const {start} = reviewPeriod(type, end, monthStartDay);
   return {type, start, end, ...(type === "month" && monthStartDay === 10 ? {monthStartDay} : {}), income: null,
     amounts: Object.fromEntries(reviewCategories.map(row => [row.id, null])) as ReviewDraft["amounts"],
-    notes: {}, balances: {cash: null, investments: null, otherAssets: null, debt: null}, summary: ""};
+    notes: {}, balances: {cash: null, investments: null, otherAssets: null, debt: null}, summary: "", ...(type === "week" ? {overallChange: ""} : {})};
 }
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -252,6 +253,7 @@ export function parseFinanceReview(value: unknown): FinanceReview {
     notes: Object.fromEntries(reviewCategories.map(row => [row.id, typeof inputNotes[row.id] === "string" ? inputNotes[row.id] : ""])),
     balances: Object.fromEntries(Object.entries(balanceLabels).map(([key, label]) => [key, amount(inputBalances[key], label, true)])) as ReviewBalances,
     summary: typeof input.summary === "string" ? input.summary : "", ...(budget ? {budget} : {}), ...(accounts ? {accounts} : {}),
+    ...(type === "week" && typeof input.overallChange === "string" && input.overallChange.trim() ? {overallChange: input.overallChange} : {}),
     ...(input.focus === undefined ? {} : {focus: parseReviewFocus(input.focus)})};
   if (input.investments !== undefined) {
     const raw=object(input.investments), ids=new Set<string>();
@@ -499,6 +501,7 @@ export function financeReviewReport(current: FinanceReview, records: FinanceRevi
   return [
     `# ${reviewTypeNames[current.type]} · ${current.start} 至 ${current.end}`,
     previous ? `对比：${previous.start} 至 ${previous.end}` : "本期建立首次基准。", "",
+    ...(current.overallChange ? ["## 整体变化说明情况", current.overallChange, ""] : []),
     `收入 ${reviewMoney(totals.income)} · 实际消费 ${reviewMoney(totals.spending)} · 收支结余 ${reviewMoney(totals.surplus)}`,
     `期末净资产 ${reviewMoney(totals.netWorth)} · 较上期余额 ${signed(analysis.netWorthDelta)}`,
     `日均消费 ${reviewMoney(totals.spending / totals.days)}${prior ? `；上期 ${reviewMoney(prior.spending / prior.days)}` : ""}`, "",
