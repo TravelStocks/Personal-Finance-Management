@@ -9983,16 +9983,16 @@ function qe(e, t, n, r = 1) {
 }
 //#endregion
 //#region app/finance-review-focus.tsx
-function Je({ focus: e, live: t, onChange: n, onRefresh: r, onRefreshBills: i, onRefreshBalance: a, onOpen: o, onUseBalances: s, saveAction: c }) {
-	let l = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100, u = e ? {
+function Je({ focus: e, live: t, onChange: n, onRefresh: r, onRefreshProjects: i, onRefreshBills: a, onRefreshBalance: o, onOpen: s, onUseBalances: c, saveAction: l }) {
+	let u = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100, d = e ? {
 		projects: `${e.projects.length} 项 · 缺口 ${P(e.projects.reduce((e, t) => e + Math.max(0, Math.round((t.target - t.current) * 100)), 0) / 100)}`,
 		bills: `${e.bills.length} 项登记 · 包含已登记的订阅提醒`,
-		balance: `补录资产 ${P(l(e.assets))} · 负债 ${P(l(e.debts))}`
-	} : null, d = {
+		balance: `补录资产 ${P(u(e.assets))} · 负债 ${P(u(e.debts))}`
+	} : null, f = {
 		projects: "fundBuckets",
 		bills: "reminders",
 		balance: "balance"
-	}, f = (t, r, i, a) => {
+	}, p = (t, r, i, a) => {
 		e && n({
 			...e,
 			[r]: e[r].map((e) => e.id === i ? {
@@ -10004,14 +10004,14 @@ function Je({ focus: e, live: t, onChange: n, onRefresh: r, onRefreshBills: i, o
 				[t]: !1
 			}
 		});
-	}, p = (e) => e.trim() === "" ? NaN : Number(e), m = (e, t, n, r, i) => /* @__PURE__ */ (0, b.jsx)("input", {
+	}, m = (e) => e.trim() === "" ? NaN : Number(e), h = (e, t, n, r, i) => /* @__PURE__ */ (0, b.jsx)("input", {
 		"aria-label": `${n.name}复盘${r}`,
 		type: "number",
 		min: "0",
 		step: "0.01",
 		required: !0,
 		value: Number.isFinite(i) ? i : "",
-		onChange: (i) => f(e, t, n.id, { [r === "目标" ? "target" : r === "实际" ? "current" : "amount"]: p(i.target.value) })
+		onChange: (i) => p(e, t, n.id, { [r === "目标" ? "target" : r === "实际" ? "current" : "amount"]: m(i.target.value) })
 	});
 	return /* @__PURE__ */ (0, b.jsxs)("section", {
 		className: "review-focus-entry",
@@ -10031,7 +10031,7 @@ function Je({ focus: e, live: t, onChange: n, onRefresh: r, onRefreshBills: i, o
 			className: "review-focus-check",
 			"data-review-module": t,
 			children: [/* @__PURE__ */ (0, b.jsxs)("details", { children: [
-				/* @__PURE__ */ (0, b.jsxs)("summary", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: ge[t] }), /* @__PURE__ */ (0, b.jsx)("span", { children: u[t] })] }),
+				/* @__PURE__ */ (0, b.jsxs)("summary", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: ge[t] }), /* @__PURE__ */ (0, b.jsx)("span", { children: d[t] })] }),
 				/* @__PURE__ */ (0, b.jsx)("div", {
 					className: "table-wrap",
 					children: /* @__PURE__ */ (0, b.jsxs)("table", {
@@ -10044,13 +10044,13 @@ function Je({ focus: e, live: t, onChange: n, onRefresh: r, onRefreshBills: i, o
 								/* @__PURE__ */ (0, b.jsx)("th", { children: "截止日期" })
 							] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.projects.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 								/* @__PURE__ */ (0, b.jsx)("th", { children: e.name }),
-								/* @__PURE__ */ (0, b.jsx)("td", { children: m(t, "projects", e, "目标", e.target) }),
-								/* @__PURE__ */ (0, b.jsx)("td", { children: m(t, "projects", e, "实际", e.current) }),
+								/* @__PURE__ */ (0, b.jsx)("td", { children: h(t, "projects", e, "目标", e.target) }),
+								/* @__PURE__ */ (0, b.jsx)("td", { children: h(t, "projects", e, "实际", e.current) }),
 								/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)("input", {
 									type: "date",
 									"aria-label": `${e.name}复盘截止日期`,
 									value: e.dueDate,
-									onChange: (n) => f(t, "projects", e.id, { dueDate: n.target.value })
+									onChange: (n) => p(t, "projects", e.id, { dueDate: n.target.value })
 								}) })
 							] }, e.id)) })] }),
 							t === "bills" && /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)("thead", { children: /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
@@ -10060,12 +10060,12 @@ function Je({ focus: e, live: t, onChange: n, onRefresh: r, onRefreshBills: i, o
 								/* @__PURE__ */ (0, b.jsx)("th", { children: "类型" })
 							] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: e.bills.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 								/* @__PURE__ */ (0, b.jsx)("th", { children: e.name }),
-								/* @__PURE__ */ (0, b.jsx)("td", { children: m(t, "bills", e, "金额", e.amount) }),
+								/* @__PURE__ */ (0, b.jsx)("td", { children: h(t, "bills", e, "金额", e.amount) }),
 								/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)("input", {
 									type: "date",
 									"aria-label": `${e.name}复盘提醒日期`,
 									value: e.date,
-									onChange: (n) => f(t, "bills", e.id, { date: n.target.value })
+									onChange: (n) => p(t, "bills", e.id, { date: n.target.value })
 								}) }),
 								/* @__PURE__ */ (0, b.jsx)("td", { children: e.kind })
 							] }, e.id)) })] }),
@@ -10076,12 +10076,12 @@ function Je({ focus: e, live: t, onChange: n, onRefresh: r, onRefreshBills: i, o
 							] }) }), /* @__PURE__ */ (0, b.jsxs)("tbody", { children: [
 								e.assets.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 									/* @__PURE__ */ (0, b.jsx)("th", { children: e.name }),
-									/* @__PURE__ */ (0, b.jsx)("td", { children: m(t, "assets", e, "金额", e.amount) }),
+									/* @__PURE__ */ (0, b.jsx)("td", { children: h(t, "assets", e, "金额", e.amount) }),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: "补录资产" })
 								] }, `asset:${e.id}`)),
 								e.debts.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 									/* @__PURE__ */ (0, b.jsx)("th", { children: e.name }),
-									/* @__PURE__ */ (0, b.jsx)("td", { children: m(t, "debts", e, "金额", e.amount) }),
+									/* @__PURE__ */ (0, b.jsx)("td", { children: h(t, "debts", e, "金额", e.amount) }),
 									/* @__PURE__ */ (0, b.jsx)("td", { children: "负债余额" })
 								] }, `debt:${e.id}`)),
 								/* @__PURE__ */ (0, b.jsxs)("tr", { children: [
@@ -10099,19 +10099,23 @@ function Je({ focus: e, live: t, onChange: n, onRefresh: r, onRefreshBills: i, o
 						/* @__PURE__ */ (0, b.jsxs)("button", {
 							type: "button",
 							className: "secondary-button",
-							onClick: () => o(d[t]),
+							onClick: () => s(f[t]),
 							children: ["前往", ge[t]]
 						}),
-						t !== "projects" && /* @__PURE__ */ (0, b.jsx)("button", {
+						/* @__PURE__ */ (0, b.jsx)("button", {
 							type: "button",
 							className: "secondary-button",
-							onClick: t === "bills" ? i : a,
+							onClick: {
+								projects: i,
+								bills: a,
+								balance: o
+							}[t],
 							children: "刷新关键事项"
 						}),
 						t === "balance" && /* @__PURE__ */ (0, b.jsx)("button", {
 							type: "button",
 							className: "secondary-button",
-							onClick: s,
+							onClick: c,
 							children: "带入补录资产与负债合计"
 						})
 					]
@@ -10132,7 +10136,7 @@ function Je({ focus: e, live: t, onChange: n, onRefresh: r, onRefreshBills: i, o
 				}),
 				/* @__PURE__ */ (0, b.jsx)("div", {
 					className: "data-actions",
-					children: c?.(t)
+					children: l?.(t)
 				})
 			] }), /* @__PURE__ */ (0, b.jsxs)("label", {
 				className: "review-focus-confirm",
@@ -11527,21 +11531,21 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 			balance: null
 		})), e.balances.cash = null, zt("finance-review-template.json", JSON.stringify(e, null, 2), "application/json");
 	}
-	function an() {
+	function an(e) {
 		if (!C.focus) return;
-		let e = JSON.stringify(C.focus.bills) !== JSON.stringify(f.bills);
-		Kt(!gt || e || C.focus.checks.bills, "用当前账单与提醒替换本期账单清单？未保存的账单金额和日期会被替换，变化说明保留。", () => {
-			w((e) => e.focus ? {
-				...e,
+		let t = JSON.stringify(C.focus[e]) !== JSON.stringify(f[e]), n = e === "projects" ? "用当前大花费项目替换本期项目清单？未保存的目标、实际金额和截止日期会被替换，变化说明保留。" : "用当前账单与提醒替换本期账单清单？未保存的账单金额和日期会被替换，变化说明保留。";
+		Kt(!gt || t || C.focus.checks[e], n, () => {
+			w((t) => t.focus ? {
+				...t,
 				focus: {
-					...e.focus,
-					bills: f.bills.map((e) => ({ ...e })),
+					...t.focus,
+					[e]: structuredClone(f[e]),
 					checks: {
-						...e.focus.checks,
-						bills: !1
+						...t.focus.checks,
+						[e]: !1
 					}
 				}
-			} : e), Lt(["bills"]), We(`已刷新 ${f.bills.length} 项账单与订阅，变化说明已保留，待核对。`);
+			} : t), Lt([e]), We(`已刷新 ${f[e].length} 项${St[e]}，变化说明已保留，待核对。`);
 		});
 	}
 	function on() {
@@ -12289,7 +12293,8 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							});
 						},
 						onRefresh: on,
-						onRefreshBills: an,
+						onRefreshProjects: () => an("projects"),
+						onRefreshBills: () => an("bills"),
 						onRefreshBalance: sn,
 						onOpen: v,
 						onUseBalances: fn,

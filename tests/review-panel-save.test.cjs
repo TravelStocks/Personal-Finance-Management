@@ -47,7 +47,7 @@ function harness(fail=false) {
       return {patch:result.patch,moduleSignature:modules.reviewModuleSignature(state,module),sourceSignature:d.dashboardSourceSignature(state)};
     },
     investments:{holdings:state.holdings,fxUsd:7,fxHkd:1},goals:state.goals,dashboardAsOf:state.dashboardAsOf,
-    sourceSignature:d.dashboardSourceSignature(state),focusSource:{projects:[],bills:state.reminders,assets:state.balanceAssets,debts:state.liabilities,holdings:state.holdings[0].value},
+    sourceSignature:d.dashboardSourceSignature(state),focusSource:{projects:state.fundBuckets,bills:state.reminders,assets:state.balanceAssets,debts:state.liabilities,holdings:state.holdings[0].value},
     ledgerMonths:state.monthlyRecords,datedEntries:[],onSaveIncome:()=>{},onDeleteIncome:()=>{},onOpenModule:()=>{},
     onChange:(records,request)=>{
       if(fail)throw new Error('Storage quota exceeded');
@@ -77,6 +77,24 @@ function harness(fail=false) {
   updateProps();render();
   return {prepare,submit,button,input,find,state:()=>state,refresh:()=>{updateProps();render();},reopen:()=>{slots.length=0;state=JSON.parse(JSON.stringify(state));updateProps();render();}};
 }
+
+test('project refresh imports current targets, actuals and deadlines without writing or losing other draft fields',()=>{
+  const h=harness();h.prepare();
+  const panel=()=>h.find(n=>typeof n.props?.onRefreshProjects==='function').props;
+  const old={id:'p',name:'搬家',target:500,current:100,dueDate:'2026-11-01'};
+  const original={...panel().focus,projects:[old,{...old,id:'removed'}],notes:{projects:'先付定金',bills:'已核对'}};
+  panel().onChange(original);h.refresh();
+  const latest=[{...old,target:650,current:225.5,dueDate:'2026-12-09'},{...old,id:'new',current:0}];
+  h.state().fundBuckets=latest;h.refresh();
+  panel().onRefreshProjects();h.refresh();h.button('取消');assert.deepEqual(panel().focus,original);
+  panel().onRefreshProjects();h.refresh();h.button('确认');
+  assert.deepEqual(panel().focus,{...original,projects:latest,checks:{...original.checks,projects:false}});
+  assert.equal(h.state().reviewUpdates,undefined);
+  const button=panel().saveAction('projects');button.props.onClick({currentTarget:{closest:()=>null,dataset:{reviewSave:'projects'}}});h.refresh();
+  assert.equal(h.state().reviewUpdates.at(-1).module,'projects');
+  assert.equal(h.state().reviewUpdates.at(-1).moduleDraft.focus.notes.projects,'先付定金');
+  assert.deepEqual(h.state().fundBuckets,latest);
+});
 
 test('bill refresh pulls the current reminder list only, retains notes and allows subsequent scoped save',()=>{
   const h=harness(), panel=()=>h.find(n=>typeof n.props?.onRefreshBills==='function').props;

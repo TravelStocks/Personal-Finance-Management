@@ -271,15 +271,17 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
     template.balances.cash = null;
     download("finance-review-template.json", JSON.stringify(template, null, 2), "application/json");
   }
-  function refreshBills() {
+  function refreshFocusList(key:"projects"|"bills") {
     if (!draft.focus) return;
-    const differs = JSON.stringify(draft.focus.bills) !== JSON.stringify(focusSource.bills);
-    confirmOrRun(!followsSource || differs || draft.focus.checks.bills,
-      "用当前账单与提醒替换本期账单清单？未保存的账单金额和日期会被替换，变化说明保留。", () => {
+    const differs = JSON.stringify(draft.focus[key]) !== JSON.stringify(focusSource[key]);
+    const prompt = key === "projects"
+      ? "用当前大花费项目替换本期项目清单？未保存的目标、实际金额和截止日期会被替换，变化说明保留。"
+      : "用当前账单与提醒替换本期账单清单？未保存的账单金额和日期会被替换，变化说明保留。";
+    confirmOrRun(!followsSource || differs || draft.focus.checks[key], prompt, () => {
         setDraft(current => !current.focus ? current : {...current, focus:{...current.focus,
-          bills:focusSource.bills.map(row=>({...row})), checks:{...current.focus.checks,bills:false}}});
-        acknowledge(["bills"]);
-        setStatus(`已刷新 ${focusSource.bills.length} 项账单与订阅，变化说明已保留，待核对。`);
+          [key]:structuredClone(focusSource[key]), checks:{...current.focus.checks,[key]:false}}});
+        acknowledge([key]);
+        setStatus(`已刷新 ${focusSource[key].length} 项${reviewModuleLabels[key]}，变化说明已保留，待核对。`);
       });
   }
   function refreshFocus() {
@@ -468,7 +470,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
         setLiveFocus(false);
         const total=(rows:Array<{amount:number}>)=>rows.reduce((s,r)=>s+Math.round(r.amount*100),0)/100;
         setDraft({...draft,focus,balances:{...draft.balances,otherAssets:total(focus.assets),debt:total(focus.debts)}});
-      }} onRefresh={refreshFocus} onRefreshBills={refreshBills} onRefreshBalance={refreshBalance} onOpen={onOpenModule} onUseBalances={useFocusBalances} saveAction={key=>moduleButton(key)}/>
+      }} onRefresh={refreshFocus} onRefreshProjects={()=>refreshFocusList("projects")} onRefreshBills={()=>refreshFocusList("bills")} onRefreshBalance={refreshBalance} onOpen={onOpenModule} onUseBalances={useFocusBalances} saveAction={key=>moduleButton(key)}/>
       <section aria-labelledby="review-accounts-title" className="review-accounts" data-review-module="accounts">
         <div className="review-toolbar"><h3 id="review-accounts-title">本期账户余额</h3><button className="secondary-button" type="button" disabled={!accounts.length} onClick={loadAccounts}>带入账户管理余额</button></div>
         {draft.accounts ? <>
