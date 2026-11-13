@@ -293,6 +293,22 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       acknowledge(["projects","bills","balance"]);
     });
   }
+  function refreshBalance() {
+    if (!draft.focus) return;
+    const {assets,debts}=focusSource;
+    const differs=JSON.stringify([draft.focus.assets,draft.focus.debts])!==JSON.stringify([assets,debts]);
+    confirmOrRun(!followsSource || differs || draft.focus.checks.balance,
+      "用当前资产负债表替换本期补录资产和负债明细？未保存的金额会被替换，变化说明和其他模块保留。",()=>{
+        const total=(rows:Array<{amount:number}>)=>rows.reduce((s,row)=>s+Math.round(row.amount*100),0)/100;
+        setDraft(current=>!current.focus ? current : {...current,focus:{...current.focus,
+          assets:assets.map(row=>({...row})),debts:debts.map(row=>({...row})),
+          holdings:current.investments ? reviewInvestmentTotal(current.investments) : focusSource.holdings,
+          checks:{...current.focus.checks,balance:false}},
+          balances:{...current.balances,otherAssets:total(assets),debt:total(debts)}});
+        acknowledge(["balance"]);
+        setStatus(`已刷新 ${assets.length} 项补录资产、${debts.length} 项负债及合计，待核对。`);
+      });
+  }
   function refreshDashboard() {
     confirmOrRun(true,"将重新带入当前账户、投资、项目、账单、资产负债及目标余额，并重置核对。已填收支不变，是否继续？",()=>{
       const fresh=makeDraft(draft.type,draft.end,draft.monthStartDay ?? 1);
@@ -452,7 +468,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
         setLiveFocus(false);
         const total=(rows:Array<{amount:number}>)=>rows.reduce((s,r)=>s+Math.round(r.amount*100),0)/100;
         setDraft({...draft,focus,balances:{...draft.balances,otherAssets:total(focus.assets),debt:total(focus.debts)}});
-      }} onRefresh={refreshFocus} onRefreshBills={refreshBills} onOpen={onOpenModule} onUseBalances={useFocusBalances} saveAction={key=>moduleButton(key)}/>
+      }} onRefresh={refreshFocus} onRefreshBills={refreshBills} onRefreshBalance={refreshBalance} onOpen={onOpenModule} onUseBalances={useFocusBalances} saveAction={key=>moduleButton(key)}/>
       <section aria-labelledby="review-accounts-title" className="review-accounts" data-review-module="accounts">
         <div className="review-toolbar"><h3 id="review-accounts-title">本期账户余额</h3><button className="secondary-button" type="button" disabled={!accounts.length} onClick={loadAccounts}>带入账户管理余额</button></div>
         {draft.accounts ? <>

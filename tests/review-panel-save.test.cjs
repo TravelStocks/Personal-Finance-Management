@@ -47,7 +47,7 @@ function harness(fail=false) {
       return {patch:result.patch,moduleSignature:modules.reviewModuleSignature(state,module),sourceSignature:d.dashboardSourceSignature(state)};
     },
     investments:{holdings:state.holdings,fxUsd:7,fxHkd:1},goals:state.goals,dashboardAsOf:state.dashboardAsOf,
-    sourceSignature:d.dashboardSourceSignature(state),focusSource:{projects:[],bills:state.reminders,assets:[],debts:[],holdings:state.holdings[0].value},
+    sourceSignature:d.dashboardSourceSignature(state),focusSource:{projects:[],bills:state.reminders,assets:state.balanceAssets,debts:state.liabilities,holdings:state.holdings[0].value},
     ledgerMonths:state.monthlyRecords,datedEntries:[],onSaveIncome:()=>{},onDeleteIncome:()=>{},onOpenModule:()=>{},
     onChange:(records,request)=>{
       if(fail)throw new Error('Storage quota exceeded');
@@ -92,6 +92,22 @@ test('bill refresh pulls the current reminder list only, retains notes and allow
   assert.equal(h.state().reviewUpdates,undefined);
   const button=panel().saveAction('bills');button.props.onClick({currentTarget:{closest:()=>null,dataset:{reviewSave:'bills'}}});h.refresh();
   assert.equal(h.state().reviewUpdates.at(-1).module,'bills');assert.deepEqual(h.state().reminders,latest);
+});
+
+test('balance refresh replaces only balance rows, reconciles totals and allows a scoped save',()=>{
+  const h=harness();h.prepare();const panel=()=>h.find(n=>typeof n.props?.onRefreshBalance==='function').props;
+  const original={...panel().focus,assets:[{id:'old',name:'旧资产',amount:4}],notes:{balance:'核对说明'},checks:{balance:true,projects:true,bills:true}};
+  panel().onChange(original);h.refresh();
+  const assets=[{id:'a',name:'资产甲',amount:12.34},{id:'b',name:'资产乙',amount:0.11}];
+  const debts=[{id:'d',name:'负债',amount:0}];h.state().balanceAssets=assets;h.state().liabilities=debts;h.refresh();
+  panel().onRefreshBalance();h.refresh();h.button('取消');assert.deepEqual(panel().focus,original);
+  panel().onRefreshBalance();h.refresh();h.button('确认');
+  assert.deepEqual(panel().focus,{...original,assets,debts,checks:{balance:false,projects:true,bills:true}});
+  assert.equal(h.find(n=>n.props?.['aria-label']==='其他个人资产').props.value,12.45);
+  assert.equal(h.find(n=>n.props?.['aria-label']==='个人负债').props.value,0);
+  assert.equal(h.state().reviewUpdates,undefined);
+  const button=panel().saveAction('balance');button.props.onClick({currentTarget:{closest:()=>null,dataset:{reviewSave:'balance'}}});h.refresh();
+  assert.equal(h.state().reviewUpdates.at(-1).module,'balance');assert.deepEqual(h.state().balanceAssets,assets);
 });
 
 test('refreshing changed bills unblocks full save without accepting a concurrent account change',()=>{
