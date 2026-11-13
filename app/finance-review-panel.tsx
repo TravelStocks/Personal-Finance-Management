@@ -71,7 +71,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
   const [saveResult,setSaveResult] = useState<{title:string;message:string;hasField?:boolean} | null>(null);
   const [confirmation, setConfirmation] = useState<{message: string; action: () => void} | null>(null);
   const selected = records.find(record => record.id === selectedId) ?? records[0];
-  const analysis = selected ? analyzeFinanceReview(selected, records) : null;
+  const analysis = selected ? analyzeFinanceReview(selected, records,focusSource.projects) : null;
   const lastReportUpdate=moduleUpdates.findLastIndex(row=>row.reviewId===selected?.id && !row.module);
   const reportHasPendingModules=moduleUpdates.some((row,index)=>index>lastReportUpdate && row.reviewId===selected?.id && Boolean(row.module));
   const latestCutoff=[dashboardAsOf ?? "",latestWeeklyReview(records)?.end ?? "",...moduleUpdates.filter(row=>row.published).map(row=>row.asOf)].sort().at(-1)!;
@@ -89,7 +89,8 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
   const incomeMonth = incomeMonths.find(month=>month.id===incomeMonthId) ?? incomeMonths.at(-1);
   const cycle = reviewPeriod("month",draft.end,10);
   const cycleSource = datedReviewSource(ledgerMonths,datedEntries,cycle.start,cycle.end);
-  const cycleWeeks = weeklyLedgerTotals(cycleSource.rows,cycle.start,cycle.end);
+  const cycleWeeks = weeklyLedgerTotals(cycleSource.rows,cycle.start,cycle.end,focusSource.projects);
+  const cycleSpending=cycleWeeks.reduce((c,row)=>c+Math.round(row.spending*100),0)/100;
   if (incomeLinked && !ledgerLinked && incomeSeen!==incomeSignature) {
     setIncomeSeen(incomeSignature);
     setIncomeConfirmed(false);
@@ -443,9 +444,9 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
         <div className="data-actions">{moduleButton("income")}</div>
       </section>
       {draft.type!=="quarter"&&<section className="review-cycle" aria-label="十号账期累计"><h3>10号账期 · 每周收支</h3><p>{cycle.start} 至 {cycle.limit} · 截至 {cycle.end}</p>
-        <p>已登记收入 {reviewMoney(cycleSource.income)} · 支出 {reviewMoney(cycleSource.spending)} · 结余 {reviewMoney(cycleSource.income-cycleSource.spending)}</p>
+        <p>已登记收入 {reviewMoney(cycleSource.income)} · 支出 {reviewMoney(cycleSpending)} · 结余 {reviewMoney(cycleSource.income-cycleSpending)}</p>
         <div className="table-wrap"><table className="review-table"><thead><tr><th>周内日期</th><th>工资</th><th>其他收入</th><th>支出</th><th>结余</th><th>结余较前段</th></tr></thead><tbody>{cycleWeeks.map(row=><tr key={row.start}><th>{row.start.slice(5)} 至 {row.end.slice(5)}<small>{row.days} 天 · {row.count} 笔</small></th><td>{row.count ? reviewMoney(row.salary) : "未登记"}</td><td>{row.count ? reviewMoney(row.other) : "未登记"}</td><td>{row.count ? reviewMoney(row.spending) : "未登记"}</td><td>{row.count ? reviewMoney(row.surplus) : "未登记"}</td><td>{row.surplusDelta===null ? "无同天数基准" : change(row.surplusDelta)}</td></tr>)}</tbody></table></div>
-        <p className="review-caption">口径：日期账本，不含手填复盘发生额。未登记不代表没有发生；相关月份还有 {cycleSource.undated.length} 项未标日期金额。账期首尾按实际天数列示，不把跨账期周重复相加。{draft.start<cycle.start ? "本次复盘跨账期，本表仅列所示账期内的数据。" : ""}</p>
+        <p className="review-caption">口径：日期账本 + 未入账项目实付，不含手填周汇总。未登记不代表没有发生；相关月份还有 {cycleSource.undated.length} 项未标日期金额。{draft.start<cycle.start ? "本次复盘跨账期，本表仅列所示账期内的数据。" : ""}</p>
       </section>}
       <section className="review-ledger" aria-label="本期日期收支">
         <div className="review-toolbar"><h3>本期日期收支</h3><div className="data-actions"><button type="button" className="secondary-button" onClick={()=>onOpenModule("income")}>前往收入</button><button type="button" className="secondary-button" onClick={()=>onOpenModule("spending")}>前往支出</button></div></div>
@@ -464,6 +465,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
           <td><input type="text" aria-label={`${row.name}本期事项`} placeholder={row.id === "learning" ? "课程、书籍、工具名称及用途" : undefined} value={draft.notes[row.id] ?? ""} onChange={event => setDraft({...draft, notes:{...draft.notes,[row.id]:event.target.value}})}/></td></tr>)}</tbody>
       </table></div>
       <p className="review-caption">应急&学习金在预算中合并，在复盘中分开：应急填净转入，学习填实际支出与用途。微信充值、自有账户互转、基金预留不记消费；实际付款只记一次。</p>
+      {draft.type==="week"&&<p className="review-caption">有实际付款日期的大花费项目会自动计入对应周，不用再填一遍。已包含在支出账本里的，请在项目上勾选「已计入支出账本」。</p>}
       <div className="data-actions">{moduleButton("spending")}</div></section>
       <ReviewInvestmentsEditor value={draft.investments} onChange={updateInvestments} confirmed={investmentsConfirmed} onConfirm={setInvestmentsConfirmed} onOpen={()=>onOpenModule("investment")} saveAction={moduleButton("investments")}/>
       <ReviewFocusChecklist focus={draft.focus} live={followsSource} onChange={focus=>{
@@ -509,7 +511,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       <div className="review-toolbar">
         <label className="field"><span>报告期间</span><select aria-label="报告期间" value={selected.id} onChange={event => setSelectedId(event.target.value)}>{records.map(record => <option key={record.id} value={record.id}>{reviewTypeNames[record.type]} · {record.start} 至 {record.end}</option>)}</select></label>
         <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => reviseSelected(selected))}>修订本期</button>
-          <button className="secondary-button" type="button" onClick={() => download(`finance-${selected.type}-${selected.start}.md`,financeReviewReport(selected,records),"text/markdown;charset=utf-8")}>下载报告</button></div>
+          <button className="secondary-button" type="button" onClick={() => download(`finance-${selected.type}-${selected.start}.md`,financeReviewReport(selected,records,focusSource.projects),"text/markdown;charset=utf-8")}>下载报告</button></div>
       </div>
       <p className="review-caption">{analysis.previous ? `对比上期：${analysis.previous.start} 至 ${analysis.previous.end}` : "首次基准，暂无上期对比"}</p>
       {selected.type === "week" && selected.overallChange && <section aria-label="整体变化说明情况"><h3>整体变化说明情况</h3>
@@ -519,7 +521,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       {selected.ledger&&<><p className="review-caption">收支来源：保存时的日期明细快照 · {selected.ledger.length} 笔</p><LedgerRows rows={selected.ledger}/></>}
       <div className="review-metrics">
         <div><span>本期收入</span><strong>{reviewMoney(analysis.totals.income)}</strong>{reviewIncomeRows(selected)&&<small>工资 {reviewMoney(reviewIncomeRows(selected)!.filter(row=>row.categoryId==="salary").reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100)} · 其他 {reviewMoney(reviewIncomeRows(selected)!.filter(row=>row.categoryId==="otherIncome").reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100)}</small>}</div>
-        <div><span>本期实际消费</span><strong>{reviewMoney(analysis.totals.spending)}</strong></div>
+        <div><span>本期实际消费</span><strong>{reviewMoney(analysis.totals.spending)}</strong>{selected.type==="week"&&<small>含按付款日补计的项目实付 {reviewMoney(analysis.totals.projectPaid)}</small>}</div>
         <div><span>本期收支结余</span><strong>{reviewMoney(analysis.totals.surplus)}</strong></div>
         <div><span>期末净资产</span><strong>{reviewMoney(analysis.totals.netWorth)}</strong><small>较上期余额 {change(analysis.netWorthDelta)}</small></div>
       </div>

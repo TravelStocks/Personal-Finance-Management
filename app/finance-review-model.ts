@@ -1,3 +1,5 @@
+import {projectPayments, type PaymentSource} from "./project-payments";
+
 export const reviewCategories = [
   {id: "rent", name: "房租", flow: "expense"},
   {id: "parents", name: "家用", flow: "expense"},
@@ -313,10 +315,12 @@ export function parseFinanceReviews(value: unknown): FinanceReview[] {
   if (!rows) throw new Error("请选择周期复盘 JSON 文件");
   return rows.reduce<FinanceReview[]>((result, row) => upsertFinanceReview(result, parseFinanceReview(row)), []);
 }
-export function reviewTotals(record: FinanceReview) {
-  const spending = sum(reviewCategories.filter(row => row.flow === "expense").map(row => record.amounts[row.id]));
+export function reviewTotals(record: FinanceReview, projects?:PaymentSource[]) {
+  const ordinary = sum(reviewCategories.filter(row => row.flow === "expense").map(row => record.amounts[row.id]));
+  const projectPaid = record.type === "week" ? projectPayments(projects ?? record.focus?.projects ?? [],record.start,record.end).total : 0;
+  const spending = sum([ordinary,projectPaid]);
   const assets = sum([record.balances.cash, record.balances.investments, record.balances.otherAssets]);
-  return {income: record.income, spending, surplus: sum([record.income, -spending]), assets,
+  return {income: record.income, ordinary, projectPaid, spending, surplus: sum([record.income, -spending]), assets,
     netWorth: sum([assets, -record.balances.debt]), days: (dateValue(record.end).getTime() - dateValue(record.start).getTime()) / dayMs + 1};
 }
 export function latestWeeklyReview(records: FinanceReview[]) {
@@ -340,7 +344,7 @@ export function dailyFlexibleCashChange(accounts:DailyCashAccount[],previous?:Da
 export function reviewIncomeRows(record:Pick<FinanceReview,"ledger" | "incomeLedger">) {
   return (record.ledger ?? record.incomeLedger)?.filter(row=>row.flow==="income");
 }
-export function overviewWeeklyTrend(records:FinanceReview[]) {
+export function overviewWeeklyTrend(records:FinanceReview[], projects?:PaymentSource[]) {
   const weeks = new Map<string,FinanceReview>();
   for (const record of records.filter(row=>row.type==="week")) {
     const previous=weeks.get(record.start);
@@ -348,8 +352,8 @@ export function overviewWeeklyTrend(records:FinanceReview[]) {
   }
   const ordered=[...weeks.values()].sort((a,b)=>a.start.localeCompare(b.start));
   const rows=ordered.map((record,index)=>{
-    const totals=reviewTotals(record), previous=ordered[index-1];
-    const prior=previous ? reviewTotals(previous) : undefined;
+    const totals=reviewTotals(record,projects), previous=ordered[index-1];
+    const prior=previous ? reviewTotals(previous,projects) : undefined;
     const adjacent=previous && reviewDayDistance(record.start,previous.start)===7;
     const comparable=adjacent && prior?.days===totals.days;
     return {record,...totals,comparison:!previous ? "首次基准" : !adjacent ? "中间缺周" : !comparable ? "天数不同" : "较上周",
@@ -375,7 +379,7 @@ export function overviewWeeklyTrend(records:FinanceReview[]) {
   }
   return {rows,month:{...cycle,income,coveredDays,days:reviewDayDistance(cycle.end,cycle.start)!+1,boundaryMissing}};
 }
-export function weeklyLedgerTotals(rows:Array<Pick<ReviewLedgerRow,"date" | "flow" | "categoryId" | "amount">>, start:string, end:string) {
+export function weeklyLedgerTotals(rows:Array<Pick<ReviewLedgerRow,"date" | "flow" | "categoryId" | "amount">>, start:string, end:string, projects:PaymentSource[]=[]) {
   dateValue(start); dateValue(end);
   const result:Array<{start:string;end:string;days:number;count:number;salary:number;other:number;spending:number;surplus:number;surplusDelta:number|null}> = [];
   for (let cursor=start;cursor<=end;) {
@@ -384,11 +388,13 @@ export function weeklyLedgerTotals(rows:Array<Pick<ReviewLedgerRow,"date" | "flo
     const selected = rows.filter(row=>row.date>=cursor&&row.date<=last);
     const salary = sum(selected.filter(row=>row.flow==="income"&&row.categoryId==="salary").map(row=>row.amount));
     const other = sum(selected.filter(row=>row.flow==="income"&&row.categoryId==="otherIncome").map(row=>row.amount));
-    const spending = sum(selected.filter(row=>row.flow==="expense").map(row=>row.amount));
+    const payments=projectPayments(projects,cursor,last);
+    const count=selected.length+payments.rows.length;
+    const spending = sum([...selected.filter(row=>row.flow==="expense").map(row=>row.amount),payments.total]);
     const surplus = sum([salary,other,-spending]);
     const days = (dateValue(last).getTime()-dateValue(cursor).getTime())/dayMs+1;
     const previous = result.at(-1);
-    result.push({start:cursor,end:last,days,count:selected.length,salary,other,spending,surplus,surplusDelta:previous&&previous.count&&selected.length&&previous.days===days ? sum([surplus,-previous.surplus]) : null});
+    result.push({start:cursor,end:last,days,count,salary,other,spending,surplus,surplusDelta:previous&&previous.count&&count&&previous.days===days ? sum([surplus,-previous.surplus]) : null});
     cursor = iso(new Date(dateValue(last).getTime()+dayMs));
   }
   return result;
@@ -404,9 +410,9 @@ function focusItemChanges<T extends {id: string; name: string}>(current: T[], pr
   });
   return [...changes, ...previous.filter(row => !current.some(item => item.id === row.id)).map(row => `${row.name}：已移出本期清单，处理状态待确认`)];
 }
-export function reviewHighlights(current: FinanceReview, previous?: FinanceReview) {
-  const totals = reviewTotals(current);
-  const prior = previous ? reviewTotals(previous) : null;
+export function reviewHighlights(current: FinanceReview, previous?: FinanceReview, projects?:PaymentSource[]) {
+  const totals = reviewTotals(current,projects);
+  const prior = previous ? reviewTotals(previous,projects) : null;
   const focus = current.focus;
   const before = previous?.focus;
   const delta = (value: number, old?: number) => old === undefined ? "无上期基准" : `较上期 ${signed(sum([value, -old]))}`;
@@ -456,10 +462,10 @@ export function reviewHighlights(current: FinanceReview, previous?: FinanceRevie
   if ((focus?.checks.projects && oldProjects.length) || (focus?.checks.bills && oldBills.length)) actions.push("清理已过日期的项目与提醒，确认完成、支付或延期状态；不要直接当作欠款。");
   return {highlights, actions};
 }
-export function analyzeFinanceReview(current: FinanceReview, records: FinanceReview[]) {
+export function analyzeFinanceReview(current: FinanceReview, records: FinanceReview[], projects?:PaymentSource[]) {
   const previous = records.filter(row => row.type === current.type && (current.type!=="month" || (row.monthStartDay ?? 1)===(current.monthStartDay ?? 1)) && row.end < current.start).sort((a, b) => b.end.localeCompare(a.end))[0];
-  const totals = reviewTotals(current);
-  const prior = previous ? reviewTotals(previous) : null;
+  const totals = reviewTotals(current,projects);
+  const prior = previous ? reviewTotals(previous,projects) : null;
   const rows = reviewCategories.map(row => ({...row, amount: current.amounts[row.id], previous: previous?.amounts[row.id] ?? null,
     delta: previous ? sum([current.amounts[row.id], -previous.amounts[row.id]]) : null,
     note: current.notes[row.id] || (current.ledger ?? []).filter(entry=>entry.group===row.id&&entry.note.trim()).map(entry=>`${entry.date} ${entry.name} ${reviewMoney(entry.amount)}：${entry.note}`).join("；")}));
@@ -479,7 +485,7 @@ export function analyzeFinanceReview(current: FinanceReview, records: FinanceRev
   }
   if (current.type === "month") notices.push(current.monthStartDay === 10 ? "月度账期为每月10日至下月9日；与自然月报告分别比较，10号只归新账期。" : "本报告沿用自然月口径，不与10号账期混合比较。");
   if (current.end !== reviewPeriod(current.type, current.end, current.monthStartDay).limit) notices.push("本周期尚未结束，报告是截至所选日期的阶段数据。");
-  const focusAnalysis = reviewHighlights(current, previous);
+  const focusAnalysis = reviewHighlights(current, previous,projects);
   if (current.focus) notices.push("关键事项为保存时的登记快照，不与账户或净资产重复相加；项目预留及提醒金额不记为本期消费。未核对的快照不作为已确认变化。");
   const actions: string[] = [];
   if (totals.surplus < 0) actions.push(`本期收支缺口${reviewMoney(-totals.surplus)}，结合发薪日与集中付款核对周转资金。`);
@@ -495,8 +501,8 @@ export function analyzeFinanceReview(current: FinanceReview, records: FinanceRev
   if (current.budget?.mode === "trip") notices.push("出差预算已从补贴扣除海外开销；若实际收支按毛额录入，先拆分海外开销再核对预算，本表不据此自动判定日常超支。");
   return {previous, prior, totals, rows, highlights:focusAnalysis.highlights, accountRows, budgetRows, contiguous, netWorthDelta, unexplained, notices, actions: actions.slice(0, 3)};
 }
-export function financeReviewReport(current: FinanceReview, records: FinanceReview[]) {
-  const analysis = analyzeFinanceReview(current, records);
+export function financeReviewReport(current: FinanceReview, records: FinanceReview[], projects?:PaymentSource[]) {
+  const analysis = analyzeFinanceReview(current, records,projects);
   const {previous, prior, totals, rows} = analysis;
   const cell = (text: string) => text.replace(/\|/g, "／").replace(/[\r\n]+/g, " ");
   return [
@@ -504,6 +510,7 @@ export function financeReviewReport(current: FinanceReview, records: FinanceRevi
     previous ? `对比：${previous.start} 至 ${previous.end}` : "本期建立首次基准。", "",
     ...(current.overallChange ? ["## 整体变化说明情况", current.overallChange, ""] : []),
     `收入 ${reviewMoney(totals.income)} · 实际消费 ${reviewMoney(totals.spending)} · 收支结余 ${reviewMoney(totals.surplus)}`,
+    ...(current.type==="week"?[`复盘净消费 ${reviewMoney(totals.ordinary)} + 未计入账本的项目实付 ${reviewMoney(totals.projectPaid)}（按付款日）。`]:[]),
     `期末净资产 ${reviewMoney(totals.netWorth)} · 较上期余额 ${signed(analysis.netWorthDelta)}`,
     `日均消费 ${reviewMoney(totals.spending / totals.days)}${prior ? `；上期 ${reviewMoney(prior.spending / prior.days)}` : ""}`, "",
     ...(current.ledger ? ["## 日期收支快照", "仅按本期日期汇总已核对的实际收支；月度未标日期金额、股票浮盈、自有账户划拨不计入。",

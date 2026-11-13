@@ -1,14 +1,14 @@
 import {analyzeFinanceReview, dailyFlexibleCashChange, latestWeeklyReview, overviewWeeklyTrend, reviewMoney, type DailyCashAccount, type FinanceReview} from "./finance-review-model";
 
-export default function ReviewOverview({records, accounts, onOpen}: {records: FinanceReview[]; accounts?:DailyCashAccount[]; onOpen: () => void}) {
+export default function ReviewOverview({records, accounts, projects, onOpen}: {records: FinanceReview[]; accounts?:DailyCashAccount[]; projects?:import("./project-payments").PaymentSource[]; onOpen: () => void}) {
   const latest = latestWeeklyReview(records);
-  const analysis = latest ? analyzeFinanceReview(latest, records) : null;
-  const trend = overviewWeeklyTrend(records);
+  const analysis = latest ? analyzeFinanceReview(latest, records,projects) : null;
+  const trend = overviewWeeklyTrend(records,projects);
   const cash = dailyFlexibleCashChange(accounts ?? latest?.accounts ?? [],analysis?.previous?.accounts);
   const delta = (value: number | null) => value === null ? "首次基准" : `较上期 ${value > 0 ? "+" : ""}${reviewMoney(value)}`;
   const cards = analysis && latest ? [
     {title:"本周收入", value:analysis.totals.income, detail:delta(analysis.prior ? analysis.totals.income-analysis.prior.income : null), tone:"blue"},
-    {title:"本周实际消费", value:analysis.totals.spending, detail:delta(analysis.prior ? analysis.totals.spending-analysis.prior.spending : null), tone:"green"},
+    {title:"本周实际消费", value:analysis.totals.spending, detail:`复盘净消费 ${reviewMoney(analysis.totals.ordinary)} + 项目实付补计 ${reviewMoney(analysis.totals.projectPaid)}`, tone:"green"},
     {title:"本周收支结余", value:analysis.totals.surplus, detail:"收入减消费；投资、应急划拨不计消费", tone:analysis.totals.surplus < 0 ? "red" : "green"},
     {title:"日常灵活资金", value:cash.total, detail:cash.total===null ? "请在账户用途中标记日常使用或小额支付" : `当前账户余额 · ${cash.rows.map(row=>`${row.name} ${reviewMoney(row.balance)}`).join(" + ")}；${cash.delta===null ? "暂无同口径上期基准" : delta(cash.delta)}`, tone:"violet"},
   ] : [];

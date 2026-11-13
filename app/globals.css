@@ -1152,6 +1152,46 @@ select {
   max-width: 100%;
 }
 
+.cycle-journal { margin: 24px 0; color: var(--ink); }
+.cycle-journal > header, .cycle-week > summary, .cycle-paid > div { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; }
+.cycle-journal > header { justify-content:space-between; padding:12px 0; border-bottom:2px solid var(--ink); }
+.cycle-journal h3, .cycle-journal h4, .cycle-journal p { margin:0; }
+.cycle-journal header span, .cycle-lines > small { color:#536578; font-size:13px; }
+.cycle-week { border-bottom:1px solid var(--line); }
+.cycle-week > summary { padding:13px 10px; cursor:pointer; font-weight:650; background:#f5f8fc; list-style:none; }
+.cycle-week > summary::before { content:'▸'; color:var(--blue); }
+.cycle-week[open] > summary::before { content:'▾'; }
+.cycle-week > summary:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
+.cycle-week > summary small, .cycle-week > summary strong { font-size:12px; font-weight:600; color:#365476; }
+.cycle-week > summary strong { margin-left:auto; }
+.cycle-body { padding:12px 0 18px; }
+.cycle-paid { background:#e8f5ee; color:#174a34; padding:12px 16px; border-left:4px solid #257448; }
+.cycle-paid > div { justify-content:space-between; }
+.cycle-paid b { font-size:20px; font-variant-numeric:tabular-nums; }
+.cycle-paid p,.cycle-paid small { font-size:13px; }
+.cycle-journal ul { padding:0; margin:5px 0 0; list-style:none; }
+.cycle-paid li { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; align-items:baseline; gap:6px 14px; padding-top:6px; border-top:1px solid #c6dfd0; }
+.cycle-body h4 { padding:15px 0 7px; font-size:14px; }
+.cycle-record { display:grid; grid-template-columns:minmax(125px,15%) minmax(0,1fr); border-bottom:1px solid var(--line); background:white; }
+.cycle-label { background:var(--tint); color:var(--accent); padding:11px 12px; border-left:3px solid var(--accent); }
+.cycle-label small { display:block; font-size:12px; }
+.cycle-projects { --tint:#fff2e2; --accent:#815014; }
+.cycle-bills { --tint:#eaf1ff; --accent:#285294; }
+.cycle-balance { --tint:#f2edf9; --accent:#664b88; }
+.cycle-accounts { --tint:#e5f5f4; --accent:#17605d; }
+.cycle-investments { --tint:#f7edf1; --accent:#7d415d; }
+.cycle-lines { padding:8px 14px; overflow-wrap:anywhere; font-size:14px; }
+.cycle-lines li + li { margin-top:4px; }
+.cycle-lines p { white-space:pre-wrap; }
+@media(max-width:680px) {
+  .cycle-record { grid-template-columns:1fr; }
+  .cycle-label { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px; }
+  .cycle-lines:empty { display:none; }
+  .cycle-paid li { grid-template-columns:minmax(0,1fr) auto; }
+  .cycle-paid time { grid-column:1/-1; }
+  .cycle-paid small { grid-column:1/-1; }
+}
+
 .weekly-note-history ol { list-style: none; padding: 0; margin: 0; }
 .weekly-note-history li { display: grid; grid-template-columns: minmax(14rem, 1fr) 3fr; gap: 12px 20px; padding: 16px 0; border-bottom: 1px solid var(--line); }
 .weekly-note-history small { display: block; margin-top: 5px; color: var(--muted); }

@@ -1,4 +1,4 @@
-type PaymentSource = {actualDate?:string; current:number; includedInLedger?:boolean};
+export type PaymentSource = {actualDate?:string; current:number; includedInLedger?:boolean};
 
 // Older project balances are earmarks. Never infer a payment date from a deadline.
 export function projectPayments<T extends PaymentSource>(projects:T[], start:string, end:string) {

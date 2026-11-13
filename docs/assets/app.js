@@ -9658,18 +9658,20 @@ function Le(e) {
 	if (!n) throw Error("请选择周期复盘 JSON 文件");
 	return n.reduce((e, t) => Ie(e, Fe(t)), []);
 }
-function I(e) {
-	let t = N(M.filter((e) => e.flow === "expense").map((t) => e.amounts[t.id])), n = N([
+function I(e, t) {
+	let n = N(M.filter((e) => e.flow === "expense").map((t) => e.amounts[t.id])), r = e.type === "week" ? w(t ?? e.focus?.projects ?? [], e.start, e.end).total : 0, i = N([n, r]), a = N([
 		e.balances.cash,
 		e.balances.investments,
 		e.balances.otherAssets
 	]);
 	return {
 		income: e.income,
-		spending: t,
-		surplus: N([e.income, -t]),
-		assets: n,
-		netWorth: N([n, -e.balances.debt]),
+		ordinary: n,
+		projectPaid: r,
+		spending: i,
+		surplus: N([e.income, -i]),
+		assets: a,
+		netWorth: N([a, -e.balances.debt]),
 		days: (F(e.end).getTime() - F(e.start).getTime()) / xe + 1
 	};
 }
@@ -9697,71 +9699,71 @@ function Be(e, t) {
 function Ve(e) {
 	return (e.ledger ?? e.incomeLedger)?.filter((e) => e.flow === "income");
 }
-function He(e) {
-	let t = /* @__PURE__ */ new Map();
-	for (let n of e.filter((e) => e.type === "week")) {
-		let e = t.get(n.start);
-		(!e || n.savedAt > e.savedAt || n.savedAt === e.savedAt && n.end > e.end) && t.set(n.start, n);
+function He(e, t) {
+	let n = /* @__PURE__ */ new Map();
+	for (let t of e.filter((e) => e.type === "week")) {
+		let e = n.get(t.start);
+		(!e || t.savedAt > e.savedAt || t.savedAt === e.savedAt && t.end > e.end) && n.set(t.start, t);
 	}
-	let n = [...t.values()].sort((e, t) => e.start.localeCompare(t.start)), r = n.map((e, t) => {
-		let r = I(e), i = n[t - 1], a = i ? I(i) : void 0, o = i && ke(e.start, i.start) === 7, s = o && a?.days === r.days;
+	let r = [...n.values()].sort((e, t) => e.start.localeCompare(t.start)), i = r.map((e, n) => {
+		let i = I(e, t), a = r[n - 1], o = a ? I(a, t) : void 0, s = a && ke(e.start, a.start) === 7, c = s && o?.days === i.days;
 		return {
 			record: e,
-			...r,
-			comparison: i ? o ? s ? "较上周" : "天数不同" : "中间缺周" : "首次基准",
-			changes: s ? {
-				income: N([r.income, -a.income]),
-				spending: N([r.spending, -a.spending]),
-				surplus: N([r.surplus, -a.surplus])
+			...i,
+			comparison: a ? s ? c ? "较上周" : "天数不同" : "中间缺周" : "首次基准",
+			changes: c ? {
+				income: N([i.income, -o.income]),
+				spending: N([i.spending, -o.spending]),
+				surplus: N([i.surplus, -o.surplus])
 			} : null
 		};
-	}), i = n.at(-1);
-	if (!i) return {
-		rows: r,
+	}), a = r.at(-1);
+	if (!a) return {
+		rows: i,
 		month: null
 	};
-	let a = je("month", i.end, 10), o = 0, s = 0, c = !1;
-	for (let e of n.filter((e) => e.end >= a.start && e.start <= a.end)) {
-		let t = e.start > a.start ? e.start : a.start, n = e.end < a.end ? e.end : a.end;
-		if (e.start >= a.start && e.end <= a.end) o = N([o, e.income]), s += ke(n, t) + 1;
+	let o = je("month", a.end, 10), s = 0, c = 0, l = !1;
+	for (let e of r.filter((e) => e.end >= o.start && e.start <= o.end)) {
+		let t = e.start > o.start ? e.start : o.start, n = e.end < o.end ? e.end : o.end;
+		if (e.start >= o.start && e.end <= o.end) s = N([s, e.income]), c += ke(n, t) + 1;
 		else {
 			let r = Ve(e);
-			r ? (o = N([o, ...r.filter((e) => e.date >= t && e.date <= n).map((e) => e.amount)]), s += ke(n, t) + 1) : c = !0;
+			r ? (s = N([s, ...r.filter((e) => e.date >= t && e.date <= n).map((e) => e.amount)]), c += ke(n, t) + 1) : l = !0;
 		}
 	}
 	return {
-		rows: r,
+		rows: i,
 		month: {
-			...a,
-			income: o,
-			coveredDays: s,
-			days: ke(a.end, a.start) + 1,
-			boundaryMissing: c
+			...o,
+			income: s,
+			coveredDays: c,
+			days: ke(o.end, o.start) + 1,
+			boundaryMissing: l
 		}
 	};
 }
-function Ue(e, t, n) {
+function Ue(e, t, n, r = []) {
 	F(t), F(n);
-	let r = [];
-	for (let i = t; i <= n;) {
-		let t = je("week", i).limit, a = t < n ? t : n, o = e.filter((e) => e.date >= i && e.date <= a), s = N(o.filter((e) => e.flow === "income" && e.categoryId === "salary").map((e) => e.amount)), c = N(o.filter((e) => e.flow === "income" && e.categoryId === "otherIncome").map((e) => e.amount)), l = N(o.filter((e) => e.flow === "expense").map((e) => e.amount)), u = N([
-			s,
+	let i = [];
+	for (let a = t; a <= n;) {
+		let t = je("week", a).limit, o = t < n ? t : n, s = e.filter((e) => e.date >= a && e.date <= o), c = N(s.filter((e) => e.flow === "income" && e.categoryId === "salary").map((e) => e.amount)), l = N(s.filter((e) => e.flow === "income" && e.categoryId === "otherIncome").map((e) => e.amount)), u = w(r, a, o), d = s.length + u.rows.length, f = N([...s.filter((e) => e.flow === "expense").map((e) => e.amount), u.total]), p = N([
 			c,
-			-l
-		]), d = (F(a).getTime() - F(i).getTime()) / xe + 1, f = r.at(-1);
-		r.push({
-			start: i,
-			end: a,
-			days: d,
-			count: o.length,
-			salary: s,
-			other: c,
-			spending: l,
-			surplus: u,
-			surplusDelta: f && f.count && o.length && f.days === d ? N([u, -f.surplus]) : null
-		}), i = De(new Date(F(a).getTime() + xe));
+			l,
+			-f
+		]), m = (F(o).getTime() - F(a).getTime()) / xe + 1, h = i.at(-1);
+		i.push({
+			start: a,
+			end: o,
+			days: m,
+			count: d,
+			salary: c,
+			other: l,
+			spending: f,
+			surplus: p,
+			surplusDelta: h && h.count && d && h.days === m ? N([p, -h.surplus]) : null
+		}), a = De(new Date(F(o).getTime() + xe));
 	}
-	return r;
+	return i;
 }
 function We(e, t, n) {
 	let r = (e) => typeof e == "number" ? P(e) : String(e || "未填写");
@@ -9772,183 +9774,184 @@ function We(e, t, n) {
 		return e.name !== i.name && a.unshift(`名称 ${i.name} → ${e.name}`), a.length ? [`${e.name}：${a.join("，")}`] : [];
 	}), ...t.filter((t) => !e.some((e) => e.id === t.id)).map((e) => `${e.name}：已移出本期清单，处理状态待确认`)];
 }
-function Ge(e, t) {
-	let n = I(e), r = t ? I(t) : null, i = e.focus, a = t?.focus, o = (e, t) => t === void 0 ? "无上期基准" : `较上期 ${Ee(N([e, -t]))}`, s = (t) => t ? (F(t).getTime() - F(e.end).getTime()) / xe : null, c = (e) => N(e.map((e) => e.actualDate ? 0 : Math.max(0, N([e.target, -e.current])))), l = {
-		projects: i?.checks.projects && a?.checks.projects ? We(i.projects, a.projects, [
+function Ge(e, t, n) {
+	let r = I(e, n), i = t ? I(t, n) : null, a = e.focus, o = t?.focus, s = (e, t) => t === void 0 ? "无上期基准" : `较上期 ${Ee(N([e, -t]))}`, c = (t) => t ? (F(t).getTime() - F(e.end).getTime()) / xe : null, l = (e) => N(e.map((e) => e.actualDate ? 0 : Math.max(0, N([e.target, -e.current])))), u = {
+		projects: a?.checks.projects && o?.checks.projects ? We(a.projects, o.projects, [
 			["target", "目标"],
 			["current", "实际"],
 			["dueDate", "预算日期"],
 			["actualDate", "实际日期"]
 		]) : [],
-		bills: i?.checks.bills && a?.checks.bills ? We(i.bills, a.bills, [
+		bills: a?.checks.bills && o?.checks.bills ? We(a.bills, o.bills, [
 			["amount", "登记金额"],
 			["date", "提醒日期"],
 			["kind", "类型"]
 		]) : [],
-		balance: i?.checks.balance && a?.checks.balance ? [
-			...We(i.assets, a.assets, [["amount", "补录资产"]]),
-			...We(i.debts, a.debts, [["amount", "负债余额"]]),
-			...i.holdings === a.holdings ? [] : [`持仓参考市值：${o(i.holdings, a.holdings)}（不直接视为投资收益）`]
+		balance: a?.checks.balance && o?.checks.balance ? [
+			...We(a.assets, o.assets, [["amount", "补录资产"]]),
+			...We(a.debts, o.debts, [["amount", "负债余额"]]),
+			...a.holdings === o.holdings ? [] : [`持仓参考市值：${s(a.holdings, o.holdings)}（不直接视为投资收益）`]
 		] : []
-	}, u = (i?.projects ?? []).filter((e) => !e.actualDate && e.target > e.current && s(e.dueDate) !== null && s(e.dueDate) >= 0 && s(e.dueDate) <= 30).sort((e, t) => e.dueDate.localeCompare(t.dueDate)), d = (i?.projects ?? []).filter((e) => !e.actualDate && s(e.dueDate) !== null && s(e.dueDate) < 0), f = (i?.bills ?? []).filter((e) => s(e.date) !== null && s(e.date) >= 0 && s(e.date) <= 7).sort((e, t) => e.date.localeCompare(t.date)), p = (i?.bills ?? []).filter((e) => s(e.date) !== null && s(e.date) < 0), m = (e) => i ? i.checks[e] ? a?.checks[e] ? l[e].length ? `${l[e].length} 项变化` : "登记未变" : "首次基准" : "待核对" : "未提供", h = (e) => i ? i.checks[e] ? a?.checks[e] ? "" : "暂无已核对的上期明细，仅建立本期基准。" : "带入的登记数据尚未核对，不能据此确认本期变化。" : "本期没有这项快照，不按 0 或没有变化处理。", g = M.filter((e) => e.flow === "expense").map((n) => ({
+	}, d = (a?.projects ?? []).filter((e) => !e.actualDate && e.target > e.current && c(e.dueDate) !== null && c(e.dueDate) >= 0 && c(e.dueDate) <= 30).sort((e, t) => e.dueDate.localeCompare(t.dueDate)), f = (a?.projects ?? []).filter((e) => !e.actualDate && c(e.dueDate) !== null && c(e.dueDate) < 0), p = (a?.bills ?? []).filter((e) => c(e.date) !== null && c(e.date) >= 0 && c(e.date) <= 7).sort((e, t) => e.date.localeCompare(t.date)), m = (a?.bills ?? []).filter((e) => c(e.date) !== null && c(e.date) < 0), h = (e) => a ? a.checks[e] ? o?.checks[e] ? u[e].length ? `${u[e].length} 项变化` : "登记未变" : "首次基准" : "待核对" : "未提供", g = (e) => a ? a.checks[e] ? o?.checks[e] ? "" : "暂无已核对的上期明细，仅建立本期基准。" : "带入的登记数据尚未核对，不能据此确认本期变化。" : "本期没有这项快照，不按 0 或没有变化处理。", _ = M.filter((e) => e.flow === "expense").map((n) => ({
 		name: n.name,
 		delta: t ? N([e.amounts[n.id], -t.amounts[n.id]]) : 0
-	})).filter((e) => e.delta !== 0).sort((e, t) => Math.abs(t.delta) - Math.abs(e.delta)), _ = i ? N(i.debts.map((e) => e.amount)) : null, v = (e) => e.filter(Boolean), y = [
+	})).filter((e) => e.delta !== 0).sort((e, t) => Math.abs(t.delta) - Math.abs(e.delta)), v = a ? N(a.debts.map((e) => e.amount)) : null, y = (e) => e.filter(Boolean), b = [
 		{
 			id: "flows",
 			title: "收入与支出",
-			state: r ? r.days === n.days ? "本期对比" : `本期 ${n.days} 天 / 上期 ${r.days} 天` : "首次基准",
-			summary: `收入 ${P(n.income)}（${o(n.income, r?.income)}）；消费 ${P(n.spending)}（${o(n.spending, r?.spending)}）；结余 ${P(n.surplus)}。`,
-			details: v([
+			state: i ? i.days === r.days ? "本期对比" : `本期 ${r.days} 天 / 上期 ${i.days} 天` : "首次基准",
+			summary: `收入 ${P(r.income)}（${s(r.income, i?.income)}）；消费 ${P(r.spending)}（${s(r.spending, i?.spending)}）；结余 ${P(r.surplus)}。`,
+			details: y([
 				...(Ve(e) ?? []).map((e) => `${e.date} ${e.categoryId === "salary" ? "工资到账" : "其他收入"} ${P(e.amount)}${e.note ? `：${e.note}` : ""}`),
-				...g.slice(0, 2).map((e) => `${e.name} ${Ee(e.delta)}`),
-				r && r.days !== n.days ? `本期 ${n.days} 天 / 上期 ${r.days} 天；日均消费 ${P(n.spending / n.days)} / ${P(r.spending / r.days)}，总额不直接代表消费强度。` : ""
+				..._.slice(0, 2).map((e) => `${e.name} ${Ee(e.delta)}`),
+				i && i.days !== r.days ? `本期 ${r.days} 天 / 上期 ${i.days} 天；日均消费 ${P(r.spending / r.days)} / ${P(i.spending / i.days)}，总额不直接代表消费强度。` : ""
 			])
 		},
 		{
 			id: "projects",
 			title: "大花费项目",
-			state: m("projects"),
-			summary: i?.checks.projects ? `${i.projects.length} 项，资金缺口 ${P(c(i.projects))}（${o(c(i.projects), a?.checks.projects ? c(a.projects) : void 0)}）；未来 30 天 ${u.length} 项待筹资。` : h("projects"),
-			details: v([
-				h("projects"),
-				...l.projects,
-				...u.slice(0, 2).map((e) => `${e.name} · ${e.dueDate} · 缺口 ${P(Math.max(0, N([e.target, -e.current])))}`),
-				d.length ? `${d.length} 项日期已过：${d.slice(0, 2).map((e) => e.name).join("、")}；需核实是否完成、取消或延期，不直接认定欠款。` : "",
-				i?.projects.some((e) => !e.dueDate) ? "有项目尚未填写截止日期，暂不能判断其资金准备期限。" : "",
-				i?.notes.projects ?? ""
+			state: h("projects"),
+			summary: a?.checks.projects ? `${a.projects.length} 项，资金缺口 ${P(l(a.projects))}（${s(l(a.projects), o?.checks.projects ? l(o.projects) : void 0)}）；未来 30 天 ${d.length} 项待筹资。` : g("projects"),
+			details: y([
+				g("projects"),
+				...u.projects,
+				...d.slice(0, 2).map((e) => `${e.name} · ${e.dueDate} · 缺口 ${P(Math.max(0, N([e.target, -e.current])))}`),
+				f.length ? `${f.length} 项日期已过：${f.slice(0, 2).map((e) => e.name).join("、")}；需核实是否完成、取消或延期，不直接认定欠款。` : "",
+				a?.projects.some((e) => !e.dueDate) ? "有项目尚未填写截止日期，暂不能判断其资金准备期限。" : "",
+				a?.notes.projects ?? ""
 			])
 		},
 		{
 			id: "bills",
 			title: "账单与订阅",
-			state: m("bills"),
-			summary: i?.checks.bills ? `${i.bills.length} 项登记，未来 7 天 ${f.length} 项到期提醒，登记金额 ${P(N(f.map((e) => e.amount)))}。` : h("bills"),
-			details: v([
-				h("bills"),
-				...l.bills,
-				...f.slice(0, 2).map((e) => `${e.name} · ${e.date} · ${P(e.amount)} · ${e.kind}`),
-				p.length ? `${p.length} 项提醒日期已过，支付、续费或取消状态待核实。` : "",
-				i?.bills.some((e) => !e.date) ? "有账单尚未填写提醒日期，暂未计入近期到期提醒。" : "",
+			state: h("bills"),
+			summary: a?.checks.bills ? `${a.bills.length} 项登记，未来 7 天 ${p.length} 项到期提醒，登记金额 ${P(N(p.map((e) => e.amount)))}。` : g("bills"),
+			details: y([
+				g("bills"),
+				...u.bills,
+				...p.slice(0, 2).map((e) => `${e.name} · ${e.date} · ${P(e.amount)} · ${e.kind}`),
+				m.length ? `${m.length} 项提醒日期已过，支付、续费或取消状态待核实。` : "",
+				a?.bills.some((e) => !e.date) ? "有账单尚未填写提醒日期，暂未计入近期到期提醒。" : "",
 				"提醒金额不是已支付消费；未登记订阅不在本次清单内。",
-				i?.notes.bills ?? ""
+				a?.notes.bills ?? ""
 			])
 		},
 		{
 			id: "balance",
 			title: "资产与负债",
-			state: r && (r.assets !== n.assets || t?.balances.debt !== e.balances.debt) ? "余额变化" : i?.checks.balance ? m("balance") : "明细待核对",
-			summary: `个人资产 ${P(n.assets)}（${o(n.assets, r?.assets)}）；负债 ${P(e.balances.debt)}（${o(e.balances.debt, t?.balances.debt)}）；净资产 ${o(n.netWorth, r?.netWorth)}。`,
-			details: v([
-				h("balance"),
-				...l.balance,
-				i?.checks.balance && _ !== e.balances.debt ? `登记负债 ${P(_)} 与填写的个人负债 ${P(e.balances.debt)} 不一致，需核对遗漏或口径。` : "",
-				i?.notes.balance ?? ""
+			state: i && (i.assets !== r.assets || t?.balances.debt !== e.balances.debt) ? "余额变化" : a?.checks.balance ? h("balance") : "明细待核对",
+			summary: `个人资产 ${P(r.assets)}（${s(r.assets, i?.assets)}）；负债 ${P(e.balances.debt)}（${s(e.balances.debt, t?.balances.debt)}）；净资产 ${s(r.netWorth, i?.netWorth)}。`,
+			details: y([
+				g("balance"),
+				...u.balance,
+				a?.checks.balance && v !== e.balances.debt ? `登记负债 ${P(v)} 与填写的个人负债 ${P(e.balances.debt)} 不一致，需核对遗漏或口径。` : "",
+				a?.notes.balance ?? ""
 			])
 		}
-	], b = [];
-	return i?.checks.bills && f[0] && b.push(`核对 ${f[0].date} 的“${f[0].name}”提醒（${P(f[0].amount)}），确认是否需要付款、续费或处理到期事项。`), i?.checks.projects && u[0] && b.push(`“${u[0].name}”截至 ${u[0].dueDate} 尚有 ${P(Math.max(0, N([u[0].target, -u[0].current])))} 资金缺口，确定补足或调整计划。`), i?.checks.balance && _ !== e.balances.debt && b.push("先核对资产负债表与本期负债合计的差异，避免遗漏借款或重复记录。"), (i?.checks.projects && d.length || i?.checks.bills && p.length) && b.push("清理已过日期的项目与提醒，确认完成、支付或延期状态；不要直接当作欠款。"), {
-		highlights: y,
-		actions: b
+	], x = [];
+	return a?.checks.bills && p[0] && x.push(`核对 ${p[0].date} 的“${p[0].name}”提醒（${P(p[0].amount)}），确认是否需要付款、续费或处理到期事项。`), a?.checks.projects && d[0] && x.push(`“${d[0].name}”截至 ${d[0].dueDate} 尚有 ${P(Math.max(0, N([d[0].target, -d[0].current])))} 资金缺口，确定补足或调整计划。`), a?.checks.balance && v !== e.balances.debt && x.push("先核对资产负债表与本期负债合计的差异，避免遗漏借款或重复记录。"), (a?.checks.projects && f.length || a?.checks.bills && m.length) && x.push("清理已过日期的项目与提醒，确认完成、支付或延期状态；不要直接当作欠款。"), {
+		highlights: b,
+		actions: x
 	};
 }
-function Ke(e, t) {
-	let n = t.filter((t) => t.type === e.type && (e.type !== "month" || (t.monthStartDay ?? 1) === (e.monthStartDay ?? 1)) && t.end < e.start).sort((e, t) => t.end.localeCompare(e.end))[0], r = I(e), i = n ? I(n) : null, a = M.map((t) => ({
+function Ke(e, t, n) {
+	let r = t.filter((t) => t.type === e.type && (e.type !== "month" || (t.monthStartDay ?? 1) === (e.monthStartDay ?? 1)) && t.end < e.start).sort((e, t) => t.end.localeCompare(e.end))[0], i = I(e, n), a = r ? I(r, n) : null, o = M.map((t) => ({
 		...t,
 		amount: e.amounts[t.id],
-		previous: n?.amounts[t.id] ?? null,
-		delta: n ? N([e.amounts[t.id], -n.amounts[t.id]]) : null,
+		previous: r?.amounts[t.id] ?? null,
+		delta: r ? N([e.amounts[t.id], -r.amounts[t.id]]) : null,
 		note: e.notes[t.id] || (e.ledger ?? []).filter((e) => e.group === t.id && e.note.trim()).map((e) => `${e.date} ${e.name} ${P(e.amount)}：${e.note}`).join("；")
-	})), o = n ? F(e.start).getTime() - F(n.end).getTime() === xe : !1, s = i ? N([r.netWorth, -i.netWorth]) : null, c = o && s !== null ? N([s, -r.surplus]) : null, l = ["投资基金填净投入，应急基金填净转入；二者不计消费。其他七项填实际净支出，不填充值或预算预留。"];
-	e.ledger && l.push("收支来自保存时核对的日期明细快照，不含未标日期的月度余额；后续账本修改不自动改写本报告。");
-	let u = Te(e, n);
-	e.accounts && l.push("账户余额按复盘时的快照比较；余额变化本身不等于消费，具体原因以本期变动说明和账单为准。账户计入范围变化须另行核对。"), l.push("预算中的应急&学习金合并展示；复盘仍区分应急净转入与学习实际消费，学习用途据备注判断。"), n ? (o || l.push("与上期之间有未覆盖日期；余额差值不等于本期变化，暂不做收支对账。"), r.days !== i.days && l.push(`本期${r.days}天，上期${i.days}天；比较总额时同时看日均支出。`)) : l.push("本期是首次基准，暂无上期变化；不会把缺失的上期当成 0。"), e.type === "month" && l.push(e.monthStartDay === 10 ? "月度账期为每月10日至下月9日；与自然月报告分别比较，10号只归新账期。" : "本报告沿用自然月口径，不与10号账期混合比较。"), e.end !== je(e.type, e.end, e.monthStartDay).limit && l.push("本周期尚未结束，报告是截至所选日期的阶段数据。");
-	let d = Ge(e, n);
-	e.focus && l.push("关键事项为保存时的登记快照，不与账户或净资产重复相加；项目预留及提醒金额不记为本期消费。未核对的快照不作为已确认变化。");
-	let f = [];
-	r.surplus < 0 && f.push(`本期收支缺口${P(-r.surplus)}，结合发薪日与集中付款核对周转资金。`), c !== null && Math.abs(c) >= .01 && f.push(`净资产与收支之间有${Ee(c)}待解释变化，核对投资涨跌、汇率、账户遗漏及口径，不能直接当作投资收益。`), f.push(...d.actions);
-	let p = a.filter((e) => e.flow === "expense" && (e.delta ?? 0) > 0).sort((e, t) => t.delta - e.delta)[0];
-	p && f.push(`优先复核${p.name}增加的${P(p.delta)}${p.note ? `，已记事项：${p.note}` : "，补充发生事项后再判断是否调整预算"}。`), f.length === 0 && f.push(n ? "按现有预算继续执行；下期先核对余额，再更新本期实际发生额。" : "核实本期余额和九类金额，作为下一次复盘基准。");
-	let m = e.budget ? a.map((t) => ({
+	})), s = r ? F(e.start).getTime() - F(r.end).getTime() === xe : !1, c = a ? N([i.netWorth, -a.netWorth]) : null, l = s && c !== null ? N([c, -i.surplus]) : null, u = ["投资基金填净投入，应急基金填净转入；二者不计消费。其他七项填实际净支出，不填充值或预算预留。"];
+	e.ledger && u.push("收支来自保存时核对的日期明细快照，不含未标日期的月度余额；后续账本修改不自动改写本报告。");
+	let d = Te(e, r);
+	e.accounts && u.push("账户余额按复盘时的快照比较；余额变化本身不等于消费，具体原因以本期变动说明和账单为准。账户计入范围变化须另行核对。"), u.push("预算中的应急&学习金合并展示；复盘仍区分应急净转入与学习实际消费，学习用途据备注判断。"), r ? (s || u.push("与上期之间有未覆盖日期；余额差值不等于本期变化，暂不做收支对账。"), i.days !== a.days && u.push(`本期${i.days}天，上期${a.days}天；比较总额时同时看日均支出。`)) : u.push("本期是首次基准，暂无上期变化；不会把缺失的上期当成 0。"), e.type === "month" && u.push(e.monthStartDay === 10 ? "月度账期为每月10日至下月9日；与自然月报告分别比较，10号只归新账期。" : "本报告沿用自然月口径，不与10号账期混合比较。"), e.end !== je(e.type, e.end, e.monthStartDay).limit && u.push("本周期尚未结束，报告是截至所选日期的阶段数据。");
+	let f = Ge(e, r, n);
+	e.focus && u.push("关键事项为保存时的登记快照，不与账户或净资产重复相加；项目预留及提醒金额不记为本期消费。未核对的快照不作为已确认变化。");
+	let p = [];
+	i.surplus < 0 && p.push(`本期收支缺口${P(-i.surplus)}，结合发薪日与集中付款核对周转资金。`), l !== null && Math.abs(l) >= .01 && p.push(`净资产与收支之间有${Ee(l)}待解释变化，核对投资涨跌、汇率、账户遗漏及口径，不能直接当作投资收益。`), p.push(...f.actions);
+	let m = o.filter((e) => e.flow === "expense" && (e.delta ?? 0) > 0).sort((e, t) => t.delta - e.delta)[0];
+	m && p.push(`优先复核${m.name}增加的${P(m.delta)}${m.note ? `，已记事项：${m.note}` : "，补充发生事项后再判断是否调整预算"}。`), p.length === 0 && p.push(r ? "按现有预算继续执行；下期先核对余额，再更新本期实际发生额。" : "核实本期余额和九类金额，作为下一次复盘基准。");
+	let h = e.budget ? o.map((t) => ({
 		...t,
 		budget: e.budget.amounts[t.id],
 		remaining: N([e.budget.amounts[t.id], -t.amount])
-	})) : [], h = m.filter((t) => e.budget?.mode === "normal" && ["small", "daily"].includes(t.id) && t.remaining < 0);
-	return h.length && f.unshift(`本月${h.map((e) => `${e.name}超过预算${P(-e.remaining)}`).join("、")}，核对实际明细，再调整下月额度或消费。`), e.budget && l.push("预算为保存时的完整月度周期额度，不按天摊分；阶段月报的剩余额度不代表最终结余。消费基金跨月使用时结合历史余额判断，不把预留重复计消费。"), e.budget?.mode === "trip" && l.push("出差预算已从补贴扣除海外开销；若实际收支按毛额录入，先拆分海外开销再核对预算，本表不据此自动判定日常超支。"), {
-		previous: n,
-		prior: i,
-		totals: r,
-		rows: a,
-		highlights: d.highlights,
-		accountRows: u,
-		budgetRows: m,
-		contiguous: o,
-		netWorthDelta: s,
-		unexplained: c,
-		notices: l,
-		actions: f.slice(0, 3)
+	})) : [], g = h.filter((t) => e.budget?.mode === "normal" && ["small", "daily"].includes(t.id) && t.remaining < 0);
+	return g.length && p.unshift(`本月${g.map((e) => `${e.name}超过预算${P(-e.remaining)}`).join("、")}，核对实际明细，再调整下月额度或消费。`), e.budget && u.push("预算为保存时的完整月度周期额度，不按天摊分；阶段月报的剩余额度不代表最终结余。消费基金跨月使用时结合历史余额判断，不把预留重复计消费。"), e.budget?.mode === "trip" && u.push("出差预算已从补贴扣除海外开销；若实际收支按毛额录入，先拆分海外开销再核对预算，本表不据此自动判定日常超支。"), {
+		previous: r,
+		prior: a,
+		totals: i,
+		rows: o,
+		highlights: f.highlights,
+		accountRows: d,
+		budgetRows: h,
+		contiguous: s,
+		netWorthDelta: c,
+		unexplained: l,
+		notices: u,
+		actions: p.slice(0, 3)
 	};
 }
-function qe(e, t) {
-	let n = Ke(e, t), { previous: r, prior: i, totals: a, rows: o } = n, s = (e) => e.replace(/\|/g, "／").replace(/[\r\n]+/g, " ");
+function qe(e, t, n) {
+	let r = Ke(e, t, n), { previous: i, prior: a, totals: o, rows: s } = r, c = (e) => e.replace(/\|/g, "／").replace(/[\r\n]+/g, " ");
 	return [
 		`# ${fe[e.type]} · ${e.start} 至 ${e.end}`,
-		r ? `对比：${r.start} 至 ${r.end}` : "本期建立首次基准。",
+		i ? `对比：${i.start} 至 ${i.end}` : "本期建立首次基准。",
 		"",
 		...e.overallChange ? [
 			"## 整体变化说明情况",
 			e.overallChange,
 			""
 		] : [],
-		`收入 ${P(a.income)} · 实际消费 ${P(a.spending)} · 收支结余 ${P(a.surplus)}`,
-		`期末净资产 ${P(a.netWorth)} · 较上期余额 ${Ee(n.netWorthDelta)}`,
-		`日均消费 ${P(a.spending / a.days)}${i ? `；上期 ${P(i.spending / i.days)}` : ""}`,
+		`收入 ${P(o.income)} · 实际消费 ${P(o.spending)} · 收支结余 ${P(o.surplus)}`,
+		...e.type === "week" ? [`复盘净消费 ${P(o.ordinary)} + 未计入账本的项目实付 ${P(o.projectPaid)}（按付款日）。`] : [],
+		`期末净资产 ${P(o.netWorth)} · 较上期余额 ${Ee(r.netWorthDelta)}`,
+		`日均消费 ${P(o.spending / o.days)}${a ? `；上期 ${P(a.spending / a.days)}` : ""}`,
 		"",
 		...e.ledger ? [
 			"## 日期收支快照",
 			"仅按本期日期汇总已核对的实际收支；月度未标日期金额、股票浮盈、自有账户划拨不计入。",
 			"| 日期 | 收支 | 分类 | 金额 | 事项 / 用途 |",
 			"|---|---|---|---:|---|",
-			...e.ledger.map((e) => `| ${e.date} | ${e.flow === "income" ? "收入" : "支出"} | ${s(e.name)} | ${P(e.amount)} | ${s(e.note || "未填写")} |`),
+			...e.ledger.map((e) => `| ${e.date} | ${e.flow === "income" ? "收入" : "支出"} | ${c(e.name)} | ${P(e.amount)} | ${c(e.note || "未填写")} |`),
 			""
 		] : [],
 		...e.incomeLedger ? [
 			"## 收入到账快照",
 			"| 日期 | 类型 | 金额 | 事项 |",
 			"|---|---|---:|---|",
-			...e.incomeLedger.map((e) => `| ${e.date} | ${e.categoryId === "salary" ? "工资到账" : "其他收入"} | ${P(e.amount)} | ${s(e.note || "未填写")} |`),
+			...e.incomeLedger.map((e) => `| ${e.date} | ${e.categoryId === "salary" ? "工资到账" : "其他收入"} | ${P(e.amount)} | ${c(e.note || "未填写")} |`),
 			""
 		] : [],
 		"## 本期关键变化",
-		...n.highlights.flatMap((e) => [
+		...r.highlights.flatMap((e) => [
 			`### ${e.title} · ${e.state}`,
 			e.summary,
-			...e.details.map((e) => `- ${s(e)}`),
+			...e.details.map((e) => `- ${c(e)}`),
 			""
 		]),
 		"| 项目 | 本期发生额 | 上期发生额 | 变化 | 本期事项 |",
 		"|---|---:|---:|---:|---|",
-		...o.map((e) => `| ${e.name}${e.flow === "transfer" ? "（划拨）" : ""} | ${P(e.amount)} | ${e.previous === null ? "无基准" : P(e.previous)} | ${Ee(e.delta)} | ${s(e.note || "未填写事项")} |`),
+		...s.map((e) => `| ${e.name}${e.flow === "transfer" ? "（划拨）" : ""} | ${P(e.amount)} | ${e.previous === null ? "无基准" : P(e.previous)} | ${Ee(e.delta)} | ${c(e.note || "未填写事项")} |`),
 		"",
 		...e.budget ? [
 			`## 月预算核对 · ${e.budget.mode === "normal" ? "普通月" : "出差月"}`,
 			"| 项目 | 整月预算 | 本期金额 | 预算减本期 |",
 			"|---|---:|---:|---:|",
-			...n.budgetRows.map((e) => `| ${e.name} | ${P(e.budget)} | ${P(e.amount)} | ${P(e.remaining)} |`),
+			...r.budgetRows.map((e) => `| ${e.name} | ${P(e.budget)} | ${P(e.amount)} | ${P(e.remaining)} |`),
 			""
 		] : [],
 		"| 期末余额 | 本期 | 上期 | 变化 |",
 		"|---|---:|---:|---:|",
 		...Object.entries(pe).map(([t, n]) => {
-			let i = t;
-			return `| ${n} | ${P(e.balances[i])} | ${r ? P(r.balances[i]) : "无基准"} | ${Ee(r ? N([e.balances[i], -r.balances[i]]) : null)} |`;
+			let r = t;
+			return `| ${n} | ${P(e.balances[r])} | ${i ? P(i.balances[r]) : "无基准"} | ${Ee(i ? N([e.balances[r], -i.balances[r]]) : null)} |`;
 		}),
 		"",
-		...n.accountRows.length ? [
+		...r.accountRows.length ? [
 			"## 账户余额对比",
 			"| 账户 | 本期期末 | 上期期末 | 余额变化 | 计入个人现金 | 本期说明 |",
 			"|---|---:|---:|---:|---|---|",
-			...n.accountRows.map((e) => `| ${s(e.name)} | ${e.current === null ? "未记录" : P(e.current)} | ${e.previous === null ? "无基准" : P(e.previous)} | ${Ee(e.delta)} | ${e.included === null ? "未记录" : e.included ? "是" : "否"} | ${s([e.status, e.note].filter(Boolean).join("；"))} |`),
+			...r.accountRows.map((e) => `| ${c(e.name)} | ${e.current === null ? "未记录" : P(e.current)} | ${e.previous === null ? "无基准" : P(e.previous)} | ${Ee(e.delta)} | ${e.included === null ? "未记录" : e.included ? "是" : "否"} | ${c([e.status, e.note].filter(Boolean).join("；"))} |`),
 			""
 		] : [],
 		...e.investments ? [
@@ -9956,18 +9959,18 @@ function qe(e, t) {
 			"余额变化包含净投入、市值和汇率变化，不直接等于投资收益。",
 			"| 账户 | 本期 | 上期 | 余额变化 | 说明 |",
 			"|---|---:|---:|---:|---|",
-			...ge(e, r).map((e) => `| ${s(e.name)} | ${e.current === null ? "未记录" : P(e.current)} | ${e.previous === null ? "无基准" : P(e.previous)} | ${Ee(e.delta)} | ${s(e.note)} |`),
+			...ge(e, i).map((e) => `| ${c(e.name)} | ${e.current === null ? "未记录" : P(e.current)} | ${e.previous === null ? "无基准" : P(e.previous)} | ${Ee(e.delta)} | ${c(e.note)} |`),
 			""
 		] : [],
-		...e.summary ? [`本期补充：${s(e.summary)}`, ""] : [],
+		...e.summary ? [`本期补充：${c(e.summary)}`, ""] : [],
 		"## 学习用途",
-		`本期学习净支出 ${P(e.amounts.learning)}；${s(o.find((e) => e.id === "learning")?.note || "未填写学习事项，暂不能判断学了什么。")}`,
+		`本期学习净支出 ${P(e.amounts.learning)}；${c(s.find((e) => e.id === "learning")?.note || "未填写学习事项，暂不能判断学了什么。")}`,
 		"",
 		"## 下期动作",
-		...n.actions.map((e) => `- ${e}`),
+		...r.actions.map((e) => `- ${e}`),
 		"",
 		"## 数据口径",
-		...n.notices.map((e) => `- ${e}`),
+		...r.notices.map((e) => `- ${e}`),
 		""
 	].join("\n");
 }
@@ -11356,32 +11359,32 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 			debt: f.debts.reduce((e, t) => e + t.amount, 0)
 		}, Dt(we(d, i, c?.accounts), u, l);
 	}
-	let [C, w] = (0, _.useState)(() => S()), [ee, te] = (0, _.useState)(!0), [ne, re] = (0, _.useState)(!1), [ie, T] = (0, _.useState)(!1), [E, ae] = (0, _.useState)(""), [oe, D] = (0, _.useState)(!1), [se, O] = (0, _.useState)(!1), [k, A] = (0, _.useState)(""), [ce, le] = (0, _.useState)(!1), [ue, j] = (0, _.useState)(""), [de, me] = (0, _.useState)(0), [ge, _e] = (0, _.useState)(!1), [xe, Se] = (0, _.useState)(!0), [N, Te] = (0, _.useState)(!1), [Ee, De] = (0, _.useState)(c), [F, ke] = (0, _.useState)(l), Ae = Pt(Ee, c), Ne = `需重新核对：${Ae.map((e) => St[e]).join("、")}。未保存的输入仍保留。`, [Pe, I] = (0, _.useState)(e.length ? "report" : "entry"), [ze, Be] = (0, _.useState)(e[0]?.id ?? ""), [He, We] = (0, _.useState)(""), [Ge, $e] = (0, _.useState)(r.mode), et = (0, _.useRef)(null), tt = (0, _.useRef)(null), nt = (0, _.useRef)(null), L = (0, _.useRef)(null), [rt, it] = (0, _.useState)(null), [at, lt] = (0, _.useState)(null), R = e.find((e) => e.id === ze) ?? e[0], z = R ? Ke(R, e) : null, ut = u.findLastIndex((e) => e.reviewId === R?.id && !e.module), dt = u.some((e, t) => t > ut && e.reviewId === R?.id && !!e.module), ft = [
+	let [C, w] = (0, _.useState)(() => S()), [ee, te] = (0, _.useState)(!0), [ne, re] = (0, _.useState)(!1), [ie, T] = (0, _.useState)(!1), [E, ae] = (0, _.useState)(""), [oe, D] = (0, _.useState)(!1), [se, O] = (0, _.useState)(!1), [k, A] = (0, _.useState)(""), [ce, le] = (0, _.useState)(!1), [ue, j] = (0, _.useState)(""), [de, me] = (0, _.useState)(0), [ge, _e] = (0, _.useState)(!1), [xe, Se] = (0, _.useState)(!0), [N, Te] = (0, _.useState)(!1), [Ee, De] = (0, _.useState)(c), [F, ke] = (0, _.useState)(l), Ae = Pt(Ee, c), Ne = `需重新核对：${Ae.map((e) => St[e]).join("、")}。未保存的输入仍保留。`, [Pe, I] = (0, _.useState)(e.length ? "report" : "entry"), [ze, Be] = (0, _.useState)(e[0]?.id ?? ""), [He, We] = (0, _.useState)(""), [Ge, $e] = (0, _.useState)(r.mode), et = (0, _.useRef)(null), tt = (0, _.useRef)(null), nt = (0, _.useRef)(null), L = (0, _.useRef)(null), [rt, it] = (0, _.useState)(null), [at, lt] = (0, _.useState)(null), R = e.find((e) => e.id === ze) ?? e[0], z = R ? Ke(R, e, f.projects) : null, ut = u.findLastIndex((e) => e.reviewId === R?.id && !e.module), dt = u.some((e, t) => t > ut && e.reviewId === R?.id && !!e.module), ft = [
 		s ?? "",
 		Re(e)?.end ?? "",
 		...u.filter((e) => e.published).map((e) => e.asOf)
-	].sort().at(-1), pt = C.type === "week" && C.end <= x && C.end >= ft, ht = pt && xe, gt = pt ? o.map((e) => _t(e, o, i).mode === "manual" ? C.goals?.find((t) => t.id === e.id) ?? e : e) : C.goals, B = ee && C.end === x, V = ot(p, m, C.start, C.end), vt = JSON.stringify(V), yt = !!C.ledger || ne, bt = V.rows.filter((e) => e.flow === "income"), xt = JSON.stringify(bt), Ct = yt || oe || !!C.incomeLedger, Tt = p.filter((e) => e.id >= C.start.slice(0, 7) && e.id <= C.end.slice(0, 7)), Ot = Tt.find((e) => e.id === ue) ?? Tt.at(-1), kt = je("month", C.end, 10), At = ot(p, m, kt.start, kt.end), jt = Ue(At.rows, kt.start, kt.end);
+	].sort().at(-1), pt = C.type === "week" && C.end <= x && C.end >= ft, ht = pt && xe, gt = pt ? o.map((e) => _t(e, o, i).mode === "manual" ? C.goals?.find((t) => t.id === e.id) ?? e : e) : C.goals, B = ee && C.end === x, V = ot(p, m, C.start, C.end), vt = JSON.stringify(V), yt = !!C.ledger || ne, bt = V.rows.filter((e) => e.flow === "income"), xt = JSON.stringify(bt), Ct = yt || oe || !!C.incomeLedger, Tt = p.filter((e) => e.id >= C.start.slice(0, 7) && e.id <= C.end.slice(0, 7)), Ot = Tt.find((e) => e.id === ue) ?? Tt.at(-1), kt = je("month", C.end, 10), At = ot(p, m, kt.start, kt.end), jt = Ue(At.rows, kt.start, kt.end, f.projects), It = jt.reduce((e, t) => e + Math.round(t.spending * 100), 0) / 100;
 	oe && !ne && k !== xt && (A(xt), O(!1), w((e) => ct(e, bt))), ne && vt !== E && (ae(vt), T(!1), V.unassigned.length || w((e) => st(e, V.rows))), B && (!C.focus || !ye(C.focus, f)) && (w((e) => ({
 		...e,
 		focus: be(e.focus, f)
-	})), It([
+	})), Lt([
 		"projects",
 		"bills",
 		"balance"
 	]));
-	function It(e) {
+	function Lt(e) {
 		De((t) => Ft(t, c, e)), ke((t) => ({
 			...t,
 			...Object.fromEntries(e.map((e) => [e, l[e]]))
 		}));
 	}
-	let Lt = ce || C.income !== null || Object.values(C.amounts).some((e) => e !== null) || Object.values(C.balances).some((e) => e !== null) || !!(C.summary || C.overallChange) || Object.values(C.notes).some(Boolean) || Object.values(C.focus?.checks ?? {}).some(Boolean) || Object.values(C.focus?.notes ?? {}).some(Boolean);
+	let Rt = ce || C.income !== null || Object.values(C.amounts).some((e) => e !== null) || Object.values(C.balances).some((e) => e !== null) || !!(C.summary || C.overallChange) || Object.values(C.notes).some(Boolean) || Object.values(C.focus?.checks ?? {}).some(Boolean) || Object.values(C.focus?.notes ?? {}).some(Boolean);
 	(0, _.useEffect)(() => {
 		at ? tt.current?.showModal() : tt.current?.close();
 	}, [at]), (0, _.useEffect)(() => {
 		rt ? nt.current?.showModal() : nt.current?.close();
 	}, [rt]);
-	function Rt(e, t) {
+	function Ht(e, t) {
 		let n = e instanceof Error ? e.message : "操作失败，请重试。";
 		We(n), L.current = t ?? null, it({
 			title: "未保存，请检查",
@@ -11389,35 +11392,35 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 			hasField: !!t
 		});
 	}
-	function Ht() {
+	function Wt() {
 		let e = L.current;
 		if (L.current = null, nt.current?.close(), it(null), e?.isConnected) {
 			for (let t = e.parentElement; t; t = t.parentElement) t instanceof HTMLDetailsElement && (t.open = !0);
 			e.scrollIntoView({ block: "center" }), e.focus({ preventScroll: !0 });
 		}
 	}
-	function Wt(e) {
+	function Gt(e) {
 		try {
 			e();
 		} catch (e) {
-			Rt(e);
+			Ht(e);
 		}
 	}
-	function Gt(e, t, n) {
+	function Kt(e, t, n) {
 		e ? lt({
 			message: t,
 			action: n
-		}) : Wt(n);
+		}) : Gt(n);
 	}
-	function Kt() {
+	function qt() {
 		D(!1), O(!1), le(!1), j(""), me((e) => e + 1);
 	}
-	function qt(e = C.type, t = C.end, n = e === C.type && e === "month" ? C.monthStartDay ?? 1 : 10) {
-		Gt(Lt, "切换会清空当前未保存的输入，是否继续？", () => {
-			w(S(e, t, n)), De(c), Te(!1), ke(l), Kt(), re(!1), T(!1), te(t === x), _e(!1), I("entry"), We("");
+	function Jt(e = C.type, t = C.end, n = e === C.type && e === "month" ? C.monthStartDay ?? 1 : 10) {
+		Kt(Rt, "切换会清空当前未保存的输入，是否继续？", () => {
+			w(S(e, t, n)), De(c), Te(!1), ke(l), qt(), re(!1), T(!1), te(t === x), _e(!1), I("entry"), We("");
 		});
 	}
-	function Jt() {
+	function Yt() {
 		try {
 			if (ce) throw Error("收入录入尚未保存，请先点击保存收入或取消修改。");
 			if (oe && !ne && !se) throw Error("请先核对本期工资和其他收入。");
@@ -11439,13 +11442,13 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 				budget: n,
 				savedAt: (/* @__PURE__ */ new Date()).toISOString()
 			});
-			Gt(e.some((e) => e.id === i.id), "该周期已有记录，是否用本次数据更新？", () => {
+			Kt(e.some((e) => e.id === i.id), "该周期已有记录，是否用本次数据更新？", () => {
 				let t = y(Ie(e, i), {
 					record: i,
 					publish: ht,
 					sourceSignature: Ee
 				});
-				Be(i.id), I("report"), w(structuredClone(t.record ?? i)), ht && De(t.sourceSignature), ht && t.moduleSignatures && ke(t.moduleSignatures), Kt(), re(!1), T(!1), te(!1);
+				Be(i.id), I("report"), w(structuredClone(t.record ?? i)), ht && De(t.sourceSignature), ht && t.moduleSignatures && ke(t.moduleSignatures), qt(), re(!1), T(!1), te(!1);
 				let n = ht ? "本期收支、账户、投资及其他模块已更新，更新前后的历史已保存到本机。跨电脑使用前请确认云端保存成功。" : "历史报告已保存到本机，当前看板未覆盖。跨电脑使用前请确认云端保存成功。";
 				We(n), it({
 					title: ht ? "保存并更新完毕" : "历史报告保存完毕",
@@ -11453,10 +11456,10 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 				});
 			});
 		} catch (e) {
-			Rt(e);
+			Ht(e);
 		}
 	}
-	function Yt(e) {
+	function Xt(e) {
 		try {
 			if (!pt) throw Error("仅最新周复盘可以更新模块；历史或未来期间请保存历史报告。");
 			if (e === "income" && ce) throw Error("收入明细尚未保存，请先点击保存收入。");
@@ -11477,11 +11480,11 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 				message: r
 			});
 		} catch (e) {
-			Rt(e);
+			Ht(e);
 		}
 	}
-	function Xt() {
-		Wt(() => {
+	function Zt() {
+		Gt(() => {
 			n(C.start, C.overallChange ?? "");
 			let e = `${C.start} 这一周的说明已保存到本机。其他输入未提交；跨电脑使用前请确认云同步成功。`;
 			We(e), it({
@@ -11490,28 +11493,28 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 			});
 		});
 	}
-	function Zt(e) {
+	function Qt(e) {
 		let t = e.currentTarget.dataset.reviewSave, n = e.currentTarget.closest("[data-review-module]")?.querySelector("input:invalid:not([type=\"checkbox\"]),select:invalid,textarea:invalid");
 		if (n) {
-			Rt(/* @__PURE__ */ Error(`${n.getAttribute("aria-label") || n.labels?.[0]?.textContent || St[t]}：${n.validationMessage}`), n);
+			Ht(/* @__PURE__ */ Error(`${n.getAttribute("aria-label") || n.labels?.[0]?.textContent || St[t]}：${n.validationMessage}`), n);
 			return;
 		}
-		Yt(t);
+		Xt(t);
 	}
-	function Qt(e) {
+	function $t(e) {
 		return C.type === "week" ? /* @__PURE__ */ (0, b.jsxs)("button", {
 			type: "button",
 			className: "primary-button",
 			disabled: !pt,
 			"data-review-save": e,
-			onClick: Zt,
+			onClick: Qt,
 			children: ["保存并更新", St[e]]
 		}) : null;
 	}
-	async function $t(t) {
+	async function en(t) {
 		try {
 			let n = Le(JSON.parse(await t.text())), r = n.filter((t) => e.some((e) => e.id === t.id));
-			Gt(r.length > 0, `有 ${r.length} 个相同周期，是否更新这些记录？`, () => {
+			Kt(r.length > 0, `有 ${r.length} 个相同周期，是否更新这些记录？`, () => {
 				y(n.reduce(Ie, e)), Be(n[0]?.id ?? ze), I("report"), We(`已导入 ${n.length} 条复盘；跨电脑使用前请保存完整版本到云端。`);
 			});
 		} catch (e) {
@@ -11520,18 +11523,18 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 			et.current && (et.current.value = "");
 		}
 	}
-	function en() {
+	function tn() {
 		try {
 			if (C.type === "week") return;
 			let t = Je(e, C.type, C.end, C.monthStartDay ?? 1);
-			Gt(Lt, "汇总将替换当前输入，是否继续？", () => {
-				w(t), Kt(), re(!1), T(!1), te(!1), _e(!1), We("已汇总连续覆盖的记录，请核对后保存。");
+			Kt(Rt, "汇总将替换当前输入，是否继续？", () => {
+				w(t), qt(), re(!1), T(!1), te(!1), _e(!1), We("已汇总连续覆盖的记录，请核对后保存。");
 			});
 		} catch (e) {
 			We(e instanceof Error ? e.message : "汇总失败");
 		}
 	}
-	function tn(e, t) {
+	function nn(e, t) {
 		let n = (C.accounts ?? []).map((n) => n.id === e ? {
 			...n,
 			...t
@@ -11545,22 +11548,22 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 			}
 		}), _e(!1);
 	}
-	function nn() {
-		Gt(!!C.accounts, "重新带入会替换复盘中的账户余额与说明，是否继续？", () => {
-			w(we(C, i, C.accounts ?? S(C.type, C.end).accounts)), It(["accounts"]), _e(!1);
+	function rn() {
+		Kt(!!C.accounts, "重新带入会替换复盘中的账户余额与说明，是否继续？", () => {
+			w(we(C, i, C.accounts ?? S(C.type, C.end).accounts)), Lt(["accounts"]), _e(!1);
 		});
 	}
-	function rn() {
+	function H() {
 		let e = S(C.type, C.end, C.monthStartDay ?? 1);
 		e.accounts = e.accounts?.map((e) => ({
 			...e,
 			balance: null
 		})), e.balances.cash = null, zt("finance-review-template.json", JSON.stringify(e, null, 2), "application/json");
 	}
-	function H(e) {
+	function an(e) {
 		if (!C.focus) return;
 		let t = JSON.stringify(C.focus[e]) !== JSON.stringify(f[e]), n = e === "projects" ? "用当前大花费项目替换本期项目清单？未保存的金额、预算日期、实际日期和记账标记会被替换，变化说明保留。" : "用当前账单与提醒替换本期账单清单？未保存的账单金额和日期会被替换，变化说明保留。";
-		Gt(!B || t || C.focus.checks[e], n, () => {
+		Kt(!B || t || C.focus.checks[e], n, () => {
 			w((t) => t.focus ? {
 				...t,
 				focus: {
@@ -11571,11 +11574,11 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 						[e]: !1
 					}
 				}
-			} : t), It([e]), We(`已刷新 ${f[e].length} 项${St[e]}，变化说明已保留，待核对。`);
+			} : t), Lt([e]), We(`已刷新 ${f[e].length} 项${St[e]}，变化说明已保留，待核对。`);
 		});
 	}
-	function an() {
-		Gt(!B || Object.values(C.focus?.checks ?? {}).some(Boolean), "刷新会带入当前模块数据并重新核对，变化说明保留。历史复盘请确认这些数据属于该截至日。", () => {
+	function on() {
+		Kt(!B || Object.values(C.focus?.checks ?? {}).some(Boolean), "刷新会带入当前模块数据并重新核对，变化说明保留。历史复盘请确认这些数据属于该截至日。", () => {
 			let e = ve(f);
 			e.notes = { ...C.focus?.notes }, C.investments && (e.holdings = he(C.investments));
 			let t = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
@@ -11587,17 +11590,17 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 					otherAssets: t(e.assets),
 					debt: t(e.debts)
 				}
-			}), It([
+			}), Lt([
 				"projects",
 				"bills",
 				"balance"
 			]);
 		});
 	}
-	function on() {
+	function sn() {
 		if (!C.focus) return;
 		let { assets: e, debts: t } = f, n = JSON.stringify([C.focus.assets, C.focus.debts]) !== JSON.stringify([e, t]);
-		Gt(!B || n || C.focus.checks.balance, "用当前资产负债表替换本期补录资产和负债明细？未保存的金额会被替换，变化说明和其他模块保留。", () => {
+		Kt(!B || n || C.focus.checks.balance, "用当前资产负债表替换本期补录资产和负债明细？未保存的金额会被替换，变化说明和其他模块保留。", () => {
 			let n = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
 			w((r) => r.focus ? {
 				...r,
@@ -11616,11 +11619,11 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 					otherAssets: n(e),
 					debt: n(t)
 				}
-			} : r), It(["balance"]), We(`已刷新 ${e.length} 项补录资产、${t.length} 项负债及合计，待核对。`);
+			} : r), Lt(["balance"]), We(`已刷新 ${e.length} 项补录资产、${t.length} 项负债及合计，待核对。`);
 		});
 	}
-	function sn() {
-		Gt(!0, "将重新带入当前账户、投资、项目、账单、资产负债及目标余额，并重置核对。已填收支不变，是否继续？", () => {
+	function cn() {
+		Kt(!0, "将重新带入当前账户、投资、项目、账单、资产负债及目标余额，并重置核对。已填收支不变，是否继续？", () => {
 			let e = S(C.type, C.end, C.monthStartDay ?? 1);
 			w({
 				...C,
@@ -11632,12 +11635,12 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 			}), De(c), te(!1), _e(!1), Te(!1), ke(l);
 		});
 	}
-	function cn(e) {
+	function ln(e) {
 		let t = u.findLast((t) => t.published && !t.module && t.reviewId === e.id && t.after.financeReviews?.some((t) => t.id === e.id && t.savedAt === e.savedAt))?.after;
-		w({ ...e }), Kt(), te(!1), re(!1), T(!1), _e(!1), Te(!1), De(t ? Nt(t) : ""), ke(Object.fromEntries(Object.keys(St).map((e) => [e, t ? Et(t, e) : ""]))), I("entry"), We("");
+		w({ ...e }), qt(), te(!1), re(!1), T(!1), _e(!1), Te(!1), De(t ? Nt(t) : ""), ke(Object.fromEntries(Object.keys(St).map((e) => [e, t ? Et(t, e) : ""]))), I("entry"), We("");
 	}
-	function ln() {
-		Gt(!0, `${Ne} 仅用当前看板替换上述模块的复盘明细，是否继续？`, () => {
+	function un() {
+		Kt(!0, `${Ne} 仅用当前看板替换上述模块的复盘明细，是否继续？`, () => {
 			let e = (e) => Ae.includes(e), t = {
 				...C,
 				balances: { ...C.balances }
@@ -11648,10 +11651,10 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 				...r,
 				checks: { ...r.checks },
 				holdings: t.investments ? he(t.investments) : r.holdings
-			}, e("projects") && (t.focus.projects = n.projects, t.focus.checks.projects = !1), e("bills") && (t.focus.bills = n.bills, t.focus.checks.bills = !1), e("balance") && (t.focus.assets = n.assets, t.focus.debts = n.debts, t.focus.checks.balance = !1, t.balances.otherAssets = n.assets.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100, t.balances.debt = n.debts.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100), w(t), te(!1), It(Ae), We("已带入变化的模块，请核对后保存。其他模块的输入已保留。");
+			}, e("projects") && (t.focus.projects = n.projects, t.focus.checks.projects = !1), e("bills") && (t.focus.bills = n.bills, t.focus.checks.bills = !1), e("balance") && (t.focus.assets = n.assets, t.focus.debts = n.debts, t.focus.checks.balance = !1, t.balances.otherAssets = n.assets.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100, t.balances.debt = n.debts.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100), w(t), te(!1), Lt(Ae), We("已带入变化的模块，请核对后保存。其他模块的输入已保留。");
 		});
 	}
-	function un(e) {
+	function dn(e) {
 		let t = he(e);
 		Te(!1), te(!1), w({
 			...C,
@@ -11670,10 +11673,10 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 			} : void 0
 		});
 	}
-	function dn() {
+	function fn() {
 		if (!C.focus) return;
 		let e = C.focus;
-		Gt(C.balances.otherAssets !== null || C.balances.debt !== null, "将以快照中的补录资产、负债合计替换这两项本期余额，现金和证券账户总资产不变。", () => {
+		Kt(C.balances.otherAssets !== null || C.balances.debt !== null, "将以快照中的补录资产、负债合计替换这两项本期余额，现金和证券账户总资产不变。", () => {
 			let t = (e) => e.reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100;
 			w({
 				...C,
@@ -11685,21 +11688,21 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 			});
 		});
 	}
-	function fn() {
+	function pn() {
 		if (p.some((e) => e.budgets.some((e) => e.reviewPeriod && e.actual !== 0 && e.reviewPeriod.start <= C.end && e.reviewPeriod.end >= C.start))) {
 			We("本期已有未标具体日期的周复盘汇总。请修订原复盘或补齐日期后核对，不能用仅有日期的明细覆盖这些金额。");
 			return;
 		}
-		Gt(C.income !== null || M.some((e) => e.flow === "expense" && C.amounts[e.id] !== null), "将替换本期收入和消费金额，投资与应急划拨、事项说明保持不变。是否继续？", () => {
+		Kt(C.income !== null || M.some((e) => e.flow === "expense" && C.amounts[e.id] !== null), "将替换本期收入和消费金额，投资与应急划拨、事项说明保持不变。是否继续？", () => {
 			w(st(C, V.rows)), D(!1), re(!0), ae(vt), T(!1), We("已按日期带入收支，请核对本期完整性后保存。");
 		});
 	}
-	function pn() {
-		Gt(C.income !== null, "以本期带日期的工资和其他到账替换收入合计，支出、划拨及说明不变。是否继续？", () => {
+	function mn() {
+		Kt(C.income !== null, "以本期带日期的工资和其他到账替换收入合计，支出、划拨及说明不变。是否继续？", () => {
 			w(ct(C, bt)), D(!0), A(xt), O(!1);
 		});
 	}
-	function mn(e, t, n) {
+	function hn(e, t, n) {
 		h(e, t, n), !yt && (oe || !C.incomeLedger && (C.income === null || C.income === 0)) && (D(!0), A(""), O(!1)), We("收入已保存到账本。未联动的手填金额或历史快照保留；需更新时请带入本期收入。");
 	}
 	return /* @__PURE__ */ (0, b.jsxs)("div", {
@@ -11711,7 +11714,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 				"aria-labelledby": "review-result-title",
 				"aria-describedby": "review-result-message",
 				onCancel: (e) => {
-					e.preventDefault(), Ht();
+					e.preventDefault(), Wt();
 				},
 				children: [
 					/* @__PURE__ */ (0, b.jsx)("h3", {
@@ -11728,7 +11731,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							type: "button",
 							className: "primary-button",
 							autoFocus: !0,
-							onClick: Ht,
+							onClick: Wt,
 							children: rt?.hasField ? "前往检查" : "知道了"
 						})
 					}),
@@ -11736,7 +11739,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 						type: "button",
 						className: "secondary-button",
 						onClick: () => {
-							Ht(), ln();
+							Wt(), un();
 						},
 						children: "只带入变化的模块"
 					})
@@ -11768,7 +11771,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							className: "primary-button",
 							onClick: () => {
 								let e = at?.action;
-								lt(null), e && Wt(e);
+								lt(null), e && Gt(e);
 							},
 							children: "确认"
 						})]
@@ -11799,7 +11802,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 						/* @__PURE__ */ (0, b.jsx)("button", {
 							className: "secondary-button",
 							type: "button",
-							onClick: rn,
+							onClick: H,
 							children: "下载模板"
 						}),
 						/* @__PURE__ */ (0, b.jsx)("button", {
@@ -11827,7 +11830,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							"aria-label": "导入周期复盘文件",
 							onChange: (e) => {
 								let t = e.target.files?.[0];
-								t && $t(t);
+								t && en(t);
 							}
 						})
 					]
@@ -11845,10 +11848,10 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 					let t = e.currentTarget.querySelector("input:invalid,select:invalid,textarea:invalid");
 					if (t) {
 						let e = t.getAttribute("aria-label") || t.labels?.[0]?.textContent?.trim() || "复盘字段";
-						Rt(/* @__PURE__ */ Error(`${e}：${t.type === "checkbox" ? "请勾选确认。" : t.validationMessage}`), t);
+						Ht(/* @__PURE__ */ Error(`${e}：${t.type === "checkbox" ? "请勾选确认。" : t.validationMessage}`), t);
 						return;
 					}
-					Jt();
+					Yt();
 				},
 				children: [
 					/* @__PURE__ */ (0, b.jsxs)("div", {
@@ -11856,7 +11859,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 						children: [/* @__PURE__ */ (0, b.jsxs)("span", { children: ["当前看板截至：", s || "尚未整期更新"] }), /* @__PURE__ */ (0, b.jsx)("button", {
 							type: "button",
 							className: "secondary-button",
-							onClick: sn,
+							onClick: cn,
 							children: "重新带入当前模块"
 						})]
 					}),
@@ -11868,7 +11871,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							/* @__PURE__ */ (0, b.jsx)("button", {
 								type: "button",
 								className: "secondary-button",
-								onClick: ln,
+								onClick: un,
 								children: "只带入变化的模块"
 							})
 						]
@@ -11880,7 +11883,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 								className: "field",
 								children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "复盘周期" }), /* @__PURE__ */ (0, b.jsx)("select", {
 									value: C.type,
-									onChange: (e) => qt(e.target.value),
+									onChange: (e) => Jt(e.target.value),
 									children: Object.entries(fe).map(([e, t]) => /* @__PURE__ */ (0, b.jsx)("option", {
 										value: e,
 										children: t
@@ -11894,7 +11897,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 									required: !0,
 									value: C.end,
 									onInput: (e) => {
-										e.currentTarget.validity.valid && e.currentTarget.value && e.currentTarget.value !== C.end && qt(C.type, e.currentTarget.value);
+										e.currentTarget.validity.valid && e.currentTarget.value && e.currentTarget.value !== C.end && Jt(C.type, e.currentTarget.value);
 									}
 								})]
 							}),
@@ -11943,7 +11946,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							children: [/* @__PURE__ */ (0, b.jsx)("button", {
 								type: "button",
 								className: "primary-button",
-								onClick: Xt,
+								onClick: Zt,
 								children: "保存并更新说明"
 							}), /* @__PURE__ */ (0, b.jsx)("button", {
 								type: "button",
@@ -11958,7 +11961,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 						children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "月度起算日" }), /* @__PURE__ */ (0, b.jsxs)("select", {
 							"aria-label": "月度起算日",
 							value: C.monthStartDay ?? 1,
-							onChange: (e) => qt(C.type, C.end, Number(e.target.value)),
+							onChange: (e) => Jt(C.type, C.end, Number(e.target.value)),
 							children: [/* @__PURE__ */ (0, b.jsx)("option", {
 								value: "10",
 								children: "每月10日至下月9日"
@@ -11991,7 +11994,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 									value: Ot?.id ?? "",
 									onChange: (e) => {
 										let t = e.target.value;
-										Gt(ce, "切换月份会放弃尚未保存的收入输入，是否继续？", () => {
+										Kt(ce, "切换月份会放弃尚未保存的收入输入，是否继续？", () => {
 											j(t), le(!1);
 										});
 									},
@@ -12010,7 +12013,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 								flow: "income",
 								month: Ot,
 								entries: m,
-								onSave: mn,
+								onSave: hn,
 								onDelete: g,
 								onDirtyChange: le
 							}, `${C.start}:${C.end}:${Ot.id}:${de}`) : /* @__PURE__ */ (0, b.jsxs)("p", { children: ["该日期尚无月份账本。", /* @__PURE__ */ (0, b.jsx)("button", {
@@ -12035,7 +12038,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 										type: "button",
 										className: "secondary-button",
 										disabled: yt || oe,
-										onClick: pn,
+										onClick: mn,
 										children: "带入本期收入"
 									}), !yt && (oe || C.incomeLedger) && /* @__PURE__ */ (0, b.jsx)("button", {
 										type: "button",
@@ -12061,7 +12064,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							}),
 							/* @__PURE__ */ (0, b.jsx)("div", {
 								className: "data-actions",
-								children: Qt("income")
+								children: $t("income")
 							})
 						]
 					}),
@@ -12081,9 +12084,9 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 								"已登记收入 ",
 								P(At.income),
 								" · 支出 ",
-								P(At.spending),
+								P(It),
 								" · 结余 ",
-								P(At.income - At.spending)
+								P(At.income - It)
 							] }),
 							/* @__PURE__ */ (0, b.jsx)("div", {
 								className: "table-wrap",
@@ -12119,9 +12122,9 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							/* @__PURE__ */ (0, b.jsxs)("p", {
 								className: "review-caption",
 								children: [
-									"口径：日期账本，不含手填复盘发生额。未登记不代表没有发生；相关月份还有 ",
+									"口径：日期账本 + 未入账项目实付，不含手填周汇总。未登记不代表没有发生；相关月份还有 ",
 									At.undated.length,
-									" 项未标日期金额。账期首尾按实际天数列示，不把跨账期周重复相加。",
+									" 项未标日期金额。",
 									C.start < kt.start ? "本次复盘跨账期，本表仅列所示账期内的数据。" : ""
 								]
 							})
@@ -12191,7 +12194,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 										type: "button",
 										className: "secondary-button",
 										disabled: ne || V.unassigned.length > 0,
-										onClick: fn,
+										onClick: pn,
 										children: "带入并联动本期收支"
 									}), yt && /* @__PURE__ */ (0, b.jsx)("button", {
 										type: "button",
@@ -12288,19 +12291,23 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 								className: "review-caption",
 								children: "应急&学习金在预算中合并，在复盘中分开：应急填净转入，学习填实际支出与用途。微信充值、自有账户互转、基金预留不记消费；实际付款只记一次。"
 							}),
+							C.type === "week" && /* @__PURE__ */ (0, b.jsx)("p", {
+								className: "review-caption",
+								children: "有实际付款日期的大花费项目会自动计入对应周，不用再填一遍。已包含在支出账本里的，请在项目上勾选「已计入支出账本」。"
+							}),
 							/* @__PURE__ */ (0, b.jsx)("div", {
 								className: "data-actions",
-								children: Qt("spending")
+								children: $t("spending")
 							})
 						]
 					}),
 					/* @__PURE__ */ (0, b.jsx)(Xe, {
 						value: C.investments,
-						onChange: un,
+						onChange: dn,
 						confirmed: N,
 						onConfirm: Te,
 						onOpen: () => v("investment"),
-						saveAction: Qt("investments")
+						saveAction: $t("investments")
 					}),
 					/* @__PURE__ */ (0, b.jsx)(Ye, {
 						focus: C.focus,
@@ -12318,13 +12325,13 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 								}
 							});
 						},
-						onRefresh: an,
-						onRefreshProjects: () => H("projects"),
-						onRefreshBills: () => H("bills"),
-						onRefreshBalance: on,
+						onRefresh: on,
+						onRefreshProjects: () => an("projects"),
+						onRefreshBills: () => an("bills"),
+						onRefreshBalance: sn,
 						onOpen: v,
-						onUseBalances: dn,
-						saveAction: (e) => Qt(e)
+						onUseBalances: fn,
+						saveAction: (e) => $t(e)
 					}),
 					/* @__PURE__ */ (0, b.jsxs)("section", {
 						"aria-labelledby": "review-accounts-title",
@@ -12339,7 +12346,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 								className: "secondary-button",
 								type: "button",
 								disabled: !i.length,
-								onClick: nn,
+								onClick: rn,
 								children: "带入账户管理余额"
 							})]
 						}), C.accounts ? /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
@@ -12378,19 +12385,19 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 												required: !0,
 												"aria-label": `${e.name}复盘期末余额`,
 												value: e.balance ?? "",
-												onChange: (t) => tn(e.id, { balance: Bt(t.target.value) })
+												onChange: (t) => nn(e.id, { balance: Bt(t.target.value) })
 											}) }),
 											/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)("input", {
 												type: "checkbox",
 												"aria-label": `${e.name}计入个人现金`,
 												checked: e.included,
-												onChange: (t) => tn(e.id, { included: t.target.checked })
+												onChange: (t) => nn(e.id, { included: t.target.checked })
 											}) }),
 											/* @__PURE__ */ (0, b.jsx)("td", { children: /* @__PURE__ */ (0, b.jsx)("input", {
 												type: "text",
 												"aria-label": `${e.name}本期变动说明`,
 												value: e.note,
-												onChange: (t) => tn(e.id, { note: t.target.value })
+												onChange: (t) => nn(e.id, { note: t.target.value })
 											}) })
 										] }, e.id)) }),
 										/* @__PURE__ */ (0, b.jsx)("tfoot", { children: /* @__PURE__ */ (0, b.jsxs)("tr", { children: [/* @__PURE__ */ (0, b.jsx)("th", { children: "个人现金合计" }), /* @__PURE__ */ (0, b.jsx)("td", {
@@ -12406,7 +12413,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 									type: "checkbox",
 									checked: ge,
 									onChange: (e) => _e(e.target.checked)
-								}), "已核对本期期末账户余额"] }), Qt("accounts")]
+								}), "已核对本期期末账户余额"] }), $t("accounts")]
 							})
 						] }) : /* @__PURE__ */ (0, b.jsx)("p", {
 							className: "review-caption",
@@ -12455,7 +12462,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							}),
 							/* @__PURE__ */ (0, b.jsx)("div", {
 								className: "data-actions",
-								children: Qt("goals")
+								children: $t("goals")
 							})
 						]
 					}),
@@ -12529,7 +12536,7 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							C.type !== "week" && /* @__PURE__ */ (0, b.jsx)("button", {
 								className: "secondary-button",
 								type: "button",
-								onClick: en,
+								onClick: tn,
 								children: "从已有记录汇总"
 							})
 						]
@@ -12568,12 +12575,12 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							children: [/* @__PURE__ */ (0, b.jsx)("button", {
 								className: "secondary-button",
 								type: "button",
-								onClick: () => Gt(Lt, "修订会替换当前未保存的输入，是否继续？", () => cn(R)),
+								onClick: () => Kt(Rt, "修订会替换当前未保存的输入，是否继续？", () => ln(R)),
 								children: "修订本期"
 							}), /* @__PURE__ */ (0, b.jsx)("button", {
 								className: "secondary-button",
 								type: "button",
-								onClick: () => zt(`finance-${R.type}-${R.start}.md`, qe(R, e), "text/markdown;charset=utf-8"),
+								onClick: () => zt(`finance-${R.type}-${R.start}.md`, qe(R, e, f.projects), "text/markdown;charset=utf-8"),
 								children: "下载报告"
 							})]
 						})]
@@ -12621,7 +12628,11 @@ function Ht({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 									P(Ve(R).filter((e) => e.categoryId === "otherIncome").reduce((e, t) => e + Math.round(t.amount * 100), 0) / 100)
 								] })
 							] }),
-							/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "本期实际消费" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: P(z.totals.spending) })] }),
+							/* @__PURE__ */ (0, b.jsxs)("div", { children: [
+								/* @__PURE__ */ (0, b.jsx)("span", { children: "本期实际消费" }),
+								/* @__PURE__ */ (0, b.jsx)("strong", { children: P(z.totals.spending) }),
+								R.type === "week" && /* @__PURE__ */ (0, b.jsxs)("small", { children: ["含按付款日补计的项目实付 ", P(z.totals.projectPaid)] })
+							] }),
 							/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "本期收支结余" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: P(z.totals.surplus) })] }),
 							/* @__PURE__ */ (0, b.jsxs)("div", { children: [
 								/* @__PURE__ */ (0, b.jsx)("span", { children: "期末净资产" }),
@@ -12792,12 +12803,12 @@ function Ut({ rows: e }) {
 }
 //#endregion
 //#region app/weekly-ledger-view.tsx
-function Wt({ records: e, flow: t }) {
-	let n = e.filter((e) => e.type === "week").sort((e, t) => e.start.localeCompare(t.start));
+function Wt({ records: e, flow: t, projects: n }) {
+	let r = e.filter((e) => e.type === "week").sort((e, t) => e.start.localeCompare(t.start));
 	return /* @__PURE__ */ (0, b.jsxs)("details", {
 		className: "review-method",
 		open: !0,
-		children: [/* @__PURE__ */ (0, b.jsxs)("summary", { children: [t === "income" ? "每周收入变化" : "每周支出变化", " · 已保存复盘"] }), n.length ? /* @__PURE__ */ (0, b.jsx)("div", {
+		children: [/* @__PURE__ */ (0, b.jsxs)("summary", { children: [t === "income" ? "每周收入变化" : "每周支出变化", " · 已保存复盘"] }), r.length ? /* @__PURE__ */ (0, b.jsx)("div", {
 			className: "table-wrap",
 			children: /* @__PURE__ */ (0, b.jsxs)("table", {
 				className: "review-table",
@@ -12807,22 +12818,22 @@ function Wt({ records: e, flow: t }) {
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "较上期" }),
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "收支结余" }),
 					/* @__PURE__ */ (0, b.jsx)("th", { children: "口径" })
-				] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: n.map((e, r) => {
-					let i = I(e), a = n[r - 1], o = a ? I(a) : null, s = t === "income" ? i.income : i.spending, c = o ? s - (t === "income" ? o.income : o.spending) : null;
+				] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: r.map((e, i) => {
+					let a = I(e, n), o = r[i - 1], s = o ? I(o, n) : null, c = t === "income" ? a.income : a.spending, l = s ? c - (t === "income" ? s.income : s.spending) : null;
 					return /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 						/* @__PURE__ */ (0, b.jsxs)("th", { children: [
 							e.start,
 							" 至 ",
 							e.end
 						] }),
-						/* @__PURE__ */ (0, b.jsx)("td", { children: P(s) }),
-						/* @__PURE__ */ (0, b.jsx)("td", { children: c === null ? "首次基准" : P(c) }),
-						/* @__PURE__ */ (0, b.jsx)("td", { children: P(i.surplus) }),
+						/* @__PURE__ */ (0, b.jsx)("td", { children: P(c) }),
+						/* @__PURE__ */ (0, b.jsx)("td", { children: l === null ? "首次基准" : P(l) }),
+						/* @__PURE__ */ (0, b.jsx)("td", { children: P(a.surplus) }),
 						/* @__PURE__ */ (0, b.jsxs)("td", { children: [
-							i.days,
+							a.days,
 							" 天",
-							o && o.days !== i.days ? ` / 上期 ${o.days} 天` : "",
-							/* @__PURE__ */ (0, b.jsx)("small", { children: "保存时的实际发生额，不与账本再相加" })
+							s && s.days !== a.days ? ` / 上期 ${s.days} 天` : "",
+							/* @__PURE__ */ (0, b.jsxs)("small", { children: ["含项目实付补计 ", P(a.projectPaid)] })
 						] })
 					] }, e.id);
 				}) })]
@@ -12835,30 +12846,30 @@ function Wt({ records: e, flow: t }) {
 }
 //#endregion
 //#region app/review-overview.tsx
-function Gt({ records: e, accounts: t, onOpen: n }) {
-	let r = Re(e), i = r ? Ke(r, e) : null, a = He(e), o = Be(t ?? r?.accounts ?? [], i?.previous?.accounts), s = (e) => e === null ? "首次基准" : `较上期 ${e > 0 ? "+" : ""}${P(e)}`, c = i && r ? [
+function Gt({ records: e, accounts: t, projects: n, onOpen: r }) {
+	let i = Re(e), a = i ? Ke(i, e, n) : null, o = He(e, n), s = Be(t ?? i?.accounts ?? [], a?.previous?.accounts), c = (e) => e === null ? "首次基准" : `较上期 ${e > 0 ? "+" : ""}${P(e)}`, l = a && i ? [
 		{
 			title: "本周收入",
-			value: i.totals.income,
-			detail: s(i.prior ? i.totals.income - i.prior.income : null),
+			value: a.totals.income,
+			detail: c(a.prior ? a.totals.income - a.prior.income : null),
 			tone: "blue"
 		},
 		{
 			title: "本周实际消费",
-			value: i.totals.spending,
-			detail: s(i.prior ? i.totals.spending - i.prior.spending : null),
+			value: a.totals.spending,
+			detail: `复盘净消费 ${P(a.totals.ordinary)} + 项目实付补计 ${P(a.totals.projectPaid)}`,
 			tone: "green"
 		},
 		{
 			title: "本周收支结余",
-			value: i.totals.surplus,
+			value: a.totals.surplus,
 			detail: "收入减消费；投资、应急划拨不计消费",
-			tone: i.totals.surplus < 0 ? "red" : "green"
+			tone: a.totals.surplus < 0 ? "red" : "green"
 		},
 		{
 			title: "日常灵活资金",
-			value: o.total,
-			detail: o.total === null ? "请在账户用途中标记日常使用或小额支付" : `当前账户余额 · ${o.rows.map((e) => `${e.name} ${P(e.balance)}`).join(" + ")}；${o.delta === null ? "暂无同口径上期基准" : s(o.delta)}`,
+			value: s.total,
+			detail: s.total === null ? "请在账户用途中标记日常使用或小额支付" : `当前账户余额 · ${s.rows.map((e) => `${e.name} ${P(e.balance)}`).join(" + ")}；${s.delta === null ? "暂无同口径上期基准" : c(s.delta)}`,
 			tone: "violet"
 		}
 	] : [];
@@ -12870,48 +12881,48 @@ function Gt({ records: e, accounts: t, onOpen: n }) {
 				className: "section-title compact",
 				children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [
 					/* @__PURE__ */ (0, b.jsx)("h3", { children: "最近周复盘" }),
-					/* @__PURE__ */ (0, b.jsx)("p", { children: r ? `${r.start} 至 ${r.end} · ${i.totals.days} 天 · 已保存快照` : "尚未保存周复盘" }),
-					i?.prior && /* @__PURE__ */ (0, b.jsxs)("p", { children: [
+					/* @__PURE__ */ (0, b.jsx)("p", { children: i ? `${i.start} 至 ${i.end} · ${a.totals.days} 天 · 已保存快照` : "尚未保存周复盘" }),
+					a?.prior && /* @__PURE__ */ (0, b.jsxs)("p", { children: [
 						"上期：",
-						i.previous.start,
+						a.previous.start,
 						" 至 ",
-						i.previous.end,
+						a.previous.end,
 						" · ",
-						i.prior.days,
+						a.prior.days,
 						" 天",
-						i.prior.days === i.totals.days ? "" : " · 天数不同，金额不直接代表增减趋势"
+						a.prior.days === a.totals.days ? "" : " · 天数不同，金额不直接代表增减趋势"
 					] })
 				] }), /* @__PURE__ */ (0, b.jsx)("button", {
 					type: "button",
-					onClick: n,
+					onClick: r,
 					children: "查看周复盘"
 				})]
 			}),
-			a.month && /* @__PURE__ */ (0, b.jsxs)("div", {
+			o.month && /* @__PURE__ */ (0, b.jsxs)("div", {
 				className: "review-month-income",
 				"aria-label": "本月收入",
-				children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "本月收入 · 已记录" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: P(a.month.income) })] }), /* @__PURE__ */ (0, b.jsxs)("div", { children: [
+				children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("span", { children: "本月收入 · 已记录" }), /* @__PURE__ */ (0, b.jsx)("strong", { children: P(o.month.income) })] }), /* @__PURE__ */ (0, b.jsxs)("div", { children: [
 					/* @__PURE__ */ (0, b.jsxs)("span", { children: [
-						a.month.start,
+						o.month.start,
 						" 至 ",
-						a.month.limit,
+						o.month.limit,
 						" · 截至 ",
-						a.month.end
+						o.month.end
 					] }),
 					/* @__PURE__ */ (0, b.jsxs)("small", { children: [
 						"10号账期 · 已保存周复盘汇总 · 已覆盖 ",
-						a.month.coveredDays,
+						o.month.coveredDays,
 						"/",
-						a.month.days,
+						o.month.days,
 						" 天"
 					] }),
-					a.month.coveredDays < a.month.days && /* @__PURE__ */ (0, b.jsx)("small", { children: "尚有未覆盖日期，当前金额不是完整月收入。" }),
-					a.month.boundaryMissing && /* @__PURE__ */ (0, b.jsx)("small", { children: "跨账期周缺少收入日期，该周收入暂未计入本月。" })
+					o.month.coveredDays < o.month.days && /* @__PURE__ */ (0, b.jsx)("small", { children: "尚有未覆盖日期，当前金额不是完整月收入。" }),
+					o.month.boundaryMissing && /* @__PURE__ */ (0, b.jsx)("small", { children: "跨账期周缺少收入日期，该周收入暂未计入本月。" })
 				] })]
 			}),
 			/* @__PURE__ */ (0, b.jsx)("div", {
 				className: "overview-grid",
-				children: c.map((e) => /* @__PURE__ */ (0, b.jsxs)("article", {
+				children: l.map((e) => /* @__PURE__ */ (0, b.jsxs)("article", {
 					className: `overview-card ${e.tone}`,
 					children: [
 						/* @__PURE__ */ (0, b.jsx)("span", { children: e.title }),
@@ -12920,7 +12931,7 @@ function Gt({ records: e, accounts: t, onOpen: n }) {
 					]
 				}, e.title))
 			}),
-			a.rows.length > 0 && /* @__PURE__ */ (0, b.jsxs)("section", {
+			o.rows.length > 0 && /* @__PURE__ */ (0, b.jsxs)("section", {
 				"aria-label": "每周收支变化",
 				className: "review-week-trend",
 				children: [
@@ -12933,7 +12944,7 @@ function Gt({ records: e, accounts: t, onOpen: n }) {
 							/* @__PURE__ */ (0, b.jsx)("th", { children: "每周实际消费" }),
 							/* @__PURE__ */ (0, b.jsx)("th", { children: "每周收支结余" }),
 							/* @__PURE__ */ (0, b.jsx)("th", { children: "比较口径" })
-						] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: [...a.rows].reverse().map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
+						] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: [...o.rows].reverse().map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [
 							/* @__PURE__ */ (0, b.jsxs)("th", {
 								scope: "row",
 								children: [
@@ -12947,7 +12958,7 @@ function Gt({ records: e, accounts: t, onOpen: n }) {
 								"income",
 								"spending",
 								"surplus"
-							].map((t) => /* @__PURE__ */ (0, b.jsxs)("td", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: P(e[t]) }), /* @__PURE__ */ (0, b.jsx)("small", { children: e.changes ? s(e.changes[t]).replace("较上期", "较上周") : "—" })] }, t)),
+							].map((t) => /* @__PURE__ */ (0, b.jsxs)("td", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: P(e[t]) }), /* @__PURE__ */ (0, b.jsx)("small", { children: e.changes ? c(e.changes[t]).replace("较上期", "较上周") : "—" })] }, t)),
 							/* @__PURE__ */ (0, b.jsx)("td", { children: e.comparison })
 						] }, e.record.id)) })] })
 					}),
@@ -13177,8 +13188,8 @@ function H(e, t, n) {
 }
 //#endregion
 //#region app/cycle-focus-history.tsx
-function an({ today: e, records: t, updates: n }) {
-	let { cycle: r, weeks: i } = H(e, t, n), a = {
+function an({ today: e, records: t, updates: n, projects: r }) {
+	let { cycle: i, weeks: a } = H(e, t, n), o = {
 		projects: "大花费项目",
 		bills: "账单与订阅",
 		balance: "资产及负债明细",
@@ -13186,50 +13197,69 @@ function an({ today: e, records: t, updates: n }) {
 		investments: "投资账户"
 	};
 	return /* @__PURE__ */ (0, b.jsxs)("section", {
-		className: "review-activity",
+		className: "cycle-journal",
 		"aria-label": "本账期每周关键变化",
-		children: [
-			/* @__PURE__ */ (0, b.jsx)("div", {
-				className: "section-title compact",
-				children: /* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("h3", { children: "每周变化：大花费项目支出、订阅与资产负债" }), /* @__PURE__ */ (0, b.jsxs)("p", { children: [
-					r.start,
-					" 至 ",
-					r.limit,
-					" · 按复盘截至日归属，每月 10 日切换"
-				] })] })
-			}),
-			/* @__PURE__ */ (0, b.jsx)("p", {
-				className: "review-caption",
-				children: "对比已保存的项目实际金额、订阅登记和账户余额；项目目标和账单提醒不代表已付款。"
-			}),
-			i.map((t) => /* @__PURE__ */ (0, b.jsxs)("details", {
-				open: t.start <= e && e <= t.end,
-				className: "review-method",
+		children: [/* @__PURE__ */ (0, b.jsxs)("header", { children: [/* @__PURE__ */ (0, b.jsx)("h3", { children: "每周变化" }), /* @__PURE__ */ (0, b.jsxs)("span", { children: [
+			i.start,
+			" 至 ",
+			i.limit,
+			" · 10 号账期"
+		] })] }), a.map((t) => {
+			let n = t.end < e ? t.end : e, i = r.filter((e) => e.actualDate && e.actualDate >= t.start && e.actualDate <= n && e.current !== 0), a = w(i, t.start, n).total, s = t.start <= e && e <= t.end;
+			return /* @__PURE__ */ (0, b.jsxs)("details", {
+				open: s,
+				className: "cycle-week",
 				children: [/* @__PURE__ */ (0, b.jsxs)("summary", { children: [
-					t.start,
-					" 至 ",
-					t.end,
-					" · ",
-					t.start > e ? "未到本周" : t.sections.some((e) => e.asOf) ? "有核对记录" : "未记录"
-				] }), /* @__PURE__ */ (0, b.jsx)("div", {
-					className: "review-week-table",
-					children: /* @__PURE__ */ (0, b.jsxs)("table", { children: [/* @__PURE__ */ (0, b.jsx)("thead", { children: /* @__PURE__ */ (0, b.jsxs)("tr", { children: [/* @__PURE__ */ (0, b.jsx)("th", { children: "类别" }), /* @__PURE__ */ (0, b.jsx)("th", { children: "本周变化" })] }) }), /* @__PURE__ */ (0, b.jsx)("tbody", { children: t.sections.map((e) => /* @__PURE__ */ (0, b.jsxs)("tr", { children: [/* @__PURE__ */ (0, b.jsx)("th", {
-						scope: "row",
-						children: a[e.scope]
-					}), /* @__PURE__ */ (0, b.jsxs)("td", { children: [
-						/* @__PURE__ */ (0, b.jsx)("strong", { children: e.status }),
-						e.asOf && /* @__PURE__ */ (0, b.jsxs)("small", { children: [
-							"核对截至 ",
-							e.asOf,
-							" · ",
-							e.comparison
-						] }),
-						e.lines.length > 0 && /* @__PURE__ */ (0, b.jsx)("ul", { children: e.lines.map((e, t) => /* @__PURE__ */ (0, b.jsx)("li", { children: e }, t)) }),
-						e.note && /* @__PURE__ */ (0, b.jsx)("p", { children: e.note })
-					] })] }, e.scope)) })] })
+					/* @__PURE__ */ (0, b.jsxs)("span", { children: [
+						t.start.slice(5),
+						" 至 ",
+						t.end.slice(5)
+					] }),
+					/* @__PURE__ */ (0, b.jsx)("small", { children: s ? "本周" : t.start > e ? "未到本周" : t.sections.some((e) => e.asOf) ? "已核对" : "无核对记录" }),
+					i.length > 0 && /* @__PURE__ */ (0, b.jsxs)("strong", { children: [
+						"项目付款 ",
+						i.length,
+						" 笔"
+					] })
+				] }), /* @__PURE__ */ (0, b.jsxs)("div", {
+					className: "cycle-body",
+					children: [
+						/* @__PURE__ */ (0, b.jsxs)("div", {
+							className: "cycle-paid",
+							children: [/* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: "项目实付补计" }), /* @__PURE__ */ (0, b.jsx)("b", { children: P(a) })] }), i.length ? /* @__PURE__ */ (0, b.jsx)("ul", { children: i.map((e) => /* @__PURE__ */ (0, b.jsxs)("li", { children: [
+								/* @__PURE__ */ (0, b.jsx)("time", { children: e.actualDate }),
+								/* @__PURE__ */ (0, b.jsx)("span", { children: e.name }),
+								/* @__PURE__ */ (0, b.jsx)("strong", { children: P(e.current) }),
+								/* @__PURE__ */ (0, b.jsx)("small", { children: e.includedInLedger ? "已入账 · 不再加计" : "按付款日补计" })
+							] }, e.id)) }) : /* @__PURE__ */ (0, b.jsx)("p", { children: "本周暂无已登记的项目付款。" })]
+						}),
+						/* @__PURE__ */ (0, b.jsx)("h4", { children: "复盘核对记录" }),
+						/* @__PURE__ */ (0, b.jsx)("div", {
+							className: "cycle-records",
+							children: t.sections.map((e) => /* @__PURE__ */ (0, b.jsxs)("div", {
+								className: `cycle-record cycle-${e.scope}`,
+								children: [/* @__PURE__ */ (0, b.jsxs)("div", {
+									className: "cycle-label",
+									children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: o[e.scope] }), /* @__PURE__ */ (0, b.jsx)("small", { children: e.status })]
+								}), /* @__PURE__ */ (0, b.jsxs)("div", {
+									className: "cycle-lines",
+									children: [
+										e.asOf && /* @__PURE__ */ (0, b.jsxs)("small", { children: [
+											"截至 ",
+											e.asOf,
+											" · ",
+											e.comparison
+										] }),
+										e.lines.length > 0 && /* @__PURE__ */ (0, b.jsx)("ul", { children: e.lines.map((e, t) => /* @__PURE__ */ (0, b.jsx)("li", { children: e }, t)) }),
+										e.note && /* @__PURE__ */ (0, b.jsx)("p", { children: e.note })
+									]
+								})]
+							}, e.scope))
+						})
+					]
 				})]
-			}, t.start))
-		]
+			}, t.start);
+		})]
 	});
 }
 //#endregion
@@ -16192,6 +16222,7 @@ function Pr() {
 								/* @__PURE__ */ (0, b.jsx)(Gt, {
 									records: r,
 									accounts: A,
+									projects: Ue,
 									onOpen: () => oa("periodReview")
 								}),
 								/* @__PURE__ */ (0, b.jsx)(Jt, {
@@ -16201,7 +16232,8 @@ function Pr() {
 								/* @__PURE__ */ (0, b.jsx)(an, {
 									today: e,
 									records: r,
-									updates: s
+									updates: s,
+									projects: Ue
 								}),
 								/* @__PURE__ */ (0, b.jsxs)("article", {
 									className: "total-assets-hero",
@@ -16371,6 +16403,7 @@ function Pr() {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [
 												/* @__PURE__ */ (0, b.jsx)(Wt, {
 													records: r,
+													projects: Ue,
 													flow: "income"
 												}),
 												/* @__PURE__ */ (0, b.jsx)(mt, {
@@ -16435,6 +16468,7 @@ function Pr() {
 												}),
 												/* @__PURE__ */ (0, b.jsx)(Wt, {
 													records: r,
+													projects: Ue,
 													flow: "expense"
 												}),
 												/* @__PURE__ */ (0, b.jsxs)("div", {

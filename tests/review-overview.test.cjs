@@ -17,6 +17,23 @@ const record=(end,overrides={})=>m.parseFinanceReview({...m.newReviewDraft('week
   amounts:Object.fromEntries(m.reviewCategories.map(row=>[row.id,0])),
   balances:{cash:10000,investments:5000,otherAssets:0,debt:2000},...overrides});
 
+test('live payment dates reconcile weekly cards, trends, reports and ledger weeks without duplicating ledger spending',()=>{
+  const a=record('2026-11-15'), b=record('2026-11-22');
+  a.amounts.travel=50;a.amounts.emergency=300;a.amounts.investment=900;
+  const projects=[{current:123.45,actualDate:'2026-11-15'}, {current:50,actualDate:'2026-11-10',includedInLedger:true},
+    {current:800,dueDate:'2026-11-11'}, {current:10,actualDate:'2026-11-16'}];
+  const trend=()=>m.overviewWeeklyTrend([a,b],projects).rows;
+  assert.deepEqual(trend().map(r=>[r.spending,r.surplus]),[[173.45,826.55],[10,990]]);
+  const html=renderToStaticMarkup(React.createElement(exported.default,{records:[a],projects,onOpen:()=>{}}));
+  assert.match(html,/173\.45/);assert.match(html,/826\.55/);assert.match(html,/123\.45/);
+  assert.match(m.financeReviewReport(a,[a,b],projects),/实际消费 ¥173\.45/);
+  const ledger=m.weeklyLedgerTotals([{date:'2026-11-10',flow:'expense',categoryId:'travel',amount:50}],a.start,b.end,projects);
+  assert.deepEqual(ledger.map(r=>[r.count,r.spending]),[[2,173.45],[1,10]]);
+  projects[0].actualDate='2026-11-16';assert.deepEqual(trend().map(r=>r.spending),[50,133.45]);
+  projects[0].actualDate='';assert.deepEqual(trend().map(r=>r.spending),[50,10]);
+  assert.equal(m.reviewTotals({...b,end:'2026-11-18'},[{current:20,actualDate:'2026-11-19'}]).projectPaid,0);
+});
+
 test('overview selects latest weekly period, not last edited historical or monthly report',()=>{
   const old=record('2026-10-18',{savedAt:'2026-10-30T00:00:00Z'});
   const current=record('2026-10-29',{savedAt:'2026-10-29T00:00:00Z'});

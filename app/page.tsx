@@ -2997,9 +2997,9 @@ export default function FinanceDashboard() {
               <span>{item.title}</span><strong>{item.value}</strong><small>{item.detail}</small>
             </article>)}
           </div>
-          <ReviewOverview records={financeReviews} accounts={accounts} onOpen={() => navigateToSection("periodReview")} />
+          <ReviewOverview records={financeReviews} accounts={accounts} projects={fundBuckets} onOpen={() => navigateToSection("periodReview")} />
           <ReviewActivity records={financeReviews} updates={reviewUpdates} />
-          <CycleFocusHistory today={currentDate} records={financeReviews} updates={reviewUpdates}/>
+          <CycleFocusHistory today={currentDate} records={financeReviews} updates={reviewUpdates} projects={fundBuckets}/>
           <article className="total-assets-hero">
             <div className="total-assets-main">
               <span>当前总资产与负债</span>
@@ -3113,7 +3113,7 @@ export default function FinanceDashboard() {
                     <EditableNumber label="每月工资规划（元）" value={annualBudgetPlan.salary} onChange={value => updateAnnualBudgetPlan({...annualBudgetPlan, salary:value})}/>
                     <DataChartLayout
                       data={
-                        <><WeeklyLedgerView records={financeReviews} flow="income"/><DatedLedgerEditor key={`income-${activeMonth.id}`} flow="income" month={activeMonth} entries={datedEntries} onSave={saveDatedEntry} onDelete={deleteDatedEntry}/>
+                        <><WeeklyLedgerView records={financeReviews} projects={fundBuckets} flow="income"/><DatedLedgerEditor key={`income-${activeMonth.id}`} flow="income" month={activeMonth} entries={datedEntries} onSave={saveDatedEntry} onDelete={deleteDatedEntry}/>
                         <EditableMonthlyIncomeTable
                           records={monthlyRecords}
                           selectedMonth={selectedMonth}
@@ -3152,7 +3152,7 @@ export default function FinanceDashboard() {
                             onChange={setSelectedMonth}
                             onDeleteSelectedMonth={() => deleteMonthRecord(selectedMonth)}
                           />
-                          <WeeklyLedgerView records={financeReviews} flow="expense"/>
+                          <WeeklyLedgerView records={financeReviews} projects={fundBuckets} flow="expense"/>
                           <div className="stat-strip" aria-label="月度支出与基金预留">
                             <Stat label="实际消费" value={money(totals.spendingActual)} />
                             <Stat label="投资基金预留" value={money(totals.budgetUsage.investment)} />
