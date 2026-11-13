@@ -33,3 +33,16 @@ test('overview, expenditure and reports share computed usage without changing ac
   assert.match(source,/netWorth: totalAssets - totalDebt/);
   assert.doesNotMatch(source,/actualIncome - spendingActual - assetOutflow/);
 });
+
+test('monthly actual-spending card uses net consumption, not outflow including budget reserves',()=>{
+  const {projectPayments}=loadModel('project-payments');
+  const payments=projectPayments([{current:5577.78,actualDate:'2026-11-13'},
+    {current:300,actualDate:'2026-11-12',includedInLedger:true},{current:200,dueDate:'2026-11-01'}],'2026-11-01','2026-11-30');
+  const usage=monthlyBudgetUsage(13000,Math.round((7860.84+payments.total)*100)/100,initialAnnualBudgetPlan);
+  assert.equal(usage.consumption,13438.62);
+  assert.equal(usage.spending,16688.62);
+  const source=fs.readFileSync(path.join(__dirname,'../app/page.tsx'),'utf8');
+  const card=source.split('id: "monthly-overview-living"')[1].split('tone:')[0];
+  assert.match(card,/value: reviewMoney\(totals\.spendingActual\)/);
+  assert.doesNotMatch(card,/budgetUsage|预留/);
+});

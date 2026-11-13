@@ -2381,14 +2381,14 @@ export default function FinanceDashboard() {
     },
     {
       id: "monthly-overview-living",
-      title: "所选月支出（含基金预留）",
-      value: reviewMoney(totals.budgetUsage.spending),
-      detail: `${activeMonth.label} / 账本消费 ${reviewMoney(recordSpendingActual(activeMonth))} + 大花费项目实付 ${reviewMoney(monthPayments.total)} + 投资预留 ${money(totals.budgetUsage.investment)} + 应急预留 ${money(totals.budgetUsage.emergency)}`,
+      title: "所选月实际支出",
+      value: reviewMoney(totals.spendingActual),
+      detail: `${activeMonth.label} / 账本净消费 ${reviewMoney(recordSpendingActual(activeMonth))} + 未计入账本的项目实付 ${reviewMoney(monthPayments.total)}`,
       tone: "green" as Tone,
     },
     {
       id: "monthly-overview-surplus",
-      title: "所选月收支结余",
+      title: "所选月可用结余（扣除预留后）",
       value: reviewMoney(totals.monthlySurplus),
       detail: "收入 - 实际消费 - 投资及应急预留；基金每月扣一次，不减少净资产",
       tone: "violet" as Tone,
