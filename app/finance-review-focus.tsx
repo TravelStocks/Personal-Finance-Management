@@ -1,11 +1,12 @@
 import {reviewFocusLabels, reviewMoney, type ReviewFocus, type ReviewFocusKey} from "./finance-review-model";
 import type {ReactNode} from "react";
 
-export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, onOpen, onUseBalances,saveAction}: {
+export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, onRefreshBills, onOpen, onUseBalances,saveAction}: {
   focus?: ReviewFocus;
   live: boolean;
   onChange: (focus: ReviewFocus) => void;
   onRefresh: () => void;
+  onRefreshBills: () => void;
   onOpen: (module: "fundBuckets" | "reminders" | "balance") => void;
   onUseBalances: () => void;
   saveAction?: (key:ReviewFocusKey)=>ReactNode;
@@ -38,6 +39,7 @@ export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, 
             </tbody></>}
           </table></div>
           <div className="data-actions"><button type="button" className="secondary-button" onClick={()=>onOpen(modules[key])}>前往{reviewFocusLabels[key]}</button>
+            {key === "bills" && <button type="button" className="secondary-button" onClick={onRefreshBills}>刷新关键事项</button>}
             {key === "balance" && <button type="button" className="secondary-button" onClick={onUseBalances}>带入补录资产与负债合计</button>}
           </div>
           <label className="field"><span>{reviewFocusLabels[key]}变化说明（可选）</span><input type="text" value={focus.notes[key] ?? ""} onChange={event=>onChange({...focus,notes:{...focus.notes,[key]:event.target.value}})}/></label>

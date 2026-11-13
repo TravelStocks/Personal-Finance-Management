@@ -260,6 +260,17 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
     template.balances.cash = null;
     download("finance-review-template.json", JSON.stringify(template, null, 2), "application/json");
   }
+  function refreshBills() {
+    if (!draft.focus) return;
+    const differs = JSON.stringify(draft.focus.bills) !== JSON.stringify(focusSource.bills);
+    confirmOrRun(!followsSource || differs || draft.focus.checks.bills,
+      "用当前账单与提醒替换本期账单清单？未保存的账单金额和日期会被替换，变化说明保留。", () => {
+        setDraft(current => !current.focus ? current : {...current, focus:{...current.focus,
+          bills:focusSource.bills.map(row=>({...row})), checks:{...current.focus.checks,bills:false}}});
+        setDraftModules(current=>({...current,bills:moduleSignatures.bills}));
+        setStatus(`已刷新 ${focusSource.bills.length} 项账单与订阅，变化说明已保留，待核对。`);
+      });
+  }
   function refreshFocus() {
     confirmOrRun(!followsSource || Object.values(draft.focus?.checks ?? {}).some(Boolean), "刷新会带入当前模块数据并重新核对，变化说明保留。历史复盘请确认这些数据属于该截至日。", () => {
       const focus = newReviewFocus(focusSource);
@@ -401,7 +412,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
         setLiveFocus(false);
         const total=(rows:Array<{amount:number}>)=>rows.reduce((s,r)=>s+Math.round(r.amount*100),0)/100;
         setDraft({...draft,focus,balances:{...draft.balances,otherAssets:total(focus.assets),debt:total(focus.debts)}});
-      }} onRefresh={refreshFocus} onOpen={onOpenModule} onUseBalances={useFocusBalances} saveAction={key=>moduleButton(key)}/>
+      }} onRefresh={refreshFocus} onRefreshBills={refreshBills} onOpen={onOpenModule} onUseBalances={useFocusBalances} saveAction={key=>moduleButton(key)}/>
       <section aria-labelledby="review-accounts-title" className="review-accounts" data-review-module="accounts">
         <div className="review-toolbar"><h3 id="review-accounts-title">本期账户余额</h3><button className="secondary-button" type="button" disabled={!accounts.length} onClick={loadAccounts}>带入账户管理余额</button></div>
         {draft.accounts ? <>

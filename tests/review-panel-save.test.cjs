@@ -47,7 +47,7 @@ function harness(fail=false) {
       return {patch:result.patch,moduleSignature:modules.reviewModuleSignature(state,module),sourceSignature:d.dashboardSourceSignature(state)};
     },
     investments:{holdings:state.holdings,fxUsd:7,fxHkd:1},goals:state.goals,dashboardAsOf:state.dashboardAsOf,
-    sourceSignature:d.dashboardSourceSignature(state),focusSource:{projects:[],bills:[],assets:[],debts:[],holdings:state.holdings[0].value},
+    sourceSignature:d.dashboardSourceSignature(state),focusSource:{projects:[],bills:state.reminders,assets:[],debts:[],holdings:state.holdings[0].value},
     ledgerMonths:state.monthlyRecords,datedEntries:[],onSaveIncome:()=>{},onDeleteIncome:()=>{},onOpenModule:()=>{},
     onChange:(records,request)=>{
       if(fail)throw new Error('Storage quota exceeded');
@@ -77,6 +77,22 @@ function harness(fail=false) {
   updateProps();render();
   return {prepare,submit,button,input,find,state:()=>state,refresh:()=>{updateProps();render();},reopen:()=>{slots.length=0;state=JSON.parse(JSON.stringify(state));updateProps();render();}};
 }
+
+test('bill refresh pulls the current reminder list only, retains notes and allows subsequent scoped save',()=>{
+  const h=harness(), panel=()=>h.find(n=>typeof n.props?.onRefreshBills==='function').props;
+  const original={...panel().focus, bills:[{id:'old',name:'旧订阅',date:'2026-10-28',amount:3,kind:'订阅'}],
+    projects:[{id:'p',name:'搬家',target:100,current:7,dueDate:'2026-11-01'}],
+    checks:{projects:true,bills:true,balance:true},notes:{bills:'调整了订阅',projects:'保持原计划'}};
+  panel().onChange(original);h.refresh();
+  const latest=[{id:'new',name:'新增订阅',date:'2026-11-09',amount:18.8,kind:'订阅'}];
+  h.state().reminders=latest;h.refresh();
+  panel().onRefreshBills();h.refresh();h.button('取消');assert.deepEqual(panel().focus,original);
+  panel().onRefreshBills();h.refresh();h.button('确认');
+  assert.deepEqual(panel().focus,{...original,bills:latest,checks:{...original.checks,bills:false}});
+  assert.equal(h.state().reviewUpdates,undefined);
+  const button=panel().saveAction('bills');button.props.onClick({currentTarget:{closest:()=>null,dataset:{reviewSave:'bills'}}});h.refresh();
+  assert.equal(h.state().reviewUpdates.at(-1).module,'bills');assert.deepEqual(h.state().reminders,latest);
+});
 
 test('standalone note save requires no amounts, does not submit other edits, and restores in the same week',()=>{
   const h=harness();const field=()=>h.find(n=>n.type==='textarea'&&n.props['aria-label']==='整体变化说明情况');
