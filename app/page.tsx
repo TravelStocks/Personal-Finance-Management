@@ -10,6 +10,7 @@ import DatedLedgerEditor from "./dated-ledger-editor";
 import WeeklyLedgerView from "./weekly-ledger-view";
 import ReviewOverview from "./review-overview";
 import ReviewActivity from "./review-activity";
+import CycleFocusHistory from "./cycle-focus-history";
 import WeeklyNoteHistory from "./weekly-note-history";
 import {parseWeeklyNotes, saveWeeklyNote, type WeeklyNotes} from "./review-note-model";
 import {monthlyBudgetUsage} from "./monthly-budget-usage";
@@ -2988,6 +2989,7 @@ export default function FinanceDashboard() {
           </div>
           <ReviewOverview records={financeReviews} accounts={accounts} onOpen={() => navigateToSection("periodReview")} />
           <ReviewActivity records={financeReviews} updates={reviewUpdates} />
+          <CycleFocusHistory today={currentDate} records={financeReviews} updates={reviewUpdates}/>
           <article className="total-assets-hero">
             <div className="total-assets-main">
               <span>当前总资产与负债</span>
