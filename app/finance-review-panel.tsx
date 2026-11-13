@@ -13,8 +13,8 @@ import {reviewPeriod, reviewIncomeRows, weeklyLedgerTotals} from "./finance-revi
 import {aggregateFinanceReviews, analyzeFinanceReview, balanceLabels, financeReviewReport, newReviewDraft, parseFinanceReview, parseFinanceReviews, reviewAccountCash, reviewCategories, reviewMoney, reviewToday, reviewTypeNames, upsertFinanceReview, withReviewAccounts, type FinanceReview, type ReviewAccount, type ReviewAccountDraft, type ReviewDraft, type ReviewType} from "./finance-review-model";
 import "./finance-review-panel.css";
 import "./dated-ledger.css";
-import {mergeReviewModule, restoreReviewModules, reviewModuleLabels, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
-import type {ReviewUpdate} from "./review-dashboard-sync";
+import {mergeReviewModule, restoreReviewModules, reviewModuleLabels, reviewModuleSignature, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
+import {advanceDashboardSource, changedDashboardScopes, dashboardScopes, dashboardSourceSignature, type DashboardScope, type DashboardState, type ReviewUpdate} from "./review-dashboard-sync";
 import type {WeeklyNotes} from "./review-note-model";
 import {goalBalanceSource} from "./goal-sync-model";
 
@@ -58,6 +58,8 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
   const [investmentsConfirmed,setInvestmentsConfirmed] = useState(false);
   const [draftSource,setDraftSource] = useState(sourceSignature);
   const [draftModules,setDraftModules] = useState(moduleSignatures);
+  const conflicts=changedDashboardScopes(draftSource,sourceSignature);
+  const conflictMessage=`需重新核对：${conflicts.map(key=>reviewModuleLabels[key]).join("、")}。未保存的输入仍保留。`;
   const [view, setView] = useState<"entry" | "report">(records.length ? "report" : "entry");
   const [selectedId, setSelectedId] = useState(records[0]?.id ?? "");
   const [status, setStatus] = useState("");
@@ -101,6 +103,12 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
   // Only an unsaved current-date intake follows live modules; saved revisions and rollups stay snapshots.
   if (followsSource && (!draft.focus || !reviewFocusMatchesSource(draft.focus, focusSource))) {
     setDraft(current=>({...current, focus: syncReviewFocus(current.focus, focusSource)}));
+    acknowledge(["projects","bills","balance"]);
+  }
+
+  function acknowledge(keys:readonly DashboardScope[]) {
+    setDraftSource(base=>advanceDashboardSource(base,sourceSignature,keys));
+    setDraftModules(base=>({...base,...Object.fromEntries(keys.map(key=>[key,moduleSignatures[key]]))}));
   }
   const hasDraft = incomePending || draft.income !== null || Object.values(draft.amounts).some(value => value !== null) || Object.values(draft.balances).some(value => value !== null) || Boolean(draft.summary || draft.overallChange) || Object.values(draft.notes).some(Boolean) || Object.values(draft.focus?.checks ?? {}).some(Boolean) || Object.values(draft.focus?.notes ?? {}).some(Boolean);
 
@@ -159,7 +167,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       if (incomePending) throw new Error("收入录入尚未保存，请先点击保存收入或取消修改。");
       if (incomeLinked && !ledgerLinked && !incomeConfirmed) throw new Error("请先核对本期工资和其他收入。");
       if (ledgerLinked && (ledgerSource.unassigned.length || !ledgerConfirmed)) throw new Error("请先确认日期收支分类完整，并核对本期全部收支。");
-      if(publish && draftSource!==sourceSignature) throw new Error("当前模块已变化，请重新带入当前模块并核对后保存。");
+      if(publish && conflicts.length) throw new Error(conflictMessage);
       const pending=[...(draft.accounts&&!accountsConfirmed?["账户余额"]:[]),...(publish ? [!investmentsConfirmed&&"投资账户",!draft.focus?.checks.projects&&"大花费项目",!draft.focus?.checks.bills&&"账单与订阅",!draft.focus?.checks.balance&&"资产负债"].filter(Boolean) : [])];
       if(pending.length) throw new Error(`以下模块尚未确认：${pending.join("、")}。可分别点击该模块的“保存并更新”，或勾选核对后全部保存。`);
       const budget = draft.type === "month" ? draft.budget ?? {mode: budgetMode, amounts: Object.fromEntries(plan.rows.map(row => [row.id, row[budgetMode]]))} : undefined;
@@ -190,7 +198,9 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       setDraft(current=>mergeReviewModule(current,receipt.patch));
       setLiveFocus(false);
       setDraftModules(current=>({...current,[module]:receipt.moduleSignature,...(receipt.goalsSignature && current.goals===moduleSignatures.goals ? {goals:receipt.goalsSignature} : {})}));
-      if(draftSource===sourceSignature) setDraftSource(receipt.sourceSignature);
+      const advanced:DashboardScope[]=dashboardScopes.filter(key=>key===module);
+      if((module==="accounts" || module==="spending") && !conflicts.includes("goals")) advanced.push("goals");
+      setDraftSource(base=>advanceDashboardSource(base,receipt.sourceSignature,advanced));
       if(module==="accounts") setAccountsConfirmed(true);
       if(module==="investments") setInvestmentsConfirmed(true);
       if(module==="income") setIncomeConfirmed(true);
@@ -251,6 +261,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
   function loadAccounts() {
     confirmOrRun(Boolean(draft.accounts), "重新带入会替换复盘中的账户余额与说明，是否继续？", () => {
       setDraft(withReviewAccounts(draft, accounts, draft.accounts ?? makeDraft(draft.type, draft.end).accounts));
+      acknowledge(["accounts"]);
       setAccountsConfirmed(false);
     });
   }
@@ -267,7 +278,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       "用当前账单与提醒替换本期账单清单？未保存的账单金额和日期会被替换，变化说明保留。", () => {
         setDraft(current => !current.focus ? current : {...current, focus:{...current.focus,
           bills:focusSource.bills.map(row=>({...row})), checks:{...current.focus.checks,bills:false}}});
-        setDraftModules(current=>({...current,bills:moduleSignatures.bills}));
+        acknowledge(["bills"]);
         setStatus(`已刷新 ${focusSource.bills.length} 项账单与订阅，变化说明已保留，待核对。`);
       });
   }
@@ -279,6 +290,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       const total=(rows:Array<{amount:number}>)=>rows.reduce((s,r)=>s+Math.round(r.amount*100),0)/100;
       setLiveFocus(false);
       setDraft({...draft,focus,balances:{...draft.balances,otherAssets:total(focus.assets),debt:total(focus.debts)}});
+      acknowledge(["projects","bills","balance"]);
     });
   }
   function refreshDashboard() {
@@ -287,6 +299,33 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       setDraft({...draft,accounts:fresh.accounts,investments:fresh.investments,goals:fresh.goals,focus:fresh.focus,balances:fresh.balances});
       setDraftSource(sourceSignature);setLiveFocus(false);setAccountsConfirmed(false);setInvestmentsConfirmed(false);
       setDraftModules(moduleSignatures);
+    });
+  }
+  function reviseSelected(record:FinanceReview) {
+    const receipt=moduleUpdates.findLast(row=>row.published && !row.module && row.reviewId===record.id &&
+      (row.after.financeReviews as FinanceReview[] | undefined)?.some(saved=>saved.id===record.id && saved.savedAt===record.savedAt));
+    const snapshot=receipt?.after as DashboardState | undefined;
+    setDraft({...record});resetIncome();setLiveFocus(false);setLedgerLinked(false);setLedgerConfirmed(false);
+    setAccountsConfirmed(false);setInvestmentsConfirmed(false);
+    setDraftSource(snapshot ? dashboardSourceSignature(snapshot) : "");
+    setDraftModules(Object.fromEntries(Object.keys(reviewModuleLabels).map(key=>[key,snapshot?reviewModuleSignature(snapshot,key as ReviewModule):""])) as Record<ReviewModule,string>);
+    setView("entry");setStatus("");
+  }
+  function resolveConflicts() {
+    confirmOrRun(true,`${conflictMessage} 仅用当前看板替换上述模块的复盘明细，是否继续？`,()=>{
+      const has=(key:DashboardScope)=>conflicts.includes(key);
+      let next={...draft,balances:{...draft.balances}};
+      if(has("accounts")) {next=withReviewAccounts(next,accounts,draft.accounts);setAccountsConfirmed(false);}
+      if(has("investments")) {next.investments=structuredClone(investments);next.balances.investments=reviewInvestmentTotal(investments);setInvestmentsConfirmed(false);}
+      if(has("goals")) next.goals=goals.map(goal=>({...goal}));
+      const fresh=newReviewFocus(focusSource), focus=next.focus ?? fresh;
+      next.focus={...focus,checks:{...focus.checks},holdings:next.investments?reviewInvestmentTotal(next.investments):focus.holdings};
+      if(has("projects")){next.focus.projects=fresh.projects;next.focus.checks.projects=false;}
+      if(has("bills")){next.focus.bills=fresh.bills;next.focus.checks.bills=false;}
+      if(has("balance")){next.focus.assets=fresh.assets;next.focus.debts=fresh.debts;next.focus.checks.balance=false;
+        next.balances.otherAssets=fresh.assets.reduce((s,r)=>s+Math.round(r.amount*100),0)/100;
+        next.balances.debt=fresh.debts.reduce((s,r)=>s+Math.round(r.amount*100),0)/100;}
+      setDraft(next);setLiveFocus(false);acknowledge(conflicts);setStatus("已带入变化的模块，请核对后保存。其他模块的输入已保留。");
     });
   }
   function updateInvestments(value:ReviewInvestments) {
@@ -333,6 +372,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
     <dialog ref={resultDialog} className="review-confirm" aria-labelledby="review-result-title" aria-describedby="review-result-message" onCancel={event=>{event.preventDefault();closeSaveResult();}}>
       <h3 id="review-result-title">{saveResult?.title}</h3><p id="review-result-message">{saveResult?.message}</p>
       <div className="data-actions"><button type="button" className="primary-button" autoFocus onClick={closeSaveResult}>{saveResult?.hasField ? "前往检查" : "知道了"}</button></div>
+      {publish && conflicts.length>0 && saveResult?.message===conflictMessage && <button type="button" className="secondary-button" onClick={()=>{closeSaveResult();resolveConflicts();}}>只带入变化的模块</button>}
     </dialog>
     <dialog ref={confirmDialog} className="review-confirm" aria-labelledby="review-confirm-title" onCancel={event => {event.preventDefault();setConfirmation(null);}}>
       <h3 id="review-confirm-title">确认更新</h3><p>{confirmation?.message}</p>
@@ -362,7 +402,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       save();
     }}>
       <div className="review-toolbar"><span>当前看板截至：{dashboardAsOf || "尚未整期更新"}</span><button type="button" className="secondary-button" onClick={refreshDashboard}>重新带入当前模块</button></div>
-      {draftSource!==sourceSignature&&<p role="alert">当前模块已变化，更新看板前须重新带入并核对。</p>}
+      {publish && conflicts.length>0 && <div role="alert">{conflictMessage} <button type="button" className="secondary-button" onClick={resolveConflicts}>只带入变化的模块</button></div>}
       <div className="review-fields">
         <label className="field"><span>复盘周期</span><select value={draft.type} onChange={event => resetDraft(event.target.value as ReviewType)}>{Object.entries(reviewTypeNames).map(([type,name]) => <option key={type} value={type}>{name}</option>)}</select></label>
         <label className="field"><span>数据截至</span><input type="date" required value={draft.end} onInput={event => {if (event.currentTarget.validity.valid && event.currentTarget.value && event.currentTarget.value !== draft.end) resetDraft(draft.type, event.currentTarget.value);}}/></label>
@@ -450,7 +490,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       {reportHasPendingModules&&<p className="review-status" role="status">本期有模块已单独更新；此报告仍是上次全部保存的版本。</p>}
       <div className="review-toolbar">
         <label className="field"><span>报告期间</span><select aria-label="报告期间" value={selected.id} onChange={event => setSelectedId(event.target.value)}>{records.map(record => <option key={record.id} value={record.id}>{reviewTypeNames[record.type]} · {record.start} 至 {record.end}</option>)}</select></label>
-        <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => {setDraft({...selected});resetIncome();setLiveFocus(false);setLedgerLinked(false);setLedgerConfirmed(false);setAccountsConfirmed(false);setInvestmentsConfirmed(false);setDraftSource("");setView("entry");setStatus("");})}>修订本期</button>
+        <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => reviseSelected(selected))}>修订本期</button>
           <button className="secondary-button" type="button" onClick={() => download(`finance-${selected.type}-${selected.start}.md`,financeReviewReport(selected,records),"text/markdown;charset=utf-8")}>下载报告</button></div>
       </div>
       <p className="review-caption">{analysis.previous ? `对比上期：${analysis.previous.start} 至 ${analysis.previous.end}` : "首次基准，暂无上期对比"}</p>

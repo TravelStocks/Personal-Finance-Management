@@ -94,6 +94,37 @@ test('bill refresh pulls the current reminder list only, retains notes and allow
   assert.equal(h.state().reviewUpdates.at(-1).module,'bills');assert.deepEqual(h.state().reminders,latest);
 });
 
+test('refreshing changed bills unblocks full save without accepting a concurrent account change',()=>{
+  const h=harness();h.prepare();const focus=()=>h.find(n=>typeof n.props?.onRefreshBills==='function').props;
+  h.input('日常使用本期金额','12.34');
+  h.state().reminders=[{id:'sub',name:'Test sub',kind:'订阅',date:'2026-11-01',amount:10}];
+  h.state().accounts[0].balance=80;h.refresh();
+  focus().onRefreshBills();h.refresh();h.button('确认');
+  focus().onChange({...focus().focus,checks:{...focus().focus.checks,bills:true}});h.refresh();
+  h.submit();assert.match(h.find(n=>n.props?.id==='review-result-message').props.children,/需重新核对：账户余额。/);
+  assert.equal(h.state().financeReviews.length,0);assert.equal(h.state().accounts[0].balance,80);
+  h.button('只带入变化的模块');h.button('确认');
+  assert.equal(h.find(n=>n.props?.['aria-label']==='日常使用本期金额').props.value,12.34);
+  assert.equal(focus().focus.checks.bills,true);
+  h.find(n=>n.type==='label'&&Array.isArray(n.props.children)&&n.props.children.includes('已核对本期期末账户余额')).props.children[0].props.onChange({target:{checked:true}});h.refresh();
+  h.submit();assert.equal(h.state().financeReviews.length,1);assert.equal(h.state().accounts[0].balance,80);
+});
+
+test('revision of a published report uses its saved baseline, not an artificial conflict',()=>{
+  const h=harness();h.prepare();h.submit();h.refresh();h.button('修订本期');h.button('确认');
+  h.prepare();h.submit();h.button('确认');h.refresh();
+  assert.equal(h.state().reviewUpdates.length,2);assert.equal(h.state().financeReviews.length,1);
+  assert.equal(h.find(n=>n.props?.id==='review-result-title').props.children,'保存并更新完毕');
+});
+
+test('an account module save advances the full-save baseline without accepting a later outside edit',()=>{
+  const h=harness();h.prepare();h.button('保存并更新账户余额');h.refresh();h.submit();h.refresh();
+  assert.equal(h.state().financeReviews.length,1);assert.equal(h.state().reviewUpdates.length,2);
+  h.state().accounts[0].balance=999;h.refresh();h.button('修订本期');h.button('确认');h.prepare();h.submit();
+  assert.match(h.find(n=>n.props?.id==='review-result-message').props.children,/需重新核对：账户余额/);
+  assert.equal(h.state().accounts[0].balance,999);assert.equal(h.state().reviewUpdates.length,2);
+});
+
 test('standalone note save requires no amounts, does not submit other edits, and restores in the same week',()=>{
   const h=harness();const field=()=>h.find(n=>n.type==='textarea'&&n.props['aria-label']==='整体变化说明情况');
   h.input('家用本期金额','123');field().props.onChange({target:{value:'这周减少了外卖。'}});h.refresh();

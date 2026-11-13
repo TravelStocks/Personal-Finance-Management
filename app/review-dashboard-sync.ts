@@ -22,8 +22,21 @@ function sameIds(a:Array<{id:string}>, b:Array<{id:string}>, label:string) {
 function merge<T extends {id:string}, U extends {id:string}>(current:T[], updates:U[]) {
   return current.map(row=>({...row,...updates.find(update=>update.id===row.id)}));
 }
+export const dashboardScopes = ["accounts","investments","projects","bills","balance","goals"] as const;
+export type DashboardScope = typeof dashboardScopes[number];
 export function dashboardSourceSignature(state:DashboardState) {
-  return JSON.stringify([state.accounts,state.holdings,state.fxUsd,state.fxHkd,state.balanceAssets,state.liabilities,state.reminders,state.fundBuckets,state.goals]);
+  return JSON.stringify({accounts:state.accounts,investments:[state.holdings,state.fxUsd,state.fxHkd],projects:state.fundBuckets,
+    bills:state.reminders,balance:[state.balanceAssets,state.liabilities],goals:state.goals});
+}
+export function changedDashboardScopes(base:string, next:string) {
+  if(base===next) return [];
+  const a=JSON.parse(base || "{}"), b=JSON.parse(next);
+  return dashboardScopes.filter(key=>JSON.stringify(a[key])!==JSON.stringify(b[key]));
+}
+// A scoped refresh/save acknowledges only the sources actually read or written.
+export function advanceDashboardSource(base:string,next:string,keys:readonly DashboardScope[]) {
+  const a=JSON.parse(base || "{}"), b=JSON.parse(next);
+  return JSON.stringify(Object.fromEntries(dashboardScopes.map(key=>[key,keys.includes(key)?b[key]:a[key]])));
 }
 export function dashboardSnapshotTotals(state:DashboardState) {
   const cash=state.accounts.filter(row=>row.includedInPersonal!==false).reduce((sum,row)=>sum+Math.round(row.balance*100),0)/100;
