@@ -52,7 +52,7 @@ function harness(fail=false) {
     onChange:(records,request)=>{
       if(fail)throw new Error('Storage quota exceeded');
       state=d.commitReviewUpdate(state,records,request,'2026-10-29T01:00:00Z','2026-10-29');
-      return {sourceSignature:d.dashboardSourceSignature(state)};
+      return {sourceSignature:d.dashboardSourceSignature(state),record:records.find(row=>row.id===request?.record?.id),moduleSignatures:Object.fromEntries(Object.keys(modules.reviewModuleLabels).map(key=>[key,modules.reviewModuleSignature(state,key)]))};
     }};}
   function render(){let count=0;do{dirty=false;cursor=0;tree=exported.default(props);assert.ok(++count<10);}while(dirty);return tree;}
   function nodes(){const result=[];function walk(n){if(Array.isArray(n)){n.forEach(walk);return;}if(!n||typeof n!=='object')return;result.push(n);walk(n.props?.children);}walk(tree);return result;}
@@ -144,6 +144,25 @@ test('refreshing changed bills unblocks full save without accepting a concurrent
   assert.equal(focus().focus.checks.bills,true);
   h.find(n=>n.type==='label'&&Array.isArray(n.props.children)&&n.props.children.includes('已核对本期期末账户余额')).props.children[0].props.onChange({target:{checked:true}});h.refresh();
   h.submit();assert.equal(h.state().financeReviews.length,1);assert.equal(h.state().accounts[0].balance,80);
+});
+
+test('reopening an older week edits its own report and ledger without rolling back subsequent balances',()=>{
+  const h=harness();h.prepare();h.input('日常使用本期金额','12.50');h.submit();h.refresh();
+  const prior=structuredClone(h.state().financeReviews[0]);
+  h.state().dashboardAsOf='2026-11-05';h.state().accounts[0].balance=900;
+  h.refresh();h.button('修订本期');h.button('确认');
+  assert.equal(h.find(n=>n.props?.['aria-label']==='日常使用本期金额').props.value,12.5);
+  assert.equal(h.find(n=>n.props?.['aria-label']==='Test bank复盘期末余额').props.value,450.5);
+  assert.equal(h.find(n=>n.type==='input'&&n.props.type==='date'&&n.props.required).props.readOnly,true);
+  h.input('日常使用本期金额','32.25');h.button('保存并更新支出');h.refresh();
+  assert.equal(h.state().monthlyRecords[0].budgets[0].actual,32.25);
+  assert.equal(h.state().financeReviews[0].amounts.daily,32.25);
+  h.input('日常使用本期金额','22.25');h.submit();h.button('确认');h.refresh();
+  assert.equal(h.state().monthlyRecords[0].budgets.length,1);
+  assert.equal(h.state().monthlyRecords[0].budgets[0].actual,22.25);
+  assert.equal(h.state().financeReviews[0].id,prior.id);assert.equal(h.state().financeReviews[0].end,prior.end);
+  assert.equal(h.state().reviewUpdates.at(-1).before.financeReviews[0].amounts.daily,32.25);
+  assert.equal(h.state().accounts[0].balance,900);assert.equal(h.state().dashboardAsOf,'2026-11-05');
 });
 
 test('weekly spending revision ignores another month but requires renewed comparison for same-week changes',()=>{

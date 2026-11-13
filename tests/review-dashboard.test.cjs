@@ -54,6 +54,21 @@ test('historical edits and imports retain history without rolling back newer das
   const imported=d.commitReviewUpdate(history,[],{publish:false});
   assert.equal(imported.reviewUpdates.length,3);assert.equal(imported.reviewUpdates[2].before.financeReviews.length,2);
 });
+test('backdated correction updates only the original week and payment; later balances, report and bill stay intact',()=>{
+  const s=state(),old=record(s,'2026-10-18'),first=commit(s,old),later=record(first),live=commit(first,later);
+  live.reminders[0].amount=90;
+  const original=live.financeReviews.find(r=>r.id===old.id), newer=structuredClone(live.financeReviews.find(r=>r.id===later.id));
+  const edit=structuredClone(original);edit.amounts.daily=35;edit.focus.projects[0].actualDate='2026-10-17';edit.focus.bills[0].amount=60;
+  const req={record:edit,publish:true,revision:{original,spending:loadModel('review-module-sync').reviewModuleSignature(live,'spending')}};
+  const next=d.commitReviewUpdate(live,[],req,undefined,'2026-10-29');
+  assert.deepEqual(next.financeReviews.find(r=>r.id===later.id),newer);
+  assert.equal(next.monthlyRecords[0].budgets.reduce((s,r)=>s+r.actual,0),135);
+  assert.equal(next.reminders[0].amount,90);assert.equal(next.fundBuckets[0].actualDate,'2026-10-17');
+  assert.equal(m.reviewTotals(edit,next.fundBuckets).projectPaid,200);
+  assert.deepEqual(live.fundBuckets[0].actualDate,undefined);assert.equal(next.dashboardAsOf,later.end);
+  assert.throws(()=>d.commitReviewUpdate(next,[],req,undefined,'2026-10-29'),/修订期间有更新/);
+});
+
 test('partial, stale, inconsistent or undated cross-month updates fail before any mutation',()=>{
   const s=state(),r=record(s),before=structuredClone(s);
   assert.throws(()=>commit(s,{...r,investments:undefined}),/补齐/);

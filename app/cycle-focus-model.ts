@@ -31,7 +31,7 @@ function describe(now:Row[], prior?:Row[]) {
 export function cycleFocusHistory(today:string,records:FinanceReview[],updates:ReviewUpdate[]) {
   const cycle=reviewPeriod('month',today,10), events:Observation[]=[];
   for(const update of updates){
-    if(!update.published || !update.reviewId.startsWith('week:') || update.asOf>today) continue;
+    if(!update.published || update.revisedWeek || !update.reviewId.startsWith('week:') || update.asOf>today) continue;
     for(const scope of scopes){
       if(update.module && update.module!==scope) continue;
       events.push({scope,asOf:update.asOf,saved:update.savedAt,rows:snapshot(scope,update.after as DashboardState),

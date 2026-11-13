@@ -3610,7 +3610,7 @@ export default function FinanceDashboard() {
                       setWeeklyNotes(next.weeklyNotes);
                       setFinanceReviews(next.financeReviews ?? []);setReviewUpdates(next.reviewUpdates ?? []);setDashboardAsOf(next.dashboardAsOf);
                       if(update?.publish) {
-                        setMonthlyRecords(next.monthlyRecords);setSelectedMonth(next.selectedMonth!);setAccounts(next.accounts);
+                        setMonthlyRecords(next.monthlyRecords);if(next.selectedMonth)setSelectedMonth(next.selectedMonth);setAccounts(next.accounts);
                         setHoldings(next.holdings);setFxUsd(next.fxUsd);setFxHkd(next.fxHkd);setBalanceAssets(next.balanceAssets);setLiabilities(next.liabilities);
                         setReminders(next.reminders);setFundBuckets(next.fundBuckets);setGoals(next.goals);
                       }
