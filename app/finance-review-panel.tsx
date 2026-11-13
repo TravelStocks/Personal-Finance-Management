@@ -13,7 +13,7 @@ import {reviewPeriod, reviewIncomeRows, weeklyLedgerTotals} from "./finance-revi
 import {aggregateFinanceReviews, analyzeFinanceReview, balanceLabels, financeReviewReport, newReviewDraft, parseFinanceReview, parseFinanceReviews, reviewAccountCash, reviewCategories, reviewMoney, reviewToday, reviewTypeNames, upsertFinanceReview, withReviewAccounts, type FinanceReview, type ReviewAccount, type ReviewAccountDraft, type ReviewDraft, type ReviewType} from "./finance-review-model";
 import "./finance-review-panel.css";
 import "./dated-ledger.css";
-import {mergeReviewModule, restoreReviewModules, reviewModuleLabels, reviewModuleSignature, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
+import {mergeReviewModule, restoreReviewModules, reviewModuleLabels, reviewModuleSignature, sameWeeklySpending, weeklySpendingSource, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
 import {advanceDashboardSource, changedDashboardScopes, dashboardScopes, dashboardSourceSignature, type DashboardScope, type DashboardState, type ReviewUpdate} from "./review-dashboard-sync";
 import type {WeeklyNotes} from "./review-note-model";
 import {goalBalanceSource} from "./goal-sync-model";
@@ -77,6 +77,8 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
   const latestCutoff=[dashboardAsOf ?? "",latestWeeklyReview(records)?.end ?? "",...moduleUpdates.filter(row=>row.published).map(row=>row.asOf)].sort().at(-1)!;
   const canPublish = draft.type==="week" && draft.end<=today && draft.end>=latestCutoff;
   const publish=canPublish && syncDashboard;
+  const spendingConflict=canPublish && !sameWeeklySpending(draftModules.spending,moduleSignatures.spending,draft.start,draft.end);
+  const currentSpending=spendingConflict ? weeklySpendingSource(moduleSignatures.spending,draft.start,draft.end) ?? [] : [];
   const displayGoals=canPublish ? goals.map(goal=>goalBalanceSource(goal,goals,accounts).mode==="manual" ? draft.goals?.find(row=>row.id===goal.id) ?? goal : goal) : draft.goals;
   const followsSource = liveFocus && draft.end===today;
   const ledgerSource = datedReviewSource(ledgerMonths,datedEntries,draft.start,draft.end);
@@ -169,6 +171,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       if (incomeLinked && !ledgerLinked && !incomeConfirmed) throw new Error("请先核对本期工资和其他收入。");
       if (ledgerLinked && (ledgerSource.unassigned.length || !ledgerConfirmed)) throw new Error("请先确认日期收支分类完整，并核对本期全部收支。");
       if(publish && conflicts.length) throw new Error(conflictMessage);
+      if(publish && spendingConflict) throw new Error("请先在支出表下核对本周账本差异，再更新看板。");
       const pending=[...(draft.accounts&&!accountsConfirmed?["账户余额"]:[]),...(publish ? [!investmentsConfirmed&&"投资账户",!draft.focus?.checks.projects&&"大花费项目",!draft.focus?.checks.bills&&"账单与订阅",!draft.focus?.checks.balance&&"资产负债"].filter(Boolean) : [])];
       if(pending.length) throw new Error(`以下模块尚未确认：${pending.join("、")}。可分别点击该模块的“保存并更新”，或勾选核对后全部保存。`);
       const budget = draft.type === "month" ? draft.budget ?? {mode: budgetMode, amounts: Object.fromEntries(plan.rows.map(row => [row.id, row[budgetMode]]))} : undefined;
@@ -466,6 +469,10 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       </table></div>
       <p className="review-caption">应急&学习金在预算中合并，在复盘中分开：应急填净转入，学习填实际支出与用途。微信充值、自有账户互转、基金预留不记消费；实际付款只记一次。</p>
       {draft.type==="week"&&<p className="review-caption">有实际付款日期的大花费项目会自动计入对应周，不用再填一遍。已包含在支出账本里的，请在项目上勾选「已计入支出账本」。</p>}
+      {spendingConflict&&<div className="review-status"><strong>{draftModules.spending ? "本周账本支出有变化" : "这份旧报告没有可比对的账本快照"}</strong>
+        <div className="table-wrap"><table className="review-table"><thead><tr><th>消费分类</th><th>本周账本（含周汇总）</th><th>本次修订</th></tr></thead><tbody>{reviewCategories.filter(row=>row.flow==="expense").map(row=><tr key={row.id}><th>{row.name}</th><td>{reviewMoney(currentSpending.filter(item=>item.group===row.id).reduce((n,item)=>n+Math.round(item.amount*100),0)/100)}</td><td>{draft.amounts[row.id]===null?"待填":reviewMoney(draft.amounts[row.id]!)}</td></tr>)}</tbody></table></div>
+        <p>核对后保留上方填写的金额和备注，不会立即写入账本。</p>
+        <button className="secondary-button" type="button" onClick={()=>{setDraftModules(base=>({...base,spending:moduleSignatures.spending}));setStatus("已核对本周账本，请保存支出。");}}>已核对，保留本次修订</button></div>}
       <div className="data-actions">{moduleButton("spending")}</div></section>
       <ReviewInvestmentsEditor value={draft.investments} onChange={updateInvestments} confirmed={investmentsConfirmed} onConfirm={setInvestmentsConfirmed} onOpen={()=>onOpenModule("investment")} saveAction={moduleButton("investments")}/>
       <ReviewFocusChecklist focus={draft.focus} live={followsSource} onChange={focus=>{

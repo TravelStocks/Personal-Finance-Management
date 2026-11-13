@@ -68,6 +68,24 @@ export function reviewModuleSignature(state:DashboardState,module:ReviewModule):
   return JSON.stringify(values[module]);
 }
 
+// Weekly writeback replaces only this review's residuals, not another week's or month's rows.
+export function weeklySpendingSource(signature:string,start:string,end:string) {
+  if(!signature) return null;
+  const [months,entries]=JSON.parse(signature) as [Pick<DashboardState["monthlyRecords"][number],"id"|"budgets">[],NonNullable<DashboardState["datedEntries"]>];
+  const items=entries.filter(row=>row.date>=start && row.date<=end).map(row=>({
+    id:row.id,date:row.date,amount:row.amount,category:row.categoryId,note:row.note,
+    group:months.find(m=>m.id===row.date.slice(0,7))?.budgets.find(b=>b.id===row.categoryId)?.group ?? "unassigned"
+  }));
+  for(const month of months) for(const row of month.budgets) {
+    if(row.reviewPeriod && row.reviewPeriod.start<=end && row.reviewPeriod.end>=start)
+      items.push({id:row.id,date:row.reviewPeriod.start+"/"+row.reviewPeriod.end,amount:row.actual,category:row.reviewPeriod.id,note:row.note ?? "",group:row.group ?? "unassigned"});
+  }
+  return items.sort((a,b)=>a.id.localeCompare(b.id));
+}
+export function sameWeeklySpending(base:string,current:string,start:string,end:string) {
+  return base===current || JSON.stringify(weeklySpendingSource(base,start,end))===JSON.stringify(weeklySpendingSource(current,start,end));
+}
+
 export function restoreReviewModules(draft:ReviewDraft,updates:ReviewUpdate[],signatures:Record<ReviewModule,string>):ReviewDraft {
   let next=draft;
   for(const scope of Object.keys(reviewModuleLabels) as ReviewModule[]) {
@@ -83,7 +101,8 @@ export function commitReviewModule<T extends DashboardState>(state:T,draft:Revie
   if(!Object.hasOwn(reviewModuleLabels,module)) throw new Error("未知复盘模块。");
   const cutoff=[state.dashboardAsOf ?? "",...(state.financeReviews ?? []).filter(row=>row.type==="week").map(row=>row.end),...(state.reviewUpdates ?? []).filter(row=>row.published).map(row=>row.asOf)].sort().at(-1)!;
   if(draft.type!=="week" || draft.end<cutoff || draft.end>today || reviewPeriod("week",draft.end).start!==draft.start) throw new Error("仅当前最新周复盘可更新模块；历史和未来期间请保存历史报告。");
-  if(sourceSignature!==reviewModuleSignature(state,module)) throw new Error(`${reviewModuleLabels[module]}已在其他位置修改，请重新带入并核对后保存。`);
+  const current=reviewModuleSignature(state,module);
+  if(module==="spending" ? !sameWeeklySpending(sourceSignature,current,draft.start,draft.end) : sourceSignature!==current) throw new Error(module==="spending" ? "请在支出表下核对本周账本差异后保存。已填写的金额和备注仍保留。" : `${reviewModuleLabels[module]}已在其他位置修改，请重新带入并核对后保存。`);
   const patch=normalizeReviewModule(module==="goals" && draft.goals ? {...draft,goals:mergeManualGoals(state.goals,draft.goals,state.accounts)} : draft,module);
   const sameIds=(a:Array<{id:string}>,b:Array<{id:string}>)=>{
     if(a.length!==b.length || a.some(row=>!b.some(other=>row.id===other.id))) throw new Error(`${reviewModuleLabels[module]}清单已变化，请重新带入当前模块。`);

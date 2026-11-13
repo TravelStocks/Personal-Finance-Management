@@ -146,6 +146,20 @@ test('refreshing changed bills unblocks full save without accepting a concurrent
   h.submit();assert.equal(h.state().financeReviews.length,1);assert.equal(h.state().accounts[0].balance,80);
 });
 
+test('weekly spending revision ignores another month but requires renewed comparison for same-week changes',()=>{
+  const h=harness();h.prepare();h.input('日常使用本期金额','12.50');h.submit();h.refresh();
+  h.state().monthlyRecords.push({id:'2026-11',salary:0,otherIncome:0,budgets:[]});h.refresh();
+  h.button('修订本期');h.button('确认');h.input('日常使用本期金额','14');h.button('保存并更新支出');h.refresh();
+  const rows=()=>h.state().monthlyRecords[0].budgets;
+  assert.equal(rows()[0].actual,14);
+  rows()[0].actual=21;h.refresh();h.input('日常使用本期金额','16');h.input('日常使用本期事项','修订说明');
+  h.button('保存并更新支出');assert.equal(rows()[0].actual,21);
+  h.button('已核对，保留本次修订');assert.equal(rows()[0].actual,21);
+  rows()[0].actual=22;h.refresh();h.button('保存并更新支出');assert.equal(rows()[0].actual,22);
+  h.button('已核对，保留本次修订');h.button('保存并更新支出');assert.equal(rows().length,1);
+  assert.equal(rows()[0].actual,16);assert.equal(rows()[0].note,'修订说明');
+});
+
 test('revision of a published report uses its saved baseline, not an artificial conflict',()=>{
   const h=harness();h.prepare();h.submit();h.refresh();h.button('修订本期');h.button('确认');
   h.prepare();h.submit();h.button('确认');h.refresh();
