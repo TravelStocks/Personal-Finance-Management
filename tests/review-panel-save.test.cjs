@@ -84,7 +84,7 @@ test('project refresh imports current targets, actuals and deadlines without wri
   const old={id:'p',name:'搬家',target:500,current:100,dueDate:'2026-11-01'};
   const original={...panel().focus,projects:[old,{...old,id:'removed'}],notes:{projects:'先付定金',bills:'已核对'}};
   panel().onChange(original);h.refresh();
-  const latest=[{...old,target:650,current:225.5,dueDate:'2026-12-09'},{...old,id:'new',current:0}];
+  const latest=[{...old,target:650,current:225.5,dueDate:'2026-12-09',actualDate:'2026-10-28',includedInLedger:true},{...old,id:'new',current:0}];
   h.state().fundBuckets=latest;h.refresh();
   panel().onRefreshProjects();h.refresh();h.button('取消');assert.deepEqual(panel().focus,original);
   panel().onRefreshProjects();h.refresh();h.button('确认');
@@ -93,6 +93,8 @@ test('project refresh imports current targets, actuals and deadlines without wri
   const button=panel().saveAction('projects');button.props.onClick({currentTarget:{closest:()=>null,dataset:{reviewSave:'projects'}}});h.refresh();
   assert.equal(h.state().reviewUpdates.at(-1).module,'projects');
   assert.equal(h.state().reviewUpdates.at(-1).moduleDraft.focus.notes.projects,'先付定金');
+  assert.equal(h.state().reviewUpdates.at(-1).moduleDraft.focus.projects[0].actualDate,'2026-10-28');
+  assert.equal(h.state().reviewUpdates.at(-1).moduleDraft.focus.projects[0].includedInLedger,true);
   assert.deepEqual(h.state().fundBuckets,latest);
 });
 

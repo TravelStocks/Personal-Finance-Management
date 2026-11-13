@@ -11,7 +11,7 @@ export type DashboardState = {
   holdings:ReviewHolding[]; fxUsd:number; fxHkd:number;
   balanceAssets:Array<{id:string;name:string;amount:number}>; liabilities:Array<{id:string;name:string;amount:number}>;
   reminders:Array<{id:string;name:string;amount:number;date:string;kind:string}>;
-  fundBuckets:Array<{id:string;name:string;target:number;current:number;dueDate:string}>;
+  fundBuckets:Array<{id:string;name:string;target:number;current:number;dueDate:string;actualDate?:string;includedInLedger?:boolean}>;
   goals:GoalBalance[];
   dashboardAsOf?:string; reviewUpdates?:ReviewUpdate[]; selectedMonth?:string;
 };

@@ -6,7 +6,7 @@ type Scope = typeof scopes[number];
 type Row = {id:string; name:string; fields:Record<string,string>};
 type Observation = {scope:Scope; asOf:string; saved:string; rows:Row[]; before?:Row[]; note?:string};
 const row = (id:string,name:string,fields:Record<string,string>):Row => ({id,name,fields});
-const projects = (items:DashboardState['fundBuckets']) => items.map(p=>row(p.id,p.name,{实际:reviewMoney(p.current),目标:reviewMoney(p.target),截止:p.dueDate||'未填'}));
+const projects = (items:DashboardState['fundBuckets']) => items.map(p=>row(p.id,p.name,{实际:reviewMoney(p.current),目标:reviewMoney(p.target),预算日期:p.dueDate||'未填',实际日期:p.actualDate||'未填'}));
 const bills = (items:DashboardState['reminders']) => items.map(p=>row(p.id,p.name,{登记金额:reviewMoney(p.amount),提醒:p.date||'未填',类型:p.kind}));
 const balance = (assets:DashboardState['balanceAssets'],debts:DashboardState['liabilities']) => [
   ...assets.map(p=>row('asset:'+p.id,p.name,{资产:reviewMoney(p.amount)})),...debts.map(p=>row('debt:'+p.id,p.name,{负债:reviewMoney(p.amount)}))];

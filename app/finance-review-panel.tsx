@@ -275,7 +275,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
     if (!draft.focus) return;
     const differs = JSON.stringify(draft.focus[key]) !== JSON.stringify(focusSource[key]);
     const prompt = key === "projects"
-      ? "用当前大花费项目替换本期项目清单？未保存的目标、实际金额和截止日期会被替换，变化说明保留。"
+      ? "用当前大花费项目替换本期项目清单？未保存的金额、预算日期、实际日期和记账标记会被替换，变化说明保留。"
       : "用当前账单与提醒替换本期账单清单？未保存的账单金额和日期会被替换，变化说明保留。";
     confirmOrRun(!followsSource || differs || draft.focus.checks[key], prompt, () => {
         setDraft(current => !current.focus ? current : {...current, focus:{...current.focus,

@@ -5,8 +5,8 @@ import {monthlyBudgetUsage} from "./monthly-budget-usage";
 const sum = (values: number[]) => values.reduce((total, value) => total + Math.round(value * 100), 0) / 100;
 export type WaterfallStep = {label: string; value: number; kind: "start" | "positive" | "negative" | "end"};
 
-export function financeChartData(income: number, budgets: SpendingBudget[], plan: AnnualBudgetPlan) {
-  const usage = monthlyBudgetUsage(income, sum(budgets.map(row => row.actual)), plan);
+export function financeChartData(income: number, budgets: SpendingBudget[], plan: AnnualBudgetPlan, projectPaid = 0) {
+  const usage = monthlyBudgetUsage(income, sum([...budgets.map(row => row.actual),projectPaid]), plan);
   const monthly = plan.rows.map(row => ({
     id: row.id, label: row.name, plan: row[plan.mode],
     value: row.kind === "consumption"
@@ -15,6 +15,7 @@ export function financeChartData(income: number, budgets: SpendingBudget[], plan
     detail: row.kind === "consumption" ? "已记净消费" : "本月预算预留，非重复消费",
   }));
   const unassigned = budgets.filter(row => getSpendingGroup(row) === "unassigned");
+  if(projectPaid) monthly.push({id:"project-payments",label:"大花费项目实付",plan:0,value:projectPaid,detail:"按实际日期，不含已记账项目"});
   if (unassigned.some(row => row.actual !== 0)) monthly.push({id: "unassigned", label: "待归类", plan: 0,
     value: sum(unassigned.map(row => row.actual)), detail: "原账本未归类金额"});
   const annual = calculateAnnualBudgetPlan(plan).rows.map(row => ({id: row.id, label: row.name, value: row.annual}));

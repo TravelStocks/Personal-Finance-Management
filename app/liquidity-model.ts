@@ -1,5 +1,5 @@
 type CashAccount = {id: string; name: string; balance: number; liquid: boolean; reserve: string | null};
-type CashReservation = {id: string; name: string; current: number; locked: boolean; fundingAccountId?: string};
+type CashReservation = {id: string; name: string; current: number; locked: boolean; fundingAccountId?: string; actualDate?:string};
 const round = (value: number) => Math.round((value + Number.EPSILON * Math.abs(value)) * 100) / 100;
 
 export function calculateLiquidity(accounts: CashAccount[], projects: CashReservation[]) {
@@ -9,7 +9,7 @@ export function calculateLiquidity(accounts: CashAccount[], projects: CashReserv
   const accountReserved = round(deductions.reduce((sum, item) => sum + item.amount, 0));
   const linked = new Map<string, number>();
   let unlinkedCount = 0;
-  for (const project of projects.filter(project => project.locked && project.current > 0)) {
+  for (const project of projects.filter(project => !project.actualDate && project.locked && project.current > 0)) {
     const account = accounts.find(account => account.id === project.fundingAccountId);
     if (account) {
       linked.set(account.id, (linked.get(account.id) ?? 0) + project.current);

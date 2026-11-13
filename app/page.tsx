@@ -14,6 +14,7 @@ import CycleFocusHistory from "./cycle-focus-history";
 import WeeklyNoteHistory from "./weekly-note-history";
 import {parseWeeklyNotes, saveWeeklyNote, type WeeklyNotes} from "./review-note-model";
 import {monthlyBudgetUsage} from "./monthly-budget-usage";
+import {projectPayments} from "./project-payments";
 import {planYearLabel, planYearProgress} from "./plan-year";
 import {financeChartData, financeHealth, waterfallSteps} from "./finance-chart-model";
 import ReviewUpdateHistory from "./review-update-history";
@@ -145,6 +146,8 @@ type FundBucket = {
   target: number;
   current: number;
   dueDate: string;
+  actualDate?: string;
+  includedInLedger?: boolean;
   locked: boolean;
   note: string;
   fundingAccountId?: string;
@@ -763,7 +766,9 @@ function normalizeFundBuckets(value: unknown) {
         kind,
         target: typeof raw.target === "number" ? raw.target : 0,
         current: typeof raw.current === "number" ? raw.current : 0,
-        dueDate: typeof raw.dueDate === "string" && raw.dueDate ? raw.dueDate : "2026-12-31",
+        dueDate: typeof raw.dueDate === "string" ? raw.dueDate : "",
+        actualDate: typeof raw.actualDate === "string" ? raw.actualDate : "",
+        includedInLedger: raw.includedInLedger === true,
         locked: typeof raw.locked === "boolean" ? raw.locked : true,
         note: typeof raw.note === "string" ? raw.note : "",
         fundingAccountId: typeof raw.fundingAccountId === "string" ? raw.fundingAccountId : "",
@@ -1610,6 +1615,9 @@ export default function FinanceDashboard() {
   const stockIncome = activeMonth.stockIncome;
   const otherIncome = activeMonth.otherIncome;
   const budgets = activeMonth.budgets;
+  const paymentsForMonth=(id:string)=>projectPayments(fundBuckets,id+"-01",id+"-31");
+  const monthPayments=paymentsForMonth(activeMonth.id);
+  const monthConsumption=(record:MonthRecord)=>Math.round((recordSpendingActual(record)+paymentsForMonth(record.id).total)*100)/100;
   const actualIncome = salary + Math.max(stockIncome, 0) + otherIncome;
   const annualPlanTotals = calculateAnnualBudgetPlan(annualBudgetPlan);
   const cashPlanTotals = annualPlanTotals[annualBudgetPlan.mode];
@@ -1647,7 +1655,7 @@ export default function FinanceDashboard() {
     const savingsOutsideAccounts = hasAccountReview ? 0 : Math.max(0, totalSavings - accountSpecialSavings);
     const operatingAccountTotal = accountTotal - investmentReserve - accountSpecialSavings - (emergencyAccounts.length ? currentEmergencyFund : 0);
     const liquidAccountTotal = personalAccounts.filter((item) => item.liquid).reduce((sum, item) => sum + item.balance, 0);
-    const spendingActual = budgets.reduce((sum, item) => sum + item.actual, 0);
+    const spendingActual = monthConsumption(activeMonth);
     const budgetUsage = monthlyBudgetUsage(actualIncome, spendingActual, annualBudgetPlan);
     const spendingPlan = budgets.reduce((sum, item) => sum + item.plan, 0);
     const budgetRemaining = budgetUsage.remaining;
@@ -1861,6 +1869,7 @@ export default function FinanceDashboard() {
     return events;
   })();
   const ledgerEvents: CashflowEvent[] = [
+    ...monthPayments.rows.map(p=>({date:p.actualDate!,item:p.name,inflow:0,outflow:p.current,kind:"已记账"})),
     ...datedEntries.filter(row => row.date.startsWith(selectedMonth + "-")).map(row => ({
       date: row.date,
       item: row.flow === "income" ? (row.categoryId === "salary" ? "工资" : "其他收入")
@@ -2373,21 +2382,21 @@ export default function FinanceDashboard() {
     {
       id: "monthly-overview-living",
       title: "所选月支出（含基金预留）",
-      value: money(totals.budgetUsage.spending),
-      detail: `${activeMonth.label} / 实际消费 ${money(totals.spendingActual)} + 投资预留 ${money(totals.budgetUsage.investment)} + 应急预留 ${money(totals.budgetUsage.emergency)}`,
+      value: reviewMoney(totals.budgetUsage.spending),
+      detail: `${activeMonth.label} / 账本消费 ${reviewMoney(recordSpendingActual(activeMonth))} + 大花费项目实付 ${reviewMoney(monthPayments.total)} + 投资预留 ${money(totals.budgetUsage.investment)} + 应急预留 ${money(totals.budgetUsage.emergency)}`,
       tone: "green" as Tone,
     },
     {
       id: "monthly-overview-surplus",
       title: "所选月收支结余",
-      value: money(totals.monthlySurplus),
+      value: reviewMoney(totals.monthlySurplus),
       detail: "收入 - 实际消费 - 投资及应急预留；基金每月扣一次，不减少净资产",
       tone: "violet" as Tone,
     },
     {
       id: "monthly-overview-remaining",
       title: "所选月可花预算剩余",
-      value: money(totals.budgetUsage.remaining),
+      value: reviewMoney(totals.budgetUsage.remaining),
       detail: `${budgetModeName}总预算 ${money(totals.budgetUsage.budget)} - 含预留支出 ${money(totals.budgetUsage.spending)}`,
       tone: totals.budgetUsage.remaining < 0 ? ("red" as Tone) : ("amber" as Tone),
     },
@@ -2428,13 +2437,13 @@ export default function FinanceDashboard() {
   }));
   const monthlySpendingTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: monthlyBudgetUsage(recordIncome(record), recordSpendingActual(record), annualBudgetPlan).spending,
+    value: monthlyBudgetUsage(recordIncome(record), monthConsumption(record), annualBudgetPlan).spending,
     color: record.id === selectedMonth ? palette[4] : palette[index % palette.length],
     detail: "按当前基金预留方案测算",
   }));
   const monthlySurplusTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: monthlyBudgetUsage(recordIncome(record), recordSpendingActual(record), annualBudgetPlan).surplus,
+    value: monthlyBudgetUsage(recordIncome(record), monthConsumption(record), annualBudgetPlan).surplus,
     color: record.id === selectedMonth ? palette[1] : palette[index % palette.length],
     detail: "已扣当前方案基金预留",
   }));
@@ -2447,7 +2456,7 @@ export default function FinanceDashboard() {
       color: palette[index % palette.length],
       detail: item.type.trim() || "未分类",
     }));
-  const chartModel = financeChartData(actualIncome, budgets, annualBudgetPlan);
+  const chartModel = financeChartData(actualIncome, budgets, annualBudgetPlan, monthPayments.total);
   const monthlyFundData = chartModel.monthly.map((item, index) => ({...item, color: palette[index % palette.length],
     detail: `${money(item.value)}${item.id === "investment" || item.id === "emergency" ? " · 预留" : ""}`}));
   const topSpendingData = [...monthlyFundData].sort((a, b) => b.value - a.value);
@@ -2558,7 +2567,7 @@ export default function FinanceDashboard() {
   const cashPlanFlow = annualPlanTotals.allocationRows.map(row => ({label: row.name, value: row[annualBudgetPlan.mode]}))
     .filter(item => item.value > 0).map((item, index) => ({...item, color: palette[index % palette.length]}));
   const annualPlanDistribution = chartModel.annual.map((row, index) => ({...row, color: palette[index % palette.length]}));
-  const planProgress = planYearProgress(currentDate, monthlyRecords, datedEntries);
+  const planProgress = planYearProgress(currentDate, monthlyRecords, datedEntries, fundBuckets);
   const annualDistributionPanel = <ChartPanel title="年度资金分布" summary={planYearLabel}>
     <DonutChart data={annualPlanDistribution} centerLabel="12个月预算" centerValue={money(annualPlanTotals.annualOutflow)} />
     <p>{planProgress.status} · 期内已记净消费 {reviewMoney(planProgress.spending)}（不含基金预留）{planProgress.undated ? "；跨界未标日期的金额暂不计入" : ""}</p>
@@ -2603,9 +2612,9 @@ export default function FinanceDashboard() {
   }));
   const monthlyGoalPressureTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
-    value: recordSpendingActual(record) + (record.id === selectedMonth ? totalGoalActualInput : totalGoalExpectedInput),
+    value: monthConsumption(record) + (record.id === selectedMonth ? totalGoalActualInput : totalGoalExpectedInput),
     color: record.id === selectedMonth ? palette[2] : palette[index % palette.length],
-    detail: `支出 ${money(recordSpendingActual(record))}`,
+    detail: `支出 ${money(monthConsumption(record))}`,
   }));
   const monthlyGoalBalanceTrend = reportMonthRecords.map((record, index) => ({
     label: shortMonth(record.label),
@@ -2617,7 +2626,7 @@ export default function FinanceDashboard() {
     ),
   }));
   const fundBucketRows = fundBuckets.map((item, index) => {
-    const gap = Math.max(0, item.target - item.current);
+    const gap = item.actualDate ? 0 : Math.max(0, item.target - item.current);
     const pastDue = item.dueDate < reviewToday();
     const monthsLeft = monthsBetweenMonthIdAndDate(reviewToday().slice(0, 7), item.dueDate);
     return {
@@ -2626,7 +2635,7 @@ export default function FinanceDashboard() {
       gap,
       monthsLeft,
       monthlyNeed: pastDue ? 0 : gap / monthsLeft,
-      status: gap <= 0 ? "已覆盖" : pastDue ? "日期已过，状态待核实" : monthsLeft <= 2 ? "紧急补齐" : "持续准备",
+      status: item.actualDate ? "已按实际日期登记" : gap <= 0 ? "已覆盖" : pastDue ? "日期已过，状态待核实" : monthsLeft <= 2 ? "紧急补齐" : "持续准备",
     };
   });
   const fundBucketPreparedTotal = fundBucketRows.reduce((sum, item) => sum + item.current, 0);
@@ -2739,7 +2748,8 @@ export default function FinanceDashboard() {
     { id: "salary", name: "工资", amount: salary, flow: "收入", source: `${activeMonth.label}收入底表` },
     { id: "stock-income", name: "炒股月结", amount: Math.max(stockIncome, 0), flow: "收入", source: `${activeMonth.label}收入底表` },
     { id: "other-income", name: "其他收入", amount: otherIncome, flow: "收入", source: `${activeMonth.label}收入底表` },
-    { id: "spending-actual", name: "生活实际支出", amount: totals.spendingActual, flow: "支出", source: "支出预算底表实际汇总" },
+    { id: "spending-actual", name: "账本实际支出", amount: recordSpendingActual(activeMonth), flow: "支出", source: "支出预算底表实际汇总" },
+    { id: "project-payments", name: "大花费项目实付", amount: monthPayments.total, flow: "支出", source: "按实际日期归月，不重复计入已记账项目" },
     { id: "investment-earmark", name: "投资基金预留", amount: totals.budgetUsage.investment, flow: "支出", source: "当前预算方案，每月预留一次；非消费" },
     { id: "emergency-earmark", name: "应急基金预留", amount: totals.budgetUsage.emergency, flow: "支出", source: "当前预算方案，每月预留一次；非消费" },
     { id: "spending-total", name: "支出合计（含预留）", amount: totals.budgetUsage.spending, flow: "合计", source: "实际消费 + 投资预留 + 应急预留，不再叠加划拨" },
@@ -3589,7 +3599,7 @@ export default function FinanceDashboard() {
                         return {patch,moduleSignature:reviewModuleSignature(next,module),sourceSignature:dashboardSourceSignature(next),goalsSignature:reviewModuleSignature(next,"goals")};
                       }} ledgerMonths={monthlyRecords} datedEntries={datedEntries} onSaveIncome={saveDatedEntry} onDeleteIncome={deleteDatedEntry}
                       focusSource={{
-                        projects:fundBuckets.map(({id,name,target,current,dueDate})=>({id,name,target,current,dueDate})),
+                        projects:fundBuckets.map(({id,name,target,current,dueDate,actualDate,includedInLedger})=>({id,name,target,current,dueDate,actualDate,includedInLedger})),
                         bills:reminders.map(({id,name,amount,date,kind})=>({id,name,amount,date,kind})),
                         assets:balanceAssets.map(({id,name,amount})=>({id,name,amount})),
                         debts:liabilities.map(({id,name,amount})=>({id,name,amount})), holdings:totals.investmentValue,
@@ -5069,16 +5079,19 @@ function EditableFundBucketTable({
         <strong>自动锁定：投资待投金 {money(investmentReserve)}</strong>
         <span>应急、旅游、学习、家庭专户也计占用；关联同一账户的项目不重复扣款。未关联项目按额外占用计。</span>
       </div>
+      <p className="table-subtext">预算日期不入账。填写实际日期后，实际金额计入付款所在自然月，不再锁定项目资金；同一笔已在当月支出账本记录的，请勾选「已计入支出账本」。</p>
       <div className="table-wrap spreadsheet-wrap">
         <table className="spreadsheet-table fund-bucket-table">
           <thead>
             <tr>
               <th>大花费项目</th>
               <th>类型</th>
-              <th>截止日期</th>
+              <th>预算日期</th>
+              <th>实际日期（付款）</th>
               <th>目标</th>
               <th>实际</th>
               <th>资金所在账户</th>
+              <th>已计入支出账本</th>
               <th>缺口</th>
               <th>每月需补</th>
               <th>锁定</th>
@@ -5098,7 +5111,8 @@ function EditableFundBucketTable({
                     onChange={(value) => updateFundBucket(item.id, { kind: value as FundBucketKind })}
                   />
                 </td>
-                <td><TableDateInput ariaLabel={`${item.name} 截止日期`} value={item.dueDate} onChange={(value) => updateFundBucket(item.id, { dueDate: value })} /></td>
+                <td><TableDateInput ariaLabel={`${item.name} 预算日期`} value={item.dueDate} onChange={(value) => updateFundBucket(item.id, { dueDate: value })} /></td>
+                <td><TableDateInput ariaLabel={`${item.name} 实际日期`} value={item.actualDate ?? ""} onChange={(value) => updateFundBucket(item.id, { actualDate: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 目标`} value={item.target} onChange={(value) => updateFundBucket(item.id, { target: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 实际`} value={item.current} onChange={(value) => updateFundBucket(item.id, { current: value })} /></td>
                 <td><select aria-label={`${item.name} 资金所在账户`} value={item.fundingAccountId ?? ""} onChange={event => updateFundBucket(item.id, {fundingAccountId: event.target.value})}>
@@ -5106,6 +5120,7 @@ function EditableFundBucketTable({
                   {item.fundingAccountId && !accounts.some(account => account.id === item.fundingAccountId) && <option value={item.fundingAccountId}>原账户已删除，待核对</option>}
                   {accounts.map(account => <option key={account.id} value={account.id}>{account.name}{cashReservePurpose(account) ? "（专项）" : ""}{account.liquid ? "" : "（不可提取）"}</option>)}
                 </select></td>
+                <td><TableCheckbox ariaLabel={`${item.name} 已计入支出账本`} checked={!!item.includedInLedger} onChange={value=>updateFundBucket(item.id,{includedInLedger:value})}/></td>
                 <td>
                   <span className={item.gap > 0 ? "negative" : "positive"}>{money(item.gap)}</span>
                   <span className="table-subtext">{item.status}</span>

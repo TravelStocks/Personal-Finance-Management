@@ -45,7 +45,7 @@ export function compareReviewInvestments(current: FinanceReview, previous?: Fina
 export const reviewFocusLabels = {projects: "大花费项目", bills: "账单与订阅", balance: "资产负债明细"};
 export type ReviewFocusKey = keyof typeof reviewFocusLabels;
 export type ReviewFocusSource = {
-  projects: Array<{id: string; name: string; target: number; current: number; dueDate: string}>;
+  projects: Array<{id: string; name: string; target: number; current: number; dueDate: string; actualDate?:string; includedInLedger?:boolean}>;
   bills: Array<{id: string; name: string; amount: number; date: string; kind: string}>;
   assets: Array<{id: string; name: string; amount: number}>;
   debts: Array<{id: string; name: string; amount: number}>;
@@ -196,7 +196,8 @@ function parseReviewFocus(value: unknown): ReviewFocus {
   const rawChecks = object(raw.checks);
   const rawNotes = object(raw.notes);
   return {
-    projects: rows(raw.projects).map(row => ({id: row.id, name: row.name, target: money(row.target), current: money(row.current), dueDate: date(row.dueDate)})),
+    projects: rows(raw.projects).map(row => ({id: row.id, name: row.name, target: money(row.target), current: money(row.current), dueDate: date(row.dueDate),
+      ...(row.actualDate!==undefined?{actualDate:date(row.actualDate)}:{}), ...(typeof row.includedInLedger==="boolean"?{includedInLedger:row.includedInLedger}:{})})),
     bills: rows(raw.bills).map(row => ({id: row.id, name: row.name, amount: money(row.amount), date: date(row.date), kind: typeof row.kind === "string" ? row.kind : ""})),
     assets: rows(raw.assets).map(row => ({id: row.id, name: row.name, amount: money(row.amount)})),
     debts: rows(raw.debts).map(row => ({id: row.id, name: row.name, amount: money(row.amount)})), holdings: money(raw.holdings),
@@ -410,9 +411,9 @@ export function reviewHighlights(current: FinanceReview, previous?: FinanceRevie
   const before = previous?.focus;
   const delta = (value: number, old?: number) => old === undefined ? "无上期基准" : `较上期 ${signed(sum([value, -old]))}`;
   const daysUntil = (date: string) => date ? (dateValue(date).getTime() - dateValue(current.end).getTime()) / dayMs : null;
-  const projectGap = (rows: ReviewFocusSource["projects"]) => sum(rows.map(row => Math.max(0, sum([row.target, -row.current]))));
+  const projectGap = (rows: ReviewFocusSource["projects"]) => sum(rows.map(row => row.actualDate ? 0 : Math.max(0, sum([row.target, -row.current]))));
   const changes = {
-    projects: focus?.checks.projects && before?.checks.projects ? focusItemChanges(focus.projects, before.projects, [["target","目标"],["current","实际"],["dueDate","截止日期"]]) : [],
+    projects: focus?.checks.projects && before?.checks.projects ? focusItemChanges(focus.projects, before.projects, [["target","目标"],["current","实际"],["dueDate","预算日期"],["actualDate","实际日期"]]) : [],
     bills: focus?.checks.bills && before?.checks.bills ? focusItemChanges(focus.bills, before.bills, [["amount","登记金额"],["date","提醒日期"],["kind","类型"]]) : [],
     balance: focus?.checks.balance && before?.checks.balance ? [
       ...focusItemChanges(focus.assets,before.assets,[["amount","补录资产"]]),
@@ -420,8 +421,8 @@ export function reviewHighlights(current: FinanceReview, previous?: FinanceRevie
       ...(focus.holdings !== before.holdings ? [`持仓参考市值：${delta(focus.holdings,before.holdings)}（不直接视为投资收益）`] : []),
     ] : [],
   };
-  const upcomingProjects = (focus?.projects ?? []).filter(row => row.target > row.current && daysUntil(row.dueDate) !== null && daysUntil(row.dueDate)! >= 0 && daysUntil(row.dueDate)! <= 30).sort((a,b) => a.dueDate.localeCompare(b.dueDate));
-  const oldProjects = (focus?.projects ?? []).filter(row => daysUntil(row.dueDate) !== null && daysUntil(row.dueDate)! < 0);
+  const upcomingProjects = (focus?.projects ?? []).filter(row => !row.actualDate && row.target > row.current && daysUntil(row.dueDate) !== null && daysUntil(row.dueDate)! >= 0 && daysUntil(row.dueDate)! <= 30).sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+  const oldProjects = (focus?.projects ?? []).filter(row => !row.actualDate && daysUntil(row.dueDate) !== null && daysUntil(row.dueDate)! < 0);
   const upcomingBills = (focus?.bills ?? []).filter(row => daysUntil(row.date) !== null && daysUntil(row.date)! >= 0 && daysUntil(row.date)! <= 7).sort((a,b) => a.date.localeCompare(b.date));
   const oldBills = (focus?.bills ?? []).filter(row => daysUntil(row.date) !== null && daysUntil(row.date)! < 0);
   const state = (key: ReviewFocusKey) => !focus ? "未提供" : !focus.checks[key] ? "待核对" : !before?.checks[key] ? "首次基准" : changes[key].length ? `${changes[key].length} 项变化` : "登记未变";
