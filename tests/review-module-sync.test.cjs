@@ -29,6 +29,31 @@ test('revision fallback uses only this period ledger evidence; a confirmed zero 
   assert.equal(result.initial.amounts.daily,0);assert.equal(result.versions[1].amounts.daily,50);
 });
 
+test('a historical revision resolves each module independently across full, partial and report-only saves',()=>{
+  let s=state(),r=draft(s);r.income=0;r.amounts=Object.fromEntries(m.reviewCategories.map(c=>[c.id,0]));
+  r.balances={cash:100,investments:150,otherAssets:200,debt:300};
+  r.focus.checks={projects:true,bills:true,balance:true};
+  const base=m.parseFinanceReview(r),full=d.commitReviewUpdate(s,[base],{record:base,publish:true,sourceSignature:d.dashboardSourceSignature(s)},undefined,'2026-10-29');
+  s=full;
+  r.accounts[0].balance=432;r.investments.holdings.push({...r.investments.holdings[0],id:'other',value:80});r.investments.fxUsd=8;
+  s.holdings=[...s.holdings,{...s.holdings[0],id:'other',value:0}];
+  r.focus.projects[0].current=90;r.focus.bills=[];r.focus.notes.projects='deposit';r.focus.debts[0].amount=0;
+  r.income=300;s.datedEntries=[{id:'salary1',date:r.end,flow:'income',categoryId:'salary',amount:300,note:'pay'}];
+  r.incomeLedger=[{...s.datedEntries[0],name:'工资到账',group:'income'}];
+  for(const scope of ['accounts','investments','projects','balance','income'])s=commit(s,r,scope).data;
+  // Empty lists and explicit zeroes are saved data, not an invitation to pull today's list.
+  s.reminders=[];s=commit(s,r,'bills').data;
+  s=d.commitReviewUpdate(s,[base],{record:base,publish:false});
+  s.accounts[0].balance=999;s.holdings[0].value=999;
+  const saved=structuredClone(s),out=x.revisionModules(base,[...s.reviewUpdates,{...s.reviewUpdates[1],asOf:'2026-11-05',reviewId:'week:2026-11-02'}]).draft;
+  assert.equal(out.income,300);assert.equal(out.incomeLedger[0].date,r.end);
+  assert.equal(out.accounts[0].balance,432);assert.equal(out.balances.cash,432);
+  assert.deepEqual(out.investments.holdings.map(h=>h.value),[150,80]);assert.equal(out.investments.fxUsd,8);
+  assert.equal(out.balances.investments,230);assert.equal(out.focus.holdings,230);
+  assert.equal(out.focus.projects[0].current,90);assert.equal(out.focus.notes.projects,'deposit');assert.deepEqual(out.focus.bills,[]);
+  assert.equal(out.balances.debt,0);assert.equal(out.focus.assets[0].amount,200);assert.deepEqual(s,saved);
+});
+
 test('each module updates only its own fields, ignoring unrelated missing or invalid input',()=>{
   for(const module of ['accounts','investments','projects','bills','balance','goals']) {
     const s=state(),r=draft(s),before=structuredClone(s);

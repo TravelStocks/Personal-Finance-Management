@@ -1,11 +1,11 @@
 import {newReviewDraft, parseFinanceReview, reviewInvestmentTotal, reviewToday, type FinanceReview, type ReviewHolding} from "./finance-review-model";
-import {mergeReviewModule, normalizeReviewModule, reviewModuleLabels, reviewModuleSignature, sameWeeklySpending, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
+import {mergeReviewModule, normalizeReviewModule, revisionModules, reviewModuleLabels, reviewModuleSignature, sameWeeklySpending, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
 import {syncWeeklyReview} from "./review-ledger-sync";
 import type {DatedEntry, LedgerMonth} from "./dated-ledger-model";
 import {addParentSupport, mergeManualGoals, type GoalBalance} from "./goal-sync-model";
 
-export type WeekRevision = {original:FinanceReview; spending:string};
-export type ReviewUpdate = {id:string; reviewId:string; asOf:string; savedAt:string; published:boolean; revisedWeek?:boolean; module?:ReviewModule; moduleDraft?:ReviewModulePatch; before:Record<string,unknown>; after:Record<string,unknown>};
+export type WeekRevision = {original:FinanceReview; spending:string; module?:ReviewModule};
+export type ReviewUpdate = {id:string; reviewId:string; asOf:string; savedAt:string; published:boolean; revisedWeek?:boolean; revisedModule?:ReviewModule; module?:ReviewModule; moduleDraft?:ReviewModulePatch; before:Record<string,unknown>; after:Record<string,unknown>};
 export type DashboardState = {
   monthlyRecords:LedgerMonth[]; datedEntries?:DatedEntry[]; financeReviews?:FinanceReview[];
   accounts:Array<{id:string;name:string;type:string;purpose:string;balance:number;includedInPersonal?:boolean}>;
@@ -79,17 +79,19 @@ export function commitReviewUpdate<T extends DashboardState>(state:T, records:Fi
     if(!request.publish || !prior || !record || record.type!=="week" || record.id!==prior.id || record.end!==prior.end || record.end>today)
       throw new Error("只能修订已保存周复盘的原时间段。");
     if(JSON.stringify(prior)!==JSON.stringify(original)) throw new Error("这期报告在修订期间有更新，请重新打开该期后核对。");
-    if(JSON.stringify(record.amounts)!==JSON.stringify(prior.amounts) || JSON.stringify(record.notes)!==JSON.stringify(prior.notes) || record.income!==prior.income) {
+    const baseline=revisionModules(prior,state.reviewUpdates??[]).draft;
+    const entries=state.datedEntries ?? [];
+    const datedIncome=entries.filter(row=>row.flow==="income" && row.date>=record.start && row.date<=record.end).reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100;
+    if((!request.revision.module || request.revision.module==="income") && record.income!==baseline.income && record.income!==datedIncome)throw new Error("修订收入请先核对原周的到账明细，再保存收入。");
+    if(JSON.stringify(record.amounts)!==JSON.stringify(prior.amounts) || JSON.stringify(record.notes)!==JSON.stringify(prior.notes)) {
       if(!sameWeeklySpending(spending,reviewModuleSignature(state,"spending"),record.start,record.end)) throw new Error("本周支出账本有变化，请核对后再提交修订。");
-      const entries=state.datedEntries ?? [];
       // Older reports may contain hand-entered income; an expense correction doesn't rebook that income.
-      const income=record.income!==prior.income ? record.income : entries.filter(row=>row.flow==="income" && row.date>=record.start && row.date<=record.end).reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100;
-      next.monthlyRecords=syncWeeklyReview(state.monthlyRecords,entries,{...record,income});
+      next.monthlyRecords=syncWeeklyReview(state.monthlyRecords,entries,{...record,income:datedIncome});
       if(record.amounts.parents!==prior.amounts.parents) next.goals=addParentSupport(state.goals,record.id,record.amounts.parents);
     }
     // Projects have one payment date across the ledger. Apply only edited fields, never an old list.
-    for(const item of record.focus?.projects ?? []) {
-      const old=prior.focus?.projects.find(p=>p.id===item.id);
+    for(const item of (!request.revision.module || request.revision.module==="projects" ? record.focus?.projects : []) ?? []) {
+      const old=baseline.focus?.projects.find(p=>p.id===item.id);
       if(!old) continue;
       const changes=Object.entries(item).filter(([key,v])=>v!==old[key as keyof typeof old]);
       if(!changes.length) continue;
@@ -99,8 +101,8 @@ export function commitReviewUpdate<T extends DashboardState>(state:T, records:Fi
       next.fundBuckets=next.fundBuckets.map(p=>p.id===item.id?{...p,...Object.fromEntries(changes)}:p);
     }
     // Carry a corrected reminder forward only while its current registration still matches that week.
-    next.reminders=state.reminders.map(live=>{
-      const old=prior.focus?.bills.find(row=>row.id===live.id), edited=record.focus?.bills.find(row=>row.id===live.id);
+    if(!request.revision.module || request.revision.module==="bills") next.reminders=state.reminders.map(live=>{
+      const old=baseline.focus?.bills.find(row=>row.id===live.id), edited=record.focus?.bills.find(row=>row.id===live.id);
       if(!old || !edited || live.date!==old.date || live.amount!==old.amount) return live;
       return {...live,date:edited.date,amount:edited.amount};
     });
@@ -137,6 +139,6 @@ export function commitReviewUpdate<T extends DashboardState>(state:T, records:Fi
     delete copy.reviewUpdates;
     return structuredClone(copy);
   };
-  const update:ReviewUpdate={id:`${now}:${(state.reviewUpdates ?? []).length}`,reviewId:record?.id ?? "import",asOf:record?.end ?? today,savedAt:now,published:request.publish,...(request.revision?{revisedWeek:true}:{}),before:snapshot(state),after:snapshot(next)};
+  const update:ReviewUpdate={id:`${now}:${(state.reviewUpdates ?? []).length}`,reviewId:record?.id ?? "import",asOf:record?.end ?? today,savedAt:now,published:request.publish,...(request.revision?{revisedWeek:true,revisedModule:request.revision.module}:{}),before:snapshot(state),after:snapshot(next)};
   return {...next,reviewUpdates:[...(state.reviewUpdates ?? []),update]} as T;
 }

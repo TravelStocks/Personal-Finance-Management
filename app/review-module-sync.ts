@@ -121,6 +121,35 @@ export function revisionSpending(record:FinanceReview,updates:ReviewUpdate[],sig
   return {initial,versions};
 }
 
+// Resolve each module against this period's writes, not an unrelated report-only save.
+export function revisionModules(record:FinanceReview,updates:ReviewUpdate[]) {
+  let draft:ReviewDraft=structuredClone(record);
+  const signatures:Partial<Record<ReviewModule,string>>={};
+  const week=updates.filter(u=>u.published && u.reviewId===record.id && u.asOf===record.end).reverse();
+  for(const scope of Object.keys(reviewModuleLabels) as ReviewModule[]) {
+    if(scope==="spending") continue;
+    for(const u of week){
+      if((u.module && u.module!==scope) || (u.revisedModule && u.revisedModule!==scope)) continue;
+      const report=(s:Record<string,unknown>)=>(s.financeReviews as FinanceReview[]|undefined)?.find(r=>r.id===record.id && r.end===record.end);
+      const extract=(r:FinanceReview|undefined):ReviewModulePatch|undefined=>{
+        if(!r)return;
+        if(scope==="income")return {income:r.income,incomeLedger:r.incomeLedger??r.ledger?.filter(row=>row.flow==="income")};
+        if(scope==="accounts"||scope==="investments"||scope==="goals")return r[scope]?{[scope]:r[scope]}:undefined;
+        if(r.focus && (scope==="balance"||scope==="projects"||scope==="bills"))return {focus:{
+          ...(scope==="balance"?{assets:r.focus.assets,debts:r.focus.debts}:{[scope]:r.focus[scope]}),notes:{[scope]:r.focus.notes[scope]},checks:{[scope]:r.focus.checks[scope]} as ReviewFocus["checks"]}};
+      };
+      const patch=u.module ? u.moduleDraft : extract(report(u.after));
+      if(!patch || (u.revisedWeek && !u.revisedModule && JSON.stringify(patch)===JSON.stringify(extract(report(u.before)))))continue;
+      if(scope==="income" && draft.ledger && (draft.income!==patch.income || patch.incomeLedger))draft.ledger=undefined;
+      draft=mergeReviewModule(draft,scope==="income"?{...patch,incomeLedger:patch.incomeLedger}:patch);
+      if(!u.revisedWeek)signatures[scope]=reviewModuleSignature(u.after as DashboardState,scope);
+      break;
+    }
+  }
+  if(draft.focus && draft.investments)draft.focus={...draft.focus,holdings:reviewInvestmentTotal(draft.investments)};
+  return {draft,signatures};
+}
+
 export function restoreReviewModules(draft:ReviewDraft,updates:ReviewUpdate[],signatures:Record<ReviewModule,string>):ReviewDraft {
   let next=draft;
   for(const scope of Object.keys(reviewModuleLabels) as ReviewModule[]) {

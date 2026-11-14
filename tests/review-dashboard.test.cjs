@@ -69,6 +69,17 @@ test('backdated correction updates only the original week and payment; later bal
   assert.throws(()=>d.commitReviewUpdate(next,[],req,undefined,'2026-10-29'),/修订期间有更新/);
 });
 
+test('a scoped past holdings correction survives reopening without changing current holdings or another week',()=>{
+  const x=loadModel('review-module-sync'),s=state(),a=commit(s,record(s,'2026-10-18')),b=commit(a,record(a));
+  const [newer,older]=b.financeReviews, patch=structuredClone(older.investments);
+  patch.holdings[0].value=321;
+  const edited=m.parseFinanceReview(x.mergeReviewModule(older,{investments:patch}));
+  const next=d.commitReviewUpdate(b,[],{record:edited,publish:true,revision:{original:older,module:'investments',spending:x.reviewModuleSignature(b,'spending')}},undefined,'2026-10-29');
+  assert.deepEqual(next.holdings,b.holdings);assert.deepEqual(next.accounts,b.accounts);
+  assert.deepEqual(next.monthlyRecords,b.monthlyRecords);assert.deepEqual(next.financeReviews[0],newer);
+  assert.deepEqual(x.revisionModules(next.financeReviews[1],next.reviewUpdates).draft.investments,patch);
+});
+
 test('partial, stale, inconsistent or undated cross-month updates fail before any mutation',()=>{
   const s=state(),r=record(s),before=structuredClone(s);
   assert.throws(()=>commit(s,{...r,investments:undefined}),/补齐/);
