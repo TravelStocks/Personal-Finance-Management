@@ -50,6 +50,21 @@ export type ReviewBill={id:string;name:string;amount:number;date:string;kind:str
 export function billPaid(bill:Pick<ReviewBill,"payments">,asOf:string){
   return Object.hasOwn(bill.payments??{},asOf.slice(0,7));
 }
+export function rollPaidReminder<T extends ReviewBill>(bill:T,asOf:string):T {
+  let date=bill.date;
+  const currentMonth=asOf.slice(0,7);
+  // Catch up completed months only; an unpaid reminder must never be skipped.
+  while(date && date.slice(0,7)<currentMonth){
+    const month=date.slice(0,7), paid=bill.payments?.[month];
+    if(!paid || paid.slice(0,7)!==month || reviewDayDistance(paid,date)===null)break;
+    const next=dateValue(date);
+    next.setUTCDate(1);
+    next.setUTCMonth(next.getUTCMonth()+2,0);
+    next.setUTCDate(Math.min(Number(date.slice(8)),next.getUTCDate()));
+    date=iso(next);
+  }
+  return date===bill.date?bill:{...bill,date};
+}
 export function billPaymentPatch(bill:ReviewBill,asOf:string,paid:boolean,date=""){
   const month=asOf.slice(0,7),payments={...bill.payments};
   if(date){

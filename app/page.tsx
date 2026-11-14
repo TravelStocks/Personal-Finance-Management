@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { initialMonthlyCashPlan, normalizeMonthlyCashPlan, type MonthlyCashPlan } from "./monthly-cash-plan";
 import AnnualBudgetPlanner, {AnnualBudgetAllocationTable} from "./annual-budget-plan";
 import { calculateAnnualBudgetPlan, calculateCashflowScenario, initialAnnualBudgetPlan, normalizeAnnualBudgetPlan, type AnnualBudgetPlan } from "./annual-budget-model";
@@ -22,7 +22,7 @@ import {commitReviewUpdate, dashboardSourceSignature, parseReviewUpdates, type R
 import {commitReviewModule, reviewModuleLabels, reviewModuleSignature, type ReviewModule} from "./review-module-sync";
 import {goalKind, goalBalanceSource, syncAccountGoals, parseParentReviewAmounts} from "./goal-sync-model";
 import {changeDatedEntry, parseDatedEntries, preserveDatedSalaries, type DatedEntry, type EntryMode} from "./dated-ledger-model";
-import {parseFinanceReviews, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, reviewInvestmentTotal, type FinanceReview} from "./finance-review-model";
+import {parseFinanceReviews, rollPaidReminder, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, reviewInvestmentTotal, type FinanceReview} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
 import {financeBackupSignature, financeDataOnly, financeSaveConflict, hasPendingFinanceSave, markFinanceCloudSaved, writeLocalFinanceData} from "./finance-save-model";
 import {applySalaryFromMonth, confirmedMonthlySalary, migrateSalarySettings, salarySettingsVersion} from "./salary-model";
@@ -1083,7 +1083,8 @@ export default function FinanceDashboard() {
   const setEmergencyMonthlyNeed = (value: number) => setAnnualBudgetPlan(plan => normalizeAnnualBudgetPlan({...plan, emergencyMonthlyNeed: value}));
   const [balanceAssets, setBalanceAssets] = useState<BalanceAsset[]>(initialBalanceAssets);
   const [liabilities, setLiabilities] = useState<Liability[]>(initialLiabilities);
-  const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
+  const [storedReminders, setReminders] = useState<Reminder[]>(initialReminders);
+  const reminders=useMemo(()=>storedReminders.map(row=>rollPaidReminder(row,currentDate)),[storedReminders,currentDate]);
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const plannedGoals = syncAccountGoals(goalsWithEmergencyBudget(goals, annualBudgetPlan),accounts);
   const [fundBuckets, setFundBuckets] = useState<FundBucket[]>(initialFundBuckets);
@@ -2125,7 +2126,7 @@ export default function FinanceDashboard() {
   }
 
   function updateReminder(id: string, patch: Partial<Reminder>) {
-    setReminders((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+    setReminders((items) => items.map((item) => (item.id === id ? { ...rollPaidReminder(item,currentDate), ...patch } : item)));
   }
 
   function addReminder() {

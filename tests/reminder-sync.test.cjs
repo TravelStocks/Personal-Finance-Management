@@ -6,6 +6,22 @@ const source = () => ({projects:[{id:'trip',name:'旅行',target:1000,current:20
   bills:[{id:'rent',name:'房租',amount:2000,date:'2026-07-10',kind:'房租'}],
   assets:[{id:'asset',name:'物品',amount:100}],debts:[{id:'debt',name:'分期',amount:500}],holdings:2000});
 
+test('only dated paid months advance a reminder; reopening and refreshing do not advance it twice',()=>{
+  const bill={...source().bills[0],date:'2026-11-10',payments:{'2026-11':'2026-11-12'}};
+  assert.equal(m.rollPaidReminder(bill,'2026-11-30'),bill);
+  const december=m.rollPaidReminder(bill,'2026-12-01');
+  assert.equal(december.date,'2026-12-10');assert.equal(bill.date,'2026-11-10');
+  assert.equal(m.billPaid(december,'2026-12-01'),false);
+  assert.equal(m.rollPaidReminder(december,'2026-12-20'),december);
+  assert.equal(m.rollPaidReminder(bill,'2027-02-10').date,'2026-12-10');
+  for(const payments of [undefined,{}, {'2026-11':''},{'2026-11':'2026-11-31'}]){
+    const r={...bill,payments};assert.equal(m.rollPaidReminder(r,'2026-12-01'),r);
+  }
+  for(const [date,asOf,want] of [['2026-12-31','2027-01-01','2027-01-31'],['2027-01-31','2027-02-01','2027-02-28'],['2028-01-31','2028-02-01','2028-02-29']]){
+    assert.equal(m.rollPaidReminder({...bill,date,payments:{[date.slice(0,7)]:date}},asOf).date,want);
+  }
+});
+
 test('reminders use Shanghai calendar dates, never the old June reference', () => {
   assert.equal(m.reviewDayDistance('2026-11-10','2026-10-29'),12);
   assert.equal(m.reviewDayDistance('2026-11-18','2026-10-29'),20);
