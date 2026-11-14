@@ -15,6 +15,20 @@ function draft(s=state()) {return {...m.withReviewAccounts(m.newReviewDraft('wee
   focus:m.newReviewFocus({projects:s.fundBuckets,bills:s.reminders,assets:s.balanceAssets,debts:s.liabilities,holdings:150})};}
 const commit=(s,r,module)=>x.commitReviewModule(s,r,module,x.reviewModuleSignature(s,module),'2026-10-29T02:00:00Z','2026-10-29');
 
+test('revision fallback uses only this period ledger evidence; a confirmed zero is not revived from older versions',()=>{
+  let s=state(),r=draft(s);r.amounts=Object.fromEntries(m.reviewCategories.map(row=>[row.id,0]));r.notes={daily:'0'};
+  const rec={...r,id:'week:'+r.start,savedAt:'2026-10-29T03:00:00Z'};
+  const rows=s.monthlyRecords[0].budgets;
+  rows.push({id:'daily',group:'daily',actual:1000},{id:'residual',group:'daily',actual:12,note:'books',reviewPeriod:{id:rec.id,start:r.start,end:r.end}});
+  s.datedEntries=[{id:'one',flow:'expense',categoryId:'daily',amount:3,date:r.end},{id:'two',flow:'expense',categoryId:'daily',amount:400,date:'2026-10-01'}];
+  const sig=x.reviewModuleSignature(s,'spending');
+  assert.equal(x.revisionSpending(rec,[],sig).initial.amounts.daily,15);
+  assert.equal(x.revisionSpending(rec,[],sig).initial.notes.daily,'books');
+  const receipt={module:'spending',reviewId:rec.id,asOf:r.end,savedAt:rec.savedAt,published:true,before:{},after:{}};
+  const result=x.revisionSpending(rec,[{...receipt,moduleDraft:{amounts:{...r.amounts,daily:50},notes:{daily:'first'}}},{...receipt,moduleDraft:{amounts:r.amounts,notes:r.notes}}],sig);
+  assert.equal(result.initial.amounts.daily,0);assert.equal(result.versions[1].amounts.daily,50);
+});
+
 test('each module updates only its own fields, ignoring unrelated missing or invalid input',()=>{
   for(const module of ['accounts','investments','projects','bills','balance','goals']) {
     const s=state(),r=draft(s),before=structuredClone(s);

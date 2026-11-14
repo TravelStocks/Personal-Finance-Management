@@ -146,6 +146,21 @@ test('refreshing changed bills unblocks full save without accepting a concurrent
   h.submit();assert.equal(h.state().financeReviews.length,1);assert.equal(h.state().accounts[0].balance,80);
 });
 
+test('revision prefills all nine amounts and notes from the spending save preceding a zero report-only save',()=>{
+  const h=harness();h.prepare();
+  for(const [i,c] of m.reviewCategories.entries()){
+    h.input(c.name+'本期金额',String(i*10));h.input(c.name+'本期事项','note '+i);
+  }
+  h.button('保存并更新支出');h.refresh();
+  for(const c of m.reviewCategories){h.input(c.name+'本期金额','0');h.input(c.name+'本期事项','0');}
+  h.find(n=>n.props?.['aria-label']==='复盘保存范围').props.onChange({target:{value:'history'}});h.refresh();
+  h.submit();h.refresh();const before=structuredClone(h.state());h.button('修订本期');h.button('确认');
+  for(const [i,c] of m.reviewCategories.entries()){
+    assert.equal(h.find(n=>n.props?.['aria-label']===c.name+'本期金额').props.value,i*10);
+    assert.equal(h.find(n=>n.props?.['aria-label']===c.name+'本期事项').props.value,'note '+i);
+  }
+  assert.deepEqual(h.state(),before);
+});
 test('reopening an older week edits its own report and ledger without rolling back subsequent balances',()=>{
   const h=harness();h.prepare();h.input('日常使用本期金额','12.50');h.submit();h.refresh();
   const prior=structuredClone(h.state().financeReviews[0]);

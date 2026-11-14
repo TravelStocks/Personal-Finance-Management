@@ -13,7 +13,7 @@ import {reviewPeriod, reviewIncomeRows, weeklyLedgerTotals} from "./finance-revi
 import {aggregateFinanceReviews, analyzeFinanceReview, balanceLabels, financeReviewReport, newReviewDraft, parseFinanceReview, parseFinanceReviews, reviewAccountCash, reviewCategories, reviewMoney, reviewToday, reviewTypeNames, upsertFinanceReview, withReviewAccounts, type FinanceReview, type ReviewAccount, type ReviewAccountDraft, type ReviewDraft, type ReviewType} from "./finance-review-model";
 import "./finance-review-panel.css";
 import "./dated-ledger.css";
-import {mergeReviewModule, normalizeReviewModule, restoreReviewModules, reviewModuleLabels, reviewModuleSignature, sameWeeklySpending, weeklySpendingSource, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
+import {mergeReviewModule, normalizeReviewModule, restoreReviewModules, revisionSpending, reviewModuleLabels, reviewModuleSignature, sameWeeklySpending, weeklySpendingSource, type ReviewModule, type ReviewModulePatch} from "./review-module-sync";
 import {advanceDashboardSource, changedDashboardScopes, dashboardScopes, dashboardSourceSignature, type DashboardScope, type DashboardState, type ReviewUpdate} from "./review-dashboard-sync";
 import type {WeeklyNotes} from "./review-note-model";
 import {goalBalanceSource} from "./goal-sync-model";
@@ -44,6 +44,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
   }
   const [draft, setDraft] = useState<ReviewDraft>(() => makeDraft());
   const [revision,setRevision]=useState<FinanceReview|null>(null);
+  const [spendingVersions,setSpendingVersions]=useState<ReturnType<typeof revisionSpending>["versions"]>([]);
   const [liveFocus, setLiveFocus] = useState(true);
   const [ledgerLinked,setLedgerLinked] = useState(false);
   const [ledgerConfirmed,setLedgerConfirmed] = useState(false);
@@ -359,6 +360,11 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
       if(update.module==="income") original.incomeLedger=update.moduleDraft.incomeLedger;
       signatures[update.module]=reviewModuleSignature(update.after as DashboardState,update.module);
     }
+    if(record.type==="week"){
+      const {initial,versions}=revisionSpending(record,moduleUpdates,moduleSignatures.spending);
+      if(original.ledger && reviewCategories.some(({id,flow})=>flow==="expense" && initial.amounts[id]!==original.amounts[id])) original.ledger=undefined;
+      original={...original,...initial};setSpendingVersions(versions);
+    }
     setDraft(original);resetIncome();setLiveFocus(false);setLedgerLinked(false);setLedgerConfirmed(false);
     setAccountsConfirmed(Boolean(record.accounts));setInvestmentsConfirmed(Boolean(record.investments));
     setDraftSource(snapshot ? dashboardSourceSignature(snapshot) : "");
@@ -493,10 +499,20 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
         {ledgerLinked&&<label className="review-ledger-confirm"><input type="checkbox" required checked={ledgerConfirmed} onChange={event=>setLedgerConfirmed(event.target.checked)}/>已核对本期全部收支，含未发生的分类；剩余未标日期金额不属于本期</label>}
       </section>
       {draft.type === "month" && <label className="field"><span>月预算口径</span><select value={draft.budget?.mode ?? budgetMode} onChange={event => {setBudgetMode(event.target.value as BudgetMonthMode);setDraft({...draft,budget:undefined});}}><option value="normal">普通月</option><option value="trip">出差月</option></select></label>}
-      <section data-review-module="spending" aria-label="复盘支出录入"><div className="table-wrap"><table className="review-table">
+      <section data-review-module="spending" aria-label="复盘支出录入">
+      {revision&&<div className="review-toolbar"><h3>原周支出 · {draft.start} 至 {draft.end}</h3>
+        {spendingVersions.length>0&&<label className="field"><span>带入本周已保存版本</span><select aria-label="带入本周支出版本" value="" onChange={event=>{
+          if(!event.target.value)return;
+          const v=spendingVersions[Number(event.target.value)];
+          confirmOrRun(true,"仅替换这张表的金额和备注，提交前不会改账。",()=>{
+            setDraft(current=>({...current,amounts:{...v.amounts},notes:{...v.notes},ledger:undefined}));
+            setLedgerLinked(false);setLedgerConfirmed(false);
+          });
+        }}><option value="">选择历史版本</option>{spendingVersions.map((v,i)=><option key={i} value={String(i)}>{v.label} · {new Date(v.savedAt).toLocaleString("zh-CN")} · 消费 {reviewMoney(reviewCategories.reduce((s,c)=>s+(c.flow==="expense"?Math.round(v.amounts[c.id]*100):0),0)/100)}</option>)}</select></label>}</div>}
+      <div className="table-wrap"><table className="review-table">
         <thead><tr><th>项目</th><th>本期金额</th><th>发生事项／变化原因（可选）</th></tr></thead>
         <tbody>{reviewCategories.map(row => <tr key={row.id}><th scope="row">{row.name}<small>{row.id === "investment" ? "净划入，取回填负数" : row.id === "emergency" ? "净转入，取用填负数" : "实际净支出，扣除退款"}</small></th>
-          <td><input type="number" step="0.01" required readOnly={boundLedger&&row.flow==="expense"} aria-label={`${row.name}本期金额`} value={draft.amounts[row.id] ?? ""} onChange={event => setDraft({...draft, amounts:{...draft.amounts,[row.id]:numeric(event.target.value)}})}/></td>
+          <td><input type="number" step="0.01" required readOnly={boundLedger&&row.flow==="expense"&&(!revision||ledgerLinked)} aria-label={`${row.name}本期金额`} value={draft.amounts[row.id] ?? ""} onChange={event => setDraft({...draft,...(revision && draft.ledger && row.flow==="expense" ? {ledger:undefined,incomeLedger:draft.ledger.filter(item=>item.flow==="income")} : {}), amounts:{...draft.amounts,[row.id]:numeric(event.target.value)}})}/></td>
           <td><input type="text" aria-label={`${row.name}本期事项`} placeholder={row.id === "learning" ? "课程、书籍、工具名称及用途" : undefined} value={draft.notes[row.id] ?? ""} onChange={event => setDraft({...draft, notes:{...draft.notes,[row.id]:event.target.value}})}/></td></tr>)}</tbody>
       </table></div>
       <p className="review-caption">应急&学习金在预算中合并，在复盘中分开：应急填净转入，学习填实际支出与用途。微信充值、自有账户互转、基金预留不记消费；实际付款只记一次。</p>

@@ -1,4 +1,4 @@
-import {newReviewDraft, newReviewFocus, parseFinanceReview, reviewAccountCash, reviewInvestmentTotal, reviewPeriod, reviewToday, type ReviewDraft, type ReviewFocus} from "./finance-review-model";
+import {newReviewDraft, newReviewFocus, parseFinanceReview, reviewAccountCash, reviewCategories, reviewInvestmentTotal, reviewPeriod, reviewToday, type FinanceReview, type ReviewDraft, type ReviewFocus} from "./finance-review-model";
 import type {DashboardState, ReviewUpdate} from "./review-dashboard-sync";
 import {syncWeeklyReview} from "./review-ledger-sync";
 import {addParentSupport, mergeManualGoals, syncAccountGoals} from "./goal-sync-model";
@@ -84,6 +84,41 @@ export function weeklySpendingSource(signature:string,start:string,end:string) {
 }
 export function sameWeeklySpending(base:string,current:string,start:string,end:string) {
   return base===current || JSON.stringify(weeklySpendingSource(base,start,end))===JSON.stringify(weeklySpendingSource(current,start,end));
+}
+
+// Report-only saves do not write the spending ledger. Keep explicit zeroes from actual spending saves.
+export function revisionSpending(record:FinanceReview,updates:ReviewUpdate[],signature:string) {
+  type Values=Pick<FinanceReview,"amounts"|"notes">;
+  const versions:Array<Values & {savedAt:string;label:string}>=[];
+  const add=(value:Values,savedAt:string,label:string)=>{
+    if(!versions.some(v=>reviewCategories.every(({id})=>v.amounts[id]===value.amounts[id] && (v.notes[id]??"")===(value.notes[id]??""))))
+      versions.push({amounts:{...value.amounts},notes:{...value.notes},savedAt,label});
+  };
+  let written:Values|undefined;
+  for(const u of [...updates].reverse()){
+    if(u.reviewId!==record.id || u.asOf!==record.end) continue;
+    const saved=(s:Record<string,unknown>)=>(s.financeReviews as FinanceReview[]|undefined)?.find(r=>r.id===record.id && r.end===record.end);
+    const after=saved(u.after), before=saved(u.before);
+    const value=u.module==="spending" && u.moduleDraft?.amounts ? u.moduleDraft as Values : !u.module ? after : undefined;
+    if(value){
+      add(value,u.savedAt,u.module?"单独保存的支出":"整期记录");
+      if(!written && u.published && (!u.revisedWeek || !before || reviewCategories.some(({id})=>before.amounts[id]!==value.amounts[id] || before.notes[id]!==value.notes[id]))) written=value;
+    }
+    if(before) add(before,before.savedAt,"修订前记录");
+  }
+  add(record,record.savedAt,"原周报告");
+  const initial={amounts:{...(written??record).amounts},notes:{...(written??record).notes}};
+  if(!written){
+    const rows=(weeklySpendingSource(signature,record.start,record.end)??[]).filter(r=>!r.date.includes("/") || r.category===record.id && r.date===record.start+"/"+record.end);
+    for(const {id,flow} of reviewCategories){
+      const items=rows.filter(r=>r.group===id);
+      if(flow!=="expense" || !items.length || record.amounts[id]!==0) continue;
+      initial.amounts[id]=items.reduce((s,r)=>s+Math.round(r.amount*100),0)/100;
+      const note=items.find(r=>r.date.includes("/") && r.note && r.note!=="与本周已标日期支出核对后的差额")?.note;
+      if(note && (!initial.notes[id] || initial.notes[id]==="0")) initial.notes[id]=note;
+    }
+  }
+  return {initial,versions};
 }
 
 export function restoreReviewModules(draft:ReviewDraft,updates:ReviewUpdate[],signatures:Record<ReviewModule,string>):ReviewDraft {
