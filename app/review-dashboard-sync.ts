@@ -11,7 +11,7 @@ export type DashboardState = {
   accounts:Array<{id:string;name:string;type:string;purpose:string;balance:number;includedInPersonal?:boolean}>;
   holdings:ReviewHolding[]; fxUsd:number; fxHkd:number;
   balanceAssets:Array<{id:string;name:string;amount:number}>; liabilities:Array<{id:string;name:string;amount:number}>;
-  reminders:Array<{id:string;name:string;amount:number;date:string;kind:string}>;
+  reminders:import("./finance-review-model").ReviewBill[];
   fundBuckets:Array<{id:string;name:string;target:number;current:number;dueDate:string;actualDate?:string;includedInLedger?:boolean}>;
   goals:GoalBalance[];
   dashboardAsOf?:string; reviewUpdates?:ReviewUpdate[]; selectedMonth?:string;
@@ -103,8 +103,15 @@ export function commitReviewUpdate<T extends DashboardState>(state:T, records:Fi
     // Carry a corrected reminder forward only while its current registration still matches that week.
     if(!request.revision.module || request.revision.module==="bills") next.reminders=state.reminders.map(live=>{
       const old=baseline.focus?.bills.find(row=>row.id===live.id), edited=record.focus?.bills.find(row=>row.id===live.id);
-      if(!old || !edited || live.date!==old.date || live.amount!==old.amount) return live;
-      return {...live,date:edited.date,amount:edited.amount};
+      if(!old || !edited)return live;
+      const month=record.end.slice(0,7),previous=old.payments?.[month],value=edited.payments?.[month];
+      const nextBill=live.date===old.date && live.amount===old.amount?{...live,date:edited.date,amount:edited.amount}:{...live};
+      if(value!==previous){
+        if(live.payments?.[month]!==previous && live.payments?.[month]!==value)throw new Error("该账单本月的缴费记录后来已变化，未覆盖。");
+        nextBill.payments={...live.payments};
+        if(value===undefined)delete nextBill.payments[month];else nextBill.payments[month]=value;
+      }
+      return nextBill;
     });
     next.financeReviews=state.financeReviews!.map(row=>row.id===record.id?record:row);
   } else if(request.publish) {

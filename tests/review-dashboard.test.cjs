@@ -80,6 +80,16 @@ test('a scoped past holdings correction survives reopening without changing curr
   assert.deepEqual(x.revisionModules(next.financeReviews[1],next.reviewUpdates).draft.investments,patch);
 });
 
+test('backdated bill payment preserves the following month and does not change the ledger',()=>{
+  const s=state(),old=record(s,'2026-10-18'),live=commit(s,old),prior=live.financeReviews[0];
+  live.reminders[0]={...live.reminders[0],date:'2026-11-10',payments:{'2026-11':'2026-11-10'}};
+  const revised=structuredClone(prior);revised.focus.bills[0].payments={'2026-10':'2026-10-17'};
+  const req={record:revised,publish:true,revision:{original:prior,spending:'',module:'bills'}};
+  const next=d.commitReviewUpdate(live,[],req,undefined,'2026-11-14');
+  assert.deepEqual(next.reminders[0].payments,{'2026-10':'2026-10-17','2026-11':'2026-11-10'});
+  assert.equal(next.reminders[0].date,'2026-11-10');assert.deepEqual(next.monthlyRecords,live.monthlyRecords);
+});
+
 test('partial, stale, inconsistent or undated cross-month updates fail before any mutation',()=>{
   const s=state(),r=record(s),before=structuredClone(s);
   assert.throws(()=>commit(s,{...r,investments:undefined}),/补齐/);

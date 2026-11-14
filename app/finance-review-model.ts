@@ -45,10 +45,24 @@ export function compareReviewInvestments(current: FinanceReview, previous?: Fina
   });
 }
 export const reviewFocusLabels = {projects: "大花费项目", bills: "账单与订阅", balance: "资产负债明细"};
+export type ReviewBill={id:string;name:string;amount:number;date:string;kind:string;payments?:Record<string,string>};
+// A present month is paid. An empty date means payment was confirmed but the day is unknown.
+export function billPaid(bill:Pick<ReviewBill,"payments">,asOf:string){
+  return Object.hasOwn(bill.payments??{},asOf.slice(0,7));
+}
+export function billPaymentPatch(bill:ReviewBill,asOf:string,paid:boolean,date=""){
+  const month=asOf.slice(0,7),payments={...bill.payments};
+  if(date){
+    dateValue(date);
+    if(!date.startsWith(month+"-") || date>asOf)throw new Error("实缴日期须在复盘当月，且不晚于复盘截至日。");
+  }
+  if(paid)payments[month]=date;else delete payments[month];
+  return {payments};
+}
 export type ReviewFocusKey = keyof typeof reviewFocusLabels;
 export type ReviewFocusSource = {
   projects: Array<{id: string; name: string; target: number; current: number; dueDate: string; actualDate?:string; includedInLedger?:boolean}>;
-  bills: Array<{id: string; name: string; amount: number; date: string; kind: string}>;
+  bills: ReviewBill[];
   assets: Array<{id: string; name: string; amount: number}>;
   debts: Array<{id: string; name: string; amount: number}>;
   holdings: number;
@@ -200,7 +214,17 @@ function parseReviewFocus(value: unknown): ReviewFocus {
   return {
     projects: rows(raw.projects).map(row => ({id: row.id, name: row.name, target: money(row.target), current: money(row.current), dueDate: date(row.dueDate),
       ...(row.actualDate!==undefined?{actualDate:date(row.actualDate)}:{}), ...(typeof row.includedInLedger==="boolean"?{includedInLedger:row.includedInLedger}:{})})),
-    bills: rows(raw.bills).map(row => ({id: row.id, name: row.name, amount: money(row.amount), date: date(row.date), kind: typeof row.kind === "string" ? row.kind : ""})),
+    bills: rows(raw.bills).map(row => {
+      const bill:ReviewBill={id:row.id,name:row.name,amount:money(row.amount),date:date(row.date),kind:typeof row.kind==="string"?row.kind:""};
+      if(row.payments!==undefined){
+        if(!row.payments || typeof row.payments!=="object" || Array.isArray(row.payments))throw new Error("账单缴费记录格式无效。");
+        bill.payments=Object.fromEntries(Object.entries(row.payments).map(([month,day])=>{
+          if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || typeof day!=="string" || (day && !day.startsWith(month+"-")))throw new Error("账单实缴日期与月份不符。");
+          return [month,date(day)];
+        }));
+      }
+      return bill;
+    }),
     assets: rows(raw.assets).map(row => ({id: row.id, name: row.name, amount: money(row.amount)})),
     debts: rows(raw.debts).map(row => ({id: row.id, name: row.name, amount: money(row.amount)})), holdings: money(raw.holdings),
     checks: Object.fromEntries(Object.keys(reviewFocusLabels).map(key => [key, rawChecks[key] === true])) as ReviewFocus["checks"],
@@ -429,8 +453,9 @@ export function reviewHighlights(current: FinanceReview, previous?: FinanceRevie
   };
   const upcomingProjects = (focus?.projects ?? []).filter(row => !row.actualDate && row.target > row.current && daysUntil(row.dueDate) !== null && daysUntil(row.dueDate)! >= 0 && daysUntil(row.dueDate)! <= 30).sort((a,b) => a.dueDate.localeCompare(b.dueDate));
   const oldProjects = (focus?.projects ?? []).filter(row => !row.actualDate && daysUntil(row.dueDate) !== null && daysUntil(row.dueDate)! < 0);
-  const upcomingBills = (focus?.bills ?? []).filter(row => daysUntil(row.date) !== null && daysUntil(row.date)! >= 0 && daysUntil(row.date)! <= 7).sort((a,b) => a.date.localeCompare(b.date));
-  const oldBills = (focus?.bills ?? []).filter(row => daysUntil(row.date) !== null && daysUntil(row.date)! < 0);
+  const pendingBills=(focus?.bills??[]).filter(row=>!billPaid(row,row.date));
+  const upcomingBills = pendingBills.filter(row => daysUntil(row.date) !== null && daysUntil(row.date)! >= 0 && daysUntil(row.date)! <= 7).sort((a,b) => a.date.localeCompare(b.date));
+  const oldBills = pendingBills.filter(row => daysUntil(row.date) !== null && daysUntil(row.date)! < 0);
   const state = (key: ReviewFocusKey) => !focus ? "未提供" : !focus.checks[key] ? "待核对" : !before?.checks[key] ? "首次基准" : changes[key].length ? `${changes[key].length} 项变化` : "登记未变";
   const baseline = (key: ReviewFocusKey) => !focus ? "本期没有这项快照，不按 0 或没有变化处理。" : !focus.checks[key] ? "带入的登记数据尚未核对，不能据此确认本期变化。" : !before?.checks[key] ? "暂无已核对的上期明细，仅建立本期基准。" : "";
   const expenseChanges = reviewCategories.filter(row => row.flow === "expense").map(row => ({name:row.name,delta:previous ? sum([current.amounts[row.id],-previous.amounts[row.id]]) : 0})).filter(row => row.delta !== 0).sort((a,b) => Math.abs(b.delta)-Math.abs(a.delta));

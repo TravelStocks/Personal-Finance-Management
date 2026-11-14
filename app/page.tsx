@@ -80,6 +80,7 @@ type Holding = {
 };
 
 type Reminder = {
+  payments?:Record<string,string>;
   id: string;
   name: string;
   date: string;
@@ -3600,7 +3601,7 @@ export default function FinanceDashboard() {
                       }} ledgerMonths={monthlyRecords} datedEntries={datedEntries} onSaveIncome={saveDatedEntry} onDeleteIncome={deleteDatedEntry}
                       focusSource={{
                         projects:fundBuckets.map(({id,name,target,current,dueDate,actualDate,includedInLedger})=>({id,name,target,current,dueDate,actualDate,includedInLedger})),
-                        bills:reminders.map(({id,name,amount,date,kind})=>({id,name,amount,date,kind})),
+                        bills:reminders.map(row=>({...row})),
                         assets:balanceAssets.map(({id,name,amount})=>({id,name,amount})),
                         debts:liabilities.map(({id,name,amount})=>({id,name,amount})), holdings:totals.investmentValue,
                       }} onOpenModule={navigateToSection} onChange={(records, update) => {
@@ -4973,7 +4974,7 @@ function EditableReminderTable({
                 <td><TableDateInput ariaLabel={`${item.name} 日期`} value={item.date} onChange={(value) => updateReminder(item.id, { date: value })} /></td>
                 <td><TableNumberInput ariaLabel={`${item.name} 金额`} value={item.amount} onChange={(value) => updateReminder(item.id, { amount: value })} /></td>
                 <td><TableTextInput ariaLabel={`${item.name} 类型`} value={item.kind} onChange={(value) => updateReminder(item.id, { kind: value })} /></td>
-                <td className="calculated-cell">{reviewDeadlineLabel(item.date, baseDate)}</td>
+                <td className="calculated-cell">{Object.hasOwn(item.payments??{},item.date.slice(0,7)) ? `已缴费 ${item.payments?.[item.date.slice(0,7)]??""}` : reviewDeadlineLabel(item.date, baseDate)}</td>
                 <td>
                   <button className="danger-button compact" disabled={reminders.length <= 1} type="button" onClick={() => deleteReminder(item.id)}>
                     删除

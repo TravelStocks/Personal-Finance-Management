@@ -54,6 +54,20 @@ test('a historical revision resolves each module independently across full, part
   assert.equal(out.balances.debt,0);assert.equal(out.focus.assets[0].amount,200);assert.deepEqual(s,saved);
 });
 
+test('monthly bill confirmation saves without booking expenses and carries only within its month',()=>{
+  const s=state(),r=draft(s),bill=r.focus.bills[0];
+  Object.assign(bill,m.billPaymentPatch(bill,r.end,true,'2026-10-27'));
+  const next=commit(s,r,'bills').data;
+  assert.equal(next.reminders[0].payments['2026-10'],'2026-10-27');
+  assert.deepEqual(next.monthlyRecords,s.monthlyRecords);assert.deepEqual(next.accounts,s.accounts);
+  assert.deepEqual(d.parseReviewUpdates(JSON.parse(JSON.stringify(next.reviewUpdates)))[0].moduleDraft.focus.bills[0].payments,bill.payments);
+  assert.equal(m.billPaid(bill,'2026-11-02'),false);
+  Object.assign(bill,m.billPaymentPatch(bill,'2026-11-02',true));
+  assert.equal(m.billPaid(bill,'2026-11-03'),true);assert.equal(bill.payments['2026-11'],'');
+  Object.assign(bill,m.billPaymentPatch(bill,'2026-10-29',false));
+  assert.deepEqual(bill.payments,{'2026-11':''});assert.throws(()=>m.billPaymentPatch(bill,r.end,true,'2026-11-01'));
+});
+
 test('each module updates only its own fields, ignoring unrelated missing or invalid input',()=>{
   for(const module of ['accounts','investments','projects','bills','balance','goals']) {
     const s=state(),r=draft(s),before=structuredClone(s);

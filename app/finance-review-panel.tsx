@@ -529,7 +529,7 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
         <button className="secondary-button" type="button" onClick={()=>{setDraftModules(base=>({...base,spending:moduleSignatures.spending}));setStatus("已核对本周账本，请保存支出。");}}>已核对，保留本次修订</button></div>}
       <div className="data-actions">{moduleButton("spending")}</div></section>
       <ReviewInvestmentsEditor value={draft.investments} onChange={updateInvestments} confirmed={investmentsConfirmed} onConfirm={setInvestmentsConfirmed} onOpen={()=>onOpenModule("investment")} saveAction={moduleButton("investments")}/>
-      <ReviewFocusChecklist focus={draft.focus} live={followsSource} onChange={focus=>{
+      <ReviewFocusChecklist focus={draft.focus} asOf={draft.end} live={followsSource} onChange={focus=>{
         setLiveFocus(false);
         const total=(rows:Array<{amount:number}>)=>rows.reduce((s,r)=>s+Math.round(r.amount*100),0)/100;
         setDraft({...draft,focus,balances:{...draft.balances,otherAssets:total(focus.assets),debt:total(focus.debts)}});

@@ -1,7 +1,8 @@
-import {reviewFocusLabels, reviewMoney, type ReviewFocus, type ReviewFocusKey} from "./finance-review-model";
+import {billPaid,billPaymentPatch,reviewFocusLabels, reviewMoney, type ReviewFocus, type ReviewFocusKey} from "./finance-review-model";
 import type {ReactNode} from "react";
 
-export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, onRefreshProjects, onRefreshBills, onRefreshBalance, onOpen, onUseBalances,saveAction}: {
+export default function ReviewFocusChecklist({focus, asOf,live, onChange, onRefresh, onRefreshProjects, onRefreshBills, onRefreshBalance, onOpen, onUseBalances,saveAction}: {
+  asOf:string;
   focus?: ReviewFocus;
   live: boolean;
   onChange: (focus: ReviewFocus) => void;
@@ -16,7 +17,7 @@ export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, 
   const total = (rows: Array<{amount:number}>) => rows.reduce((sum,row)=>sum+Math.round(row.amount*100),0)/100;
   const summaries = focus ? {
     projects: `${focus.projects.length} 项 · 缺口 ${reviewMoney(focus.projects.reduce((sum,row)=>sum+(row.actualDate?0:Math.max(0,Math.round((row.target-row.current)*100))),0)/100)}`,
-    bills: `${focus.bills.length} 项登记 · 包含已登记的订阅提醒`,
+    bills: `${asOf.slice(0,7)} · 已缴 ${focus.bills.filter(row=>billPaid(row,asOf)).length} 项 · 未标记缴费 ${focus.bills.filter(row=>!billPaid(row,asOf)).length} 项`,
     balance: `补录资产 ${reviewMoney(total(focus.assets))} · 负债 ${reviewMoney(total(focus.debts))}`,
   } : null;
   const modules = {projects:"fundBuckets", bills:"reminders", balance:"balance"} as const;
@@ -36,7 +37,11 @@ export default function ReviewFocusChecklist({focus, live, onChange, onRefresh, 
               <td><input type="date" aria-label={`${row.name}复盘预算日期`} value={row.dueDate} onChange={event=>edit(key,"projects",row.id,{dueDate:event.target.value})}/></td>
               <td><input type="date" aria-label={`${row.name}复盘实际日期`} value={row.actualDate??""} onChange={event=>edit(key,"projects",row.id,{actualDate:event.target.value})}/></td>
               <td><input type="checkbox" aria-label={`${row.name}复盘已计入支出账本`} checked={!!row.includedInLedger} onChange={event=>edit(key,"projects",row.id,{includedInLedger:event.target.checked})}/></td></tr>)}</tbody></>}
-            {key === "bills" && <><thead><tr><th>账单 / 订阅</th><th>登记金额</th><th>提醒日期</th><th>类型</th></tr></thead><tbody>{focus.bills.map(row => <tr key={row.id}><th>{row.name}</th><td>{amount(key,"bills",row,"金额",row.amount)}</td><td><input type="date" aria-label={`${row.name}复盘提醒日期`} value={row.date} onChange={event=>edit(key,"bills",row.id,{date:event.target.value})}/></td><td>{row.kind}</td></tr>)}</tbody></>}
+            {key === "bills" && <><thead><tr><th>账单 / 订阅</th><th>登记金额</th><th>提醒日期</th><th>类型</th><th>本月实缴日期</th><th>是否缴费</th></tr></thead><tbody>{focus.bills.map(row => <tr key={row.id}><th>{row.name}</th><td>{amount(key,"bills",row,"金额",row.amount)}</td><td><input type="date" aria-label={`${row.name}复盘提醒日期`} value={row.date} onChange={event=>edit(key,"bills",row.id,{date:event.target.value})}/></td><td>{row.kind}</td>
+              <td><input type="date" aria-label={`${row.name}本月实缴日期`} min={asOf.slice(0,7)+"-01"} max={asOf} value={row.payments?.[asOf.slice(0,7)]??""} onChange={event=>{
+                const input=event.currentTarget;if(!input.validity.valid){input.reportValidity();return;}
+                edit(key,"bills",row.id,billPaymentPatch(row,asOf,Boolean(input.value)||billPaid(row,asOf),input.value));
+              }}/></td><td><label style={{whiteSpace:"nowrap"}}><input type="checkbox" aria-label={`${row.name}是否缴费`} checked={billPaid(row,asOf)} onChange={e=>edit(key,"bills",row.id,billPaymentPatch(row,asOf,e.target.checked))}/>{billPaid(row,asOf)?"已缴":"未标记"}</label></td></tr>)}</tbody></>}
             {key === "balance" && <><thead><tr><th>明细</th><th>金额</th><th>口径</th></tr></thead><tbody>
               {focus.assets.map(row=><tr key={`asset:${row.id}`}><th>{row.name}</th><td>{amount(key,"assets",row,"金额",row.amount)}</td><td>补录资产</td></tr>)}
               {focus.debts.map(row=><tr key={`debt:${row.id}`}><th>{row.name}</th><td>{amount(key,"debts",row,"金额",row.amount)}</td><td>负债余额</td></tr>)}

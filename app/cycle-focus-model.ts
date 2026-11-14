@@ -7,13 +7,13 @@ type Row = {id:string; name:string; fields:Record<string,string>};
 type Observation = {scope:Scope; asOf:string; saved:string; rows:Row[]; before?:Row[]; note?:string};
 const row = (id:string,name:string,fields:Record<string,string>):Row => ({id,name,fields});
 const projects = (items:DashboardState['fundBuckets']) => items.map(p=>row(p.id,p.name,{实际:reviewMoney(p.current),目标:reviewMoney(p.target),预算日期:p.dueDate||'未填',实际日期:p.actualDate||'未填'}));
-const bills = (items:DashboardState['reminders']) => items.map(p=>row(p.id,p.name,{登记金额:reviewMoney(p.amount),提醒:p.date||'未填',类型:p.kind}));
+const bills = (items:DashboardState['reminders'],asOf:string) => items.map(p=>row(p.id,p.name,{登记金额:reviewMoney(p.amount),提醒:p.date||'未填',类型:p.kind,本月缴费:Object.hasOwn(p.payments??{},asOf.slice(0,7))?(p.payments?.[asOf.slice(0,7)]||'已缴'):'未标记'}));
 const balance = (assets:DashboardState['balanceAssets'],debts:DashboardState['liabilities']) => [
   ...assets.map(p=>row('asset:'+p.id,p.name,{资产:reviewMoney(p.amount)})),...debts.map(p=>row('debt:'+p.id,p.name,{负债:reviewMoney(p.amount)}))];
 const accounts = (items:Array<{id:string;name:string;balance:number}>) => items.map(p=>row(p.id,p.name,{账户余额:reviewMoney(p.balance)}));
 const investments = (fx:NonNullable<FinanceReview['investments']>) => fx.holdings.map(p=>row(p.id,p.name,{持仓市值:reviewMoney(reviewHoldingCny(p,fx))}));
-function snapshot(scope:Scope,s:DashboardState) {
-  switch(scope){case 'projects':return projects(s.fundBuckets);case 'bills':return bills(s.reminders);
+function snapshot(scope:Scope,s:DashboardState,asOf:string) {
+  switch(scope){case 'projects':return projects(s.fundBuckets);case 'bills':return bills(s.reminders,asOf);
     case 'balance':return balance(s.balanceAssets,s.liabilities);case 'accounts':return accounts(s.accounts);case 'investments':return investments(s);}
 }
 function describe(now:Row[], prior?:Row[]) {
@@ -34,8 +34,8 @@ export function cycleFocusHistory(today:string,records:FinanceReview[],updates:R
     if(!update.published || update.revisedWeek || !update.reviewId.startsWith('week:') || update.asOf>today) continue;
     for(const scope of scopes){
       if(update.module && update.module!==scope) continue;
-      events.push({scope,asOf:update.asOf,saved:update.savedAt,rows:snapshot(scope,update.after as DashboardState),
-        before:snapshot(scope,update.before as DashboardState),note:scope==='projects'||scope==='bills'||scope==='balance'?update.moduleDraft?.focus?.notes?.[scope]:undefined});
+      events.push({scope,asOf:update.asOf,saved:update.savedAt,rows:snapshot(scope,update.after as DashboardState,update.asOf),
+        before:snapshot(scope,update.before as DashboardState,update.asOf),note:scope==='projects'||scope==='bills'||scope==='balance'?update.moduleDraft?.focus?.notes?.[scope]:undefined});
     }
   }
   for(const rec of records){
@@ -43,7 +43,7 @@ export function cycleFocusHistory(today:string,records:FinanceReview[],updates:R
     const put=(scope:Scope,rows:Row[],note?:string)=>events.push({scope,rows,note,asOf:rec.end,saved:rec.savedAt});
     const f=rec.focus;
     if(f?.checks.projects)put('projects',projects(f.projects),f.notes.projects);
-    if(f?.checks.bills)put('bills',bills(f.bills),f.notes.bills);
+    if(f?.checks.bills)put('bills',bills(f.bills,rec.end),f.notes.bills);
     if(f?.checks.balance)put('balance',balance(f.assets,f.debts),f.notes.balance);
     if(rec.accounts)put('accounts',accounts(rec.accounts));
     if(rec.investments)put('investments',investments(rec.investments));

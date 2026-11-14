@@ -97,7 +97,7 @@ test('project actual input updates the existing current field and preserves othe
   new Function('exports','require',compiled)(exported,name=>name==='./finance-review-model'?m:require(name));
   const focus=checked();
   let changed;
-  const tree=exported.default({focus,live:true,onChange:value=>{changed=value;},onRefresh:()=>{},onOpen:()=>{},onUseBalances:()=>{}});
+  const tree=exported.default({focus,asOf:'2026-11-14',live:true,onChange:value=>{changed=value;},onRefresh:()=>{},onOpen:()=>{},onUseBalances:()=>{}});
   const inputs=[];
   function walk(node){
     if(Array.isArray(node)){node.forEach(walk);return;}
@@ -116,4 +116,10 @@ test('project actual input updates the existing current field and preserves othe
   const bill=inputs.find(node=>node.props['aria-label']==='测试订阅复盘金额');
   bill.props.onChange({target:{value:'35'}});
   assert.equal(changed.bills[0].amount,35);
+  const paid=inputs.find(node=>node.props['aria-label']==='测试订阅本月实缴日期');
+  paid.props.onChange({currentTarget:{validity:{valid:true},value:'2026-11-12'}});
+  assert.equal(changed.bills[0].payments['2026-11'],'2026-11-12');
+  const toggle=inputs.find(node=>node.props['aria-label']==='测试订阅是否缴费');
+  assert.equal(toggle.props.checked,false);toggle.props.onChange({target:{checked:true}});
+  assert.equal(changed.bills[0].payments['2026-11'],'');
 });
