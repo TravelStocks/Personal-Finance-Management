@@ -1086,6 +1086,25 @@ select {
   overflow-wrap: anywhere;
 }
 
+.calendar-event-paid {
+  border-color: #a5d9c6;
+  background: #f1faf6;
+}
+
+.calendar-event .calendar-payment-status {
+  justify-self: start;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.calendar-event .calendar-payment-status.paid {
+  color: #087754;
+}
+
+.calendar-event .calendar-payment-status.unconfirmed {
+  color: #865b15;
+}
+
 .calendar-event em {
   font-family: "Cascadia Mono", Consolas, monospace;
   font-style: normal;

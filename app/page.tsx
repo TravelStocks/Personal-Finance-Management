@@ -17,6 +17,7 @@ import {monthlyBudgetUsage} from "./monthly-budget-usage";
 import {projectPayments} from "./project-payments";
 import {planYearLabel, planYearProgress} from "./plan-year";
 import {financeChartData, financeHealth, waterfallSteps} from "./finance-chart-model";
+import {billCalendarEvents} from "./bill-calendar-model";
 import ReviewUpdateHistory from "./review-update-history";
 import {commitReviewUpdate, dashboardSourceSignature, parseReviewUpdates, type ReviewUpdate} from "./review-dashboard-sync";
 import {commitReviewModule, reviewModuleLabels, reviewModuleSignature, type ReviewModule} from "./review-module-sync";
@@ -293,6 +294,8 @@ type CashflowEvent = {
   inflow: number;
   outflow: number;
   kind: string;
+  paid?: boolean;
+  paidDate?: string;
 };
 
 type WaterfallDatum = {
@@ -1900,10 +1903,7 @@ export default function FinanceDashboard() {
       outflow: row.flow === "expense" ? row.amount : 0,
       kind: "已记账",
     })),
-    ...reminders.filter(row => row.date.startsWith(selectedMonth + "-")).map(row => ({
-      date: row.date, item: row.name, inflow: row.kind === "定存" ? row.amount : 0,
-      outflow: row.kind === "定存" ? 0 : row.amount, kind: "提醒，非新增记账",
-    })),
+    ...billCalendarEvents(reminders, selectedMonth),
   ].sort((a, b) => a.date.localeCompare(b.date));
 
   function updateAccount(id: string, patch: Partial<Account>) {
@@ -5682,9 +5682,11 @@ function CashflowCalendar({ events }: { events: CashflowEvent[] }) {
     <div className="cashflow-calendar">
       {!events.length && <p className="muted">暂无日期明细或提醒</p>}
       {events.map((event, index) => (
-        <article className="calendar-event" key={`${event.date}-${event.item}-${index}`}>
-          <span>{event.date.slice(5)}</span>
+        <article className={`calendar-event${event.paid ? " calendar-event-paid" : ""}`} key={`${event.date}-${event.item}-${index}`}>
+          <span>{event.date.length === 7 ? `${event.date.slice(5)}月 · 日期待补` : event.date.slice(5)}</span>
           <strong>{event.item}</strong>
+          {event.paid !== undefined && <span className={`calendar-payment-status ${event.paid ? "paid" : "unconfirmed"}`}>{event.paid ? "已缴费" : "未标记缴费"}</span>}
+          {event.paid && <small>{event.paidDate ? `实缴 ${event.paidDate}` : "实缴日期待补"}</small>}
           <div>
             {event.inflow !== 0 && <em className={event.inflow > 0 ? "positive" : "negative"}>{money(event.inflow)}</em>}
             {event.outflow !== 0 && <em className={event.outflow > 0 ? "negative" : "positive"}>{money(-event.outflow)}</em>}
