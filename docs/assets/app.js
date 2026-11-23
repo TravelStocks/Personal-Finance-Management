@@ -16751,15 +16751,15 @@ function Hr() {
 										className: "chart-grid four",
 										children: [
 											/* @__PURE__ */ (0, b.jsx)(q, {
-												title: "资产结构",
-												summary: `总资产 ${W(G.totalAssets)}`,
-												children: /* @__PURE__ */ (0, b.jsx)(gi, {
-													data: Va,
-													centerLabel: "总资产",
-													centerValue: W(G.totalAssets)
-												})
+												title: "账本现金流日历",
+												summary: `${H.label}账本及提醒记录`,
+												children: /* @__PURE__ */ (0, b.jsx)(Ci, { events: Xr })
 											}),
-											Qa,
+											/* @__PURE__ */ (0, b.jsx)(q, {
+												title: "本月收支现金瀑布",
+												summary: `${H.label} / 实际收支，不含预算预留`,
+												children: /* @__PURE__ */ (0, b.jsx)(wi, { data: Ja })
+											}),
 											/* @__PURE__ */ (0, b.jsx)(q, {
 												title: "本月实际支出",
 												summary: `${H.label} / 合计 ${W(G.spendingActual)}`,
@@ -16773,6 +16773,24 @@ function Hr() {
 												})
 											}),
 											/* @__PURE__ */ (0, b.jsx)(q, {
+												title: "本月预算分配",
+												summary: `计划 ${W(G.budgetUsage.budget)} / 含投资与应急预留`,
+												children: /* @__PURE__ */ (0, b.jsx)(vi, {
+													data: Na,
+													valueFormatter: W
+												})
+											}),
+											/* @__PURE__ */ (0, b.jsx)(q, {
+												title: "资产结构",
+												summary: `总资产 ${W(G.totalAssets)}`,
+												children: /* @__PURE__ */ (0, b.jsx)(gi, {
+													data: Va,
+													centerLabel: "总资产",
+													centerValue: W(G.totalAssets)
+												})
+											}),
+											Qa,
+											/* @__PURE__ */ (0, b.jsx)(q, {
 												title: "账本健康维度",
 												summary: `${H.label} / 综合 ${G.score} 分`,
 												children: /* @__PURE__ */ (0, b.jsx)(vi, {
@@ -16782,28 +16800,10 @@ function Hr() {
 												})
 											}),
 											/* @__PURE__ */ (0, b.jsx)(q, {
-												title: "本月收支现金瀑布",
-												summary: `${H.label} / 实际收支，不含预算预留`,
-												children: /* @__PURE__ */ (0, b.jsx)(wi, { data: Ja })
-											}),
-											/* @__PURE__ */ (0, b.jsx)(q, {
-												title: "账本现金流日历",
-												summary: `${H.label}账本及提醒记录`,
-												children: /* @__PURE__ */ (0, b.jsx)(Ci, { events: Xr })
-											}),
-											/* @__PURE__ */ (0, b.jsx)(q, {
 												title: "账本风险矩阵",
 												summary: `${H.label}账本模型`,
 												className: "wide risk-panel",
 												children: /* @__PURE__ */ (0, b.jsx)(Y, { data: Po })
-											}),
-											/* @__PURE__ */ (0, b.jsx)(q, {
-												title: "本月预算分配",
-												summary: `计划 ${W(G.budgetUsage.budget)} / 含投资与应急预留`,
-												children: /* @__PURE__ */ (0, b.jsx)(vi, {
-													data: Na,
-													valueFormatter: W
-												})
 											})
 										]
 									})]

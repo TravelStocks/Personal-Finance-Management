@@ -3075,27 +3075,27 @@ export default function FinanceDashboard() {
               </div>
             </div>
             <div className="chart-grid four">
-              <ChartPanel title="资产结构" summary={`总资产 ${money(totals.totalAssets)}`}>
-                <DonutChart data={assetStructureData} centerLabel="总资产" centerValue={money(totals.totalAssets)} />
-              </ChartPanel>
-              {annualDistributionPanel}
-              <ChartPanel title="本月实际支出" summary={`${activeMonth.label} / 合计 ${money(totals.spendingActual)}`} className="spending-top-panel">
-                {topSpendingData.length ? <HorizontalBarChart data={topSpendingData} valueFormatter={money} /> : <p className="muted">本月暂无实际支出</p>}
-              </ChartPanel>
-              <ChartPanel title="账本健康维度" summary={`${activeMonth.label} / 综合 ${totals.score} 分`}>
-                <HorizontalBarChart data={healthDimensions} valueFormatter={(value) => `${value.toFixed(0)}分`} percentMode />
+              <ChartPanel title="账本现金流日历" summary={`${activeMonth.label}账本及提醒记录`}>
+                <CashflowCalendar events={ledgerEvents} />
               </ChartPanel>
               <ChartPanel title="本月收支现金瀑布" summary={`${activeMonth.label} / 实际收支，不含预算预留`}>
                 <WaterfallChart data={monthlyWaterfall} />
               </ChartPanel>
-              <ChartPanel title="账本现金流日历" summary={`${activeMonth.label}账本及提醒记录`}>
-                <CashflowCalendar events={ledgerEvents} />
-              </ChartPanel>
-              <ChartPanel title="账本风险矩阵" summary={`${activeMonth.label}账本模型`} className="wide risk-panel">
-                <RiskMatrix data={riskMatrixData} />
+              <ChartPanel title="本月实际支出" summary={`${activeMonth.label} / 合计 ${money(totals.spendingActual)}`} className="spending-top-panel">
+                {topSpendingData.length ? <HorizontalBarChart data={topSpendingData} valueFormatter={money} /> : <p className="muted">本月暂无实际支出</p>}
               </ChartPanel>
               <ChartPanel title="本月预算分配" summary={`计划 ${money(totals.budgetUsage.budget)} / 含投资与应急预留`}>
                 <HorizontalBarChart data={monthlyBudgetData} valueFormatter={money} />
+              </ChartPanel>
+              <ChartPanel title="资产结构" summary={`总资产 ${money(totals.totalAssets)}`}>
+                <DonutChart data={assetStructureData} centerLabel="总资产" centerValue={money(totals.totalAssets)} />
+              </ChartPanel>
+              {annualDistributionPanel}
+              <ChartPanel title="账本健康维度" summary={`${activeMonth.label} / 综合 ${totals.score} 分`}>
+                <HorizontalBarChart data={healthDimensions} valueFormatter={(value) => `${value.toFixed(0)}分`} percentMode />
+              </ChartPanel>
+              <ChartPanel title="账本风险矩阵" summary={`${activeMonth.label}账本模型`} className="wide risk-panel">
+                <RiskMatrix data={riskMatrixData} />
               </ChartPanel>
             </div>
           </section>
