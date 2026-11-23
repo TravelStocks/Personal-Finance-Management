@@ -24,7 +24,7 @@ import {goalKind, goalBalanceSource, syncAccountGoals, parseParentReviewAmounts}
 import {changeDatedEntry, parseDatedEntries, preserveDatedSalaries, type DatedEntry, type EntryMode} from "./dated-ledger-model";
 import {parseFinanceReviews, rollPaidReminder, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, reviewInvestmentTotal, type FinanceReview} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
-import {financeBackupSignature, financeDataOnly, financeSaveConflict, hasPendingFinanceSave, markFinanceCloudSaved, writeLocalFinanceData} from "./finance-save-model";
+import {financeBackupSignature, financeDataOnly, financeSaveConflict, hasPendingFinanceSave, localFinanceBackupFile, markFinanceCloudSaved, writeLocalFinanceData} from "./finance-save-model";
 import {applySalaryFromMonth, confirmedMonthlySalary, migrateSalarySettings, salarySettingsVersion} from "./salary-model";
 import {addSpendingDetailPresets, getSpendingGroup, nextMonthSpendingRows, spendingGroups, summarizeLearning, type SpendingBudget as Budget} from "./spending-detail-model";
 
@@ -1104,6 +1104,7 @@ export default function FinanceDashboard() {
   const [cloudSyncing, setCloudSyncing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState("正在读取本地数据…");
+  const [localBackupStatus, setLocalBackupStatus] = useState("");
   const [reportCopyStatus, setReportCopyStatus] = useState("报告随数据自动更新");
   const [savedDataReady, setSavedDataReady] = useState(false);
   const cloudAutoSyncTimerRef = useRef<number | null>(null);
@@ -1446,15 +1447,26 @@ export default function FinanceDashboard() {
   }
 
   function exportBackup() {
-    const backup = getCloudSyncBackup();
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `personal-finance-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setSaveStatus("备份文件已导出");
+    if (!savedDataReady || cloudSyncing) return;
+    try {
+      const backup = localFinanceBackupFile(getCloudSyncBackup(), window.crypto.randomUUID().slice(0, 8));
+      const url = URL.createObjectURL(new Blob([backup.content], { type: "application/json" }));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = backup.name;
+      document.body.appendChild(anchor);
+      try { anchor.click(); } finally {
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      const message = `已发起本地完整备份下载：${backup.name}。包含已保存账本及全部历史，不含未提交的复盘输入；本次导出未上传云端。`;
+      setSaveStatus(message);
+      setLocalBackupStatus(message);
+    } catch {
+      const message = "本地备份未能生成，请重试。账本与云端数据未因本次导出而修改。";
+      setSaveStatus(message);
+      setLocalBackupStatus(message);
+    }
   }
   function exportReviewUpdate(update:ReviewUpdate,side:"before"|"after") {
     const data={...update[side],reviewUpdates} as PersistedFinanceData;
@@ -2935,7 +2947,7 @@ export default function FinanceDashboard() {
             <button className="secondary-button" type="button" onClick={() => setHistoryOpen((open) => !open)}>
               历史版本 {snapshots.length > 0 ? `(${snapshots.length})` : ""}
             </button>
-            <button className="secondary-button" type="button" onClick={exportBackup}>导出备份</button>
+            <button className="secondary-button" type="button" disabled={!savedDataReady || cloudSyncing} onClick={exportBackup}>导出备份</button>
             <button className="secondary-button" type="button" onClick={() => importInputRef.current?.click()}>导入备份</button>
             <input
               ref={importInputRef}
@@ -3584,6 +3596,7 @@ export default function FinanceDashboard() {
                 {moduleId === "periodReview" && (
                   <Module title="周期复盘" desc="本期实际收支与期末余额；整期更新、历史版本及逐账户变化。">
                     <FinanceReviewPanel records={financeReviews} plan={annualBudgetPlan} accounts={accounts} investments={{holdings,fxUsd,fxHkd}} goals={plannedGoals.map(({id,name,current})=>({id,name,current}))} dashboardAsOf={dashboardAsOf} sourceSignature={dashboardSourceSignature(getPersistedFinanceData())}
+                      onExportBackup={exportBackup} backupReady={savedDataReady && !cloudSyncing} backupStatus={localBackupStatus}
                       weeklyNotes={weeklyNotes} onSaveNote={(week,text)=>{
                         const saved=saveWeeklyNote(financeReviews,weeklyNotes,week,text);
                         persistLocalFinanceData({...getPersistedFinanceData(),...saved});

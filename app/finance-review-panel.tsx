@@ -30,7 +30,8 @@ const numeric = (value: string) => value.trim() === "" ? null : Number(value);
 const change = (value: number | null) => value === null ? "无基准" : `${value > 0 ? "+" : ""}${reviewMoney(value)}`;
 
 type AccountSource = Pick<ReviewAccount, "id" | "name" | "type" | "purpose" | "balance"> & {includedInPersonal?:boolean};
-export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNote, plan, accounts, investments, goals, dashboardAsOf, sourceSignature, moduleSignatures, moduleUpdates, onSaveModule, focusSource, ledgerMonths, datedEntries, onSaveIncome, onDeleteIncome, onOpenModule, onChange}: {records: FinanceReview[]; weeklyNotes:WeeklyNotes; onSaveNote:(week:string,text:string)=>void; plan: AnnualBudgetPlan; accounts: AccountSource[]; investments:ReviewInvestments; goals:ReviewGoal[]; dashboardAsOf?:string; sourceSignature:string;
+export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNote, plan, accounts, investments, goals, dashboardAsOf, sourceSignature, moduleSignatures, moduleUpdates, onSaveModule, focusSource, ledgerMonths, datedEntries, onSaveIncome, onDeleteIncome, onOpenModule, onExportBackup, backupReady, backupStatus, onChange}: {records: FinanceReview[]; weeklyNotes:WeeklyNotes; onSaveNote:(week:string,text:string)=>void; plan: AnnualBudgetPlan; accounts: AccountSource[]; investments:ReviewInvestments; goals:ReviewGoal[]; dashboardAsOf?:string; sourceSignature:string;
+  onExportBackup:()=>void; backupReady:boolean; backupStatus:string;
   moduleSignatures:Record<ReviewModule,string>;moduleUpdates:ReviewUpdate[];
   onSaveModule:(draft:ReviewDraft,module:ReviewModule,signature:string)=>{patch:ReviewModulePatch;moduleSignature:string;sourceSignature:string;goalsSignature?:string};
   focusSource: ReviewFocusSource; ledgerMonths:LedgerMonth[]; datedEntries:DatedEntry[]; onSaveIncome:(entry:DatedEntry,previousId:string|undefined,mode:EntryMode)=>void; onDeleteIncome:(id:string)=>void; onOpenModule:(module:"fundBuckets" | "reminders" | "balance" | "income" | "spending" | "investment" | "weeklyChanges")=>void; onChange: (records: FinanceReview[], update?:{record:FinanceReview;publish:boolean;sourceSignature:string;revision?:import("./review-dashboard-sync").WeekRevision}) => {sourceSignature:string;record?:FinanceReview;moduleSignatures?:Record<ReviewModule,string>}}) {
@@ -450,12 +451,14 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
         <button type="button" className={view === "report" ? "active" : ""} aria-pressed={view === "report"} onClick={() => setView("report")}>前后对比</button>
       </div>
       <div className="data-actions">
+        <button className="primary-button" type="button" disabled={!backupReady} onClick={onExportBackup}>下载本地完整备份</button>
         <button className="secondary-button" type="button" onClick={downloadTemplate}>下载模板</button>
         <button className="secondary-button" type="button" onClick={() => fileInput.current?.click()}>导入复盘</button>
         <button className="secondary-button" type="button" disabled={!records.length} onClick={() => download("finance-reviews.json", JSON.stringify({app:"personal-finance-review", version:1, records}, null, 2), "application/json")}>导出记录</button>
         <input className="visually-hidden" ref={fileInput} type="file" accept=".json,application/json" aria-label="导入周期复盘文件" onChange={event => {const file = event.target.files?.[0]; if (file) void importFile(file);}}/>
       </div>
     </div>
+    {backupStatus && <p className="review-status review-backup-status" role="status">{backupStatus}</p>}
     {status && <p className="review-status" role="status">{status}</p>}
     {view === "entry" && <form noValidate onSubmit={event => {
       event.preventDefault();

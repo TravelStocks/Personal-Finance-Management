@@ -44,3 +44,12 @@ export function markFinanceCloudSaved(storage: FinanceStorage, key: string, uplo
 export function financeBackupSignature(backup: {data: object; snapshots: unknown[]; monthlyArchives: unknown[]}) {
   return JSON.stringify({data: financeDataOnly(backup.data), snapshots: backup.snapshots, monthlyArchives: backup.monthlyArchives});
 }
+
+export function localFinanceBackupFile(backup: {version: 1; exportedAt: string; data: object; snapshots: unknown[]; monthlyArchives: unknown[]}, uniqueId: string) {
+  const stamp = new Date(backup.exportedAt).toISOString().replace(/[:.]/g, "-");
+  const {version, exportedAt, data, snapshots, monthlyArchives} = backup;
+  return {
+    name: `personal-finance-full-${stamp}-${uniqueId}.json`,
+    content: JSON.stringify({version, exportedAt, data, snapshots, monthlyArchives}, null, 2),
+  };
+}

@@ -11,6 +11,23 @@ const storage = () => {
 const data = () => ({annualBudgetPlan:{...budget.initialAnnualBudgetPlan,emergencyMonthlyNeed:3000,emergencyTargetMonths:9},
   accounts:[{id:'emergency',balance:1234.56}],emergencyFund:0,emergencyMonths:9,emergencyMonthlyNeed:3000});
 
+test('local full backup retains all ledger and history fields without changing the source', () => {
+  const backup = {version:1,exportedAt:'2026-11-23T19:30:11.123Z',
+    data:{...data(),monthlyRecords:[{id:'2026-11'}],financeReviews:[{id:'week:2026-11-16'}],
+      reviewUpdates:[{before:{accounts:[]},after:{accounts:[{balance:0}]}}],
+      weeklyNotes:{'2026-11-16':'note'},datedEntries:[{date:'2026-11-20',amount:42}],
+      holdings:[{id:'holding'}],fundBuckets:[{actualDate:'2026-11-21'}],
+      reminders:[{payments:{'2026-11':'2026-11-10'}}]},
+    snapshots:[{data:data()}],monthlyArchives:[{monthId:'2026-10'}]};
+  const original=JSON.stringify(backup);
+  const file=m.localFinanceBackupFile(backup,'test-a');
+  assert.deepEqual(JSON.parse(file.content),backup);
+  assert.equal(JSON.stringify(backup),original);
+  assert.match(file.name,/^personal-finance-full-2026-11-23T19-30-11-123Z-test-a\.json$/);
+  assert.notEqual(file.name,m.localFinanceBackupFile(backup,'test-b').name);
+  assert.throws(()=>m.localFinanceBackupFile({...backup,exportedAt:'invalid'},'test'));
+});
+
 test('manual and periodic saves round-trip emergency settings and linked balances including zero', () => {
   const db = storage(), input = data();
   m.writeLocalFinanceData(db,key,input,false,'2026-10-29T01:00:00Z');

@@ -12,6 +12,7 @@
 .review-fields.balances {grid-template-columns:repeat(4,minmax(0,1fr));}
 .review-caption,.review-table small {color:var(--muted);font-size:13px;line-height:1.6;}
 .review-status {padding:10px 12px;border-left:3px solid var(--blue);background:var(--soft);}
+.review-backup-status {overflow-wrap:anywhere;}
 .review-table {width:100%;border-collapse:collapse;min-width:580px;font-size:14px;}
 .review-table th,.review-table td {padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
 .review-table th {font-weight:600;}
