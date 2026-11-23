@@ -2480,12 +2480,12 @@ export default function FinanceDashboard() {
     }));
   const chartModel = financeChartData(actualIncome, budgets, annualBudgetPlan, monthPayments.total);
   const monthlyFundData = chartModel.monthly.map((item, index) => ({...item, color: palette[index % palette.length],
-    detail: `${money(item.value)}${item.id === "investment" || item.id === "emergency" ? " · 预留" : ""}`}));
+    detail: money(item.value)}));
+  const monthlyBudgetData = chartModel.budget.map((item, index) => ({...item, color: palette[index % palette.length]}));
   const topSpendingData = [...monthlyFundData].sort((a, b) => b.value - a.value);
   const spendingChartData = monthlyFundData.map(item => ({...item,
     max: Math.max(item.plan, Math.abs(item.value), 1), detail: `${money(item.value)} / ${money(item.plan)}`}));
-  const spendingShareData = monthlyFundData.map(item => ({...item,
-    detail: item.id === "investment" || item.id === "emergency" ? "预算预留" : "已记净消费"}));
+  const spendingShareData = monthlyFundData.map(item => ({...item, detail: "已记净支出"}));
   const cashflowMonthlyInflow = cashflowScenario.inflow;
   const cashflowMonthlyOutflow = cashflowScenario.outflow;
   const cashflowExpectedIncrease = cashflowMonthlyInflow - cashflowMonthlyOutflow;
@@ -3071,7 +3071,7 @@ export default function FinanceDashboard() {
             <div className="section-title compact">
               <div>
                 <h2>图表分析区</h2>
-                <p>年度预算与本月账本分开统计；本月支出含投资和应急预留，账户余额按最新数据统计。</p>
+                <p>{activeMonth.label} · 实际收支与预算分开统计，账户余额按最新数据统计。</p>
               </div>
             </div>
             <div className="chart-grid four">
@@ -3079,13 +3079,13 @@ export default function FinanceDashboard() {
                 <DonutChart data={assetStructureData} centerLabel="总资产" centerValue={money(totals.totalAssets)} />
               </ChartPanel>
               {annualDistributionPanel}
-              <ChartPanel title="本月支出与基金预留" summary={`${activeMonth.label} / 合计 ${money(totals.budgetUsage.spending)}`} className="spending-top-panel">
-                <HorizontalBarChart data={topSpendingData} valueFormatter={money} />
+              <ChartPanel title="本月实际支出" summary={`${activeMonth.label} / 合计 ${money(totals.spendingActual)}`} className="spending-top-panel">
+                {topSpendingData.length ? <HorizontalBarChart data={topSpendingData} valueFormatter={money} /> : <p className="muted">本月暂无实际支出</p>}
               </ChartPanel>
               <ChartPanel title="账本健康维度" summary={`${activeMonth.label} / 综合 ${totals.score} 分`}>
                 <HorizontalBarChart data={healthDimensions} valueFormatter={(value) => `${value.toFixed(0)}分`} percentMode />
               </ChartPanel>
-              <ChartPanel title="本月收支现金瀑布" summary={`${activeMonth.label} / 含基金预留；非账户余额`}>
+              <ChartPanel title="本月收支现金瀑布" summary={`${activeMonth.label} / 实际收支，不含预算预留`}>
                 <WaterfallChart data={monthlyWaterfall} />
               </ChartPanel>
               <ChartPanel title="账本现金流日历" summary={`${activeMonth.label}账本及提醒记录`}>
@@ -3094,8 +3094,8 @@ export default function FinanceDashboard() {
               <ChartPanel title="账本风险矩阵" summary={`${activeMonth.label}账本模型`} className="wide risk-panel">
                 <RiskMatrix data={riskMatrixData} />
               </ChartPanel>
-              <ChartPanel title="本月资金去向" summary={`已记消费及预留 ${money(totals.budgetUsage.spending)}`}>
-                <HorizontalBarChart data={monthlyFundData} valueFormatter={money} />
+              <ChartPanel title="本月预算分配" summary={`计划 ${money(totals.budgetUsage.budget)} / 含投资与应急预留`}>
+                <HorizontalBarChart data={monthlyBudgetData} valueFormatter={money} />
               </ChartPanel>
             </div>
           </section>
@@ -3190,15 +3190,15 @@ export default function FinanceDashboard() {
                       }
                       charts={
                         <div className="chart-grid two">
-                          <ChartPanel title="支出与基金预留分类" summary={`合计 ${money(totals.budgetUsage.spending)}`} className="spending-top-panel">
-                            <HorizontalBarChart data={topSpendingData} valueFormatter={money} />
+                          <ChartPanel title="实际支出分类" summary={`合计 ${money(totals.spendingActual)}`} className="spending-top-panel">
+                            {topSpendingData.length ? <HorizontalBarChart data={topSpendingData} valueFormatter={money} /> : <p className="muted">本月暂无实际支出</p>}
                           </ChartPanel>
-                          <ChartPanel title="支出与预留占比" summary="已记净消费 + 当前基金预留">
-                            {spendingShareData.some(row => row.value < 0)
+                          <ChartPanel title="实际支出占比" summary="账本净消费与未重复记账的大花费实付">
+                            {!spendingShareData.length ? <p className="muted">本月暂无实际支出</p> : spendingShareData.some(row => row.value < 0)
                               ? <HorizontalBarChart data={spendingShareData} valueFormatter={money} />
-                              : <DonutChart data={spendingShareData} centerLabel="含基金预留" centerValue={money(totals.budgetUsage.spending)} />}
+                              : <DonutChart data={spendingShareData} centerLabel="实际支出" centerValue={money(totals.spendingActual)} />}
                           </ChartPanel>
-                          <ChartPanel title="分类预算执行" summary="已记消费或基金预留 / 当前预算">
+                          <ChartPanel title="分类预算执行" summary="已发生净支出 / 当前预算">
                             <HorizontalBarChart data={spendingChartData} valueFormatter={money} />
                           </ChartPanel>
                           <ChartPanel title="当前月预算结构" summary={budgetModeName}>
@@ -3681,7 +3681,7 @@ export default function FinanceDashboard() {
                           <ChartPanel title="现金流未来趋势" summary={`6个月末 ${money(forecast[forecast.length - 1]?.balance ?? 0)}`}>
                             <LineChart data={cashflowLine} valueFormatter={money} />
                           </ChartPanel>
-                          <ChartPanel title="资金瀑布复盘" summary={`${activeMonth.label} / 已记消费及基金预留`}>
+                          <ChartPanel title="资金瀑布复盘" summary={`${activeMonth.label} / 实际收支，不含预算预留`}>
                             <WaterfallChart data={monthlyWaterfall} />
                           </ChartPanel>
                           <ChartPanel title="风险矩阵" summary="下月关注点">

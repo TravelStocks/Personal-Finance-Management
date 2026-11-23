@@ -13736,56 +13736,53 @@ function yn(e, t, n, r = 0) {
 	let i = _n(e, vn([...t.map((e) => e.actual), r]), n), a = n.rows.map((e) => ({
 		id: e.id,
 		label: e.name,
+		value: e[n.mode]
+	})), o = n.rows.filter((e) => e.kind === "consumption").map((e) => ({
+		id: e.id,
+		label: e.name,
 		plan: e[n.mode],
-		value: e.kind === "consumption" ? vn(t.filter((t) => dt(t) === e.id).map((e) => e.actual)) : e[n.mode],
-		detail: e.kind === "consumption" ? "已记净消费" : "本月预算预留，非重复消费"
-	})), o = t.filter((e) => dt(e) === "unassigned");
-	return r && a.push({
+		value: vn(t.filter((t) => dt(t) === e.id).map((e) => e.actual)),
+		detail: "已记净消费"
+	})), s = t.filter((e) => dt(e) === "unassigned");
+	r && o.push({
 		id: "project-payments",
 		label: "大花费项目实付",
 		plan: 0,
 		value: r,
 		detail: "按实际日期，不含已记账项目"
-	}), o.some((e) => e.actual !== 0) && a.push({
+	}), s.some((e) => e.actual !== 0) && o.push({
 		id: "unassigned",
 		label: "待归类",
 		plan: 0,
-		value: vn(o.map((e) => e.actual)),
+		value: vn(s.map((e) => e.actual)),
 		detail: "原账本未归类金额"
-	}), {
-		monthly: a,
-		annual: j(n).rows.map((e) => ({
-			id: e.id,
-			label: e.name,
-			value: e.annual
-		})),
-		waterfall: [
-			{
-				label: "已记收入",
-				value: e,
-				kind: "positive"
-			},
-			{
-				label: "净消费",
-				value: -i.consumption,
-				kind: i.consumption < 0 ? "positive" : "negative"
-			},
-			{
-				label: "投资预留",
-				value: -i.investment,
-				kind: "negative"
-			},
-			{
-				label: "应急预留",
-				value: -i.emergency,
-				kind: "negative"
-			},
-			{
-				label: "收支结余",
-				value: i.surplus,
-				kind: "end"
-			}
-		],
+	});
+	let c = j(n).rows.map((e) => ({
+		id: e.id,
+		label: e.name,
+		value: e.annual
+	})), l = [
+		{
+			label: "实际收入",
+			value: e,
+			kind: e < 0 ? "negative" : "positive"
+		},
+		{
+			label: "实际净支出",
+			value: -i.consumption,
+			kind: i.consumption < 0 ? "positive" : "negative"
+		},
+		{
+			label: "实际结余",
+			value: vn([e, -i.consumption]),
+			kind: "end"
+		}
+	];
+	return {
+		monthly: o.filter((e) => e.value !== 0),
+		budget: a,
+		annual: c,
+		waterfall: l,
 		usage: i
 	};
 }
@@ -15862,15 +15859,18 @@ function Vr() {
 	})), Aa = yn(Mn, pn, t, bn.total), ja = Aa.monthly.map((e, t) => ({
 		...e,
 		color: U[t % U.length],
-		detail: `${W(e.value)}${e.id === "investment" || e.id === "emergency" ? " · 预留" : ""}`
-	})), Ma = [...ja].sort((e, t) => t.value - e.value), Na = ja.map((e) => ({
+		detail: W(e.value)
+	})), Ma = Aa.budget.map((e, t) => ({
+		...e,
+		color: U[t % U.length]
+	})), Na = [...ja].sort((e, t) => t.value - e.value), Pa = ja.map((e) => ({
 		...e,
 		max: Math.max(e.plan, Math.abs(e.value), 1),
 		detail: `${W(e.value)} / ${W(e.plan)}`
-	})), Pa = ja.map((e) => ({
+	})), Fa = ja.map((e) => ({
 		...e,
-		detail: e.id === "investment" || e.id === "emergency" ? "预算预留" : "已记净消费"
-	})), Fa = rr.inflow, Ia = rr.outflow, La = Fa - Ia, Ra = [
+		detail: "已记净支出"
+	})), Ia = rr.inflow, La = rr.outflow, Ra = Ia - La, za = [
 		{
 			id: "builtin-salary",
 			name: "工资流入",
@@ -15910,14 +15910,14 @@ function Vr() {
 		{
 			id: "calculated-cashflow-expected-increase",
 			name: "现金流预计增加",
-			amount: La,
-			direction: La >= 0 ? "inflow" : "outflow",
+			amount: Ra,
+			direction: Ra >= 0 ? "inflow" : "outflow",
 			source: "月流入 - 月流出，自动同步",
 			readonlyAmount: !0,
 			summaryOnly: !0
 		}
 	];
-	Ra.filter((e) => e.direction === "outflow" && !e.summaryOnly).map((e, t) => ({
+	za.filter((e) => e.direction === "outflow" && !e.summaryOnly).map((e, t) => ({
 		item: e,
 		index: t
 	})).sort((e, t) => t.item.amount - e.item.amount || e.index - t.index).map(({ item: e }, t) => ({
@@ -15926,14 +15926,14 @@ function Vr() {
 		color: U[(t + 4) % U.length],
 		detail: e.source
 	}));
-	let za = ba.filter((e) => e !== ha).map((e, t) => ({
+	let Ba = ba.filter((e) => e !== ha).map((e, t) => ({
 		item: e,
 		index: t
 	})).sort((e, t) => t.item.value - e.item.value || e.index - t.index).map(({ item: e }) => ({
 		label: e.label,
 		value: e.value,
 		color: e.color
-	})), Ba = [
+	})), Va = [
 		{
 			label: "A股",
 			value: G.aShareValue,
@@ -15949,7 +15949,7 @@ function Vr() {
 			value: G.hkShareValue,
 			color: U[3]
 		}
-	], Va = N.map((e) => {
+	], Ha = N.map((e) => {
 		let t = Hr(e.value, e.currency, le, de), n = Hr(e.cost, e.currency, le, de);
 		return {
 			label: e.market,
@@ -15957,14 +15957,14 @@ function Vr() {
 			color: t >= n ? U[1] : U[4],
 			detail: `${t >= n ? "浮盈" : "浮亏"} ${W(t - n)}`
 		};
-	}), Ha = qr.map((e) => ({
+	}), Ua = qr.map((e) => ({
 		label: e.month,
 		value: e.balance
-	})), Ua = qr.map((e) => ({
+	})), Wa = qr.map((e) => ({
 		label: e.month,
 		value: e.outflow,
 		color: U[4]
-	})), Wa = [
+	})), Ga = [
 		{
 			label: "可动用起点",
 			value: Cr.available,
@@ -15973,7 +15973,7 @@ function Vr() {
 		},
 		{
 			label: "预测收入",
-			value: Fa,
+			value: Ia,
 			kind: "positive",
 			color: U[1]
 		},
@@ -15997,11 +15997,11 @@ function Vr() {
 		},
 		{
 			label: "一期后余量",
-			value: Cr.available + La,
+			value: Cr.available + Ra,
 			kind: "end",
 			color: U[3]
 		}
-	], Ga = [
+	], Ka = [
 		{
 			label: "工资",
 			value: t.salary,
@@ -16031,7 +16031,7 @@ function Vr() {
 			value: t.salary - Wn.totalOutflow,
 			kind: "end"
 		}
-	], Ka = Aa.waterfall.map((e, t) => ({
+	], qa = Aa.waterfall.map((e, t) => ({
 		...e,
 		color: e.kind === "end" ? e.value < 0 ? U[4] : U[1] : U[[
 			0,
@@ -16039,33 +16039,33 @@ function Vr() {
 			2,
 			3
 		][t]]
-	})), qa = Ln.allocationRows.map((e) => ({
+	})), Ja = Ln.allocationRows.map((e) => ({
 		label: e.name,
 		value: e[t.mode]
 	})).filter((e) => e.value > 0).map((e, t) => ({
 		...e,
 		color: U[t % U.length]
-	})), Ja = Aa.annual.map((e, t) => ({
+	})), Ya = Aa.annual.map((e, t) => ({
 		...e,
 		color: U[t % U.length]
-	})), Ya = E(e, k, d, Ue), Xa = /* @__PURE__ */ (0, b.jsxs)(q, {
+	})), Xa = E(e, k, d, Ue), Za = /* @__PURE__ */ (0, b.jsxs)(q, {
 		title: "年度资金分布",
 		summary: T,
 		children: [/* @__PURE__ */ (0, b.jsx)(hi, {
-			data: Ja,
+			data: Ya,
 			centerLabel: "12个月预算",
 			centerValue: W(Ln.annualOutflow)
 		}), /* @__PURE__ */ (0, b.jsxs)("p", { children: [
-			Ya.status,
+			Xa.status,
 			" · 期内已记净消费 ",
-			L(Ya.spending),
+			L(Xa.spending),
 			"（不含基金预留）",
-			Ya.undated ? "；跨界未标日期的金额暂不计入" : ""
+			Xa.undated ? "；跨界未标日期的金额暂不计入" : ""
 		] })]
-	}), Za = qr.map((e, t) => ({
+	}), Qa = qr.map((e, t) => ({
 		label: e.month,
 		value: G.netWorth + (t + 1) * (rr.inflow - rr.consumption - rr.extraOutflow)
-	})), Qa = [
+	})), $a = [
 		{
 			label: "总资产",
 			value: G.totalAssets,
@@ -16081,35 +16081,35 @@ function Vr() {
 			value: Math.max(G.netWorth, 0),
 			color: U[1]
 		}
-	], $a = Me.map((e, t) => ({
+	], eo = Me.map((e, t) => ({
 		label: e.name.trim() || "未命名资产",
 		value: e.amount,
 		color: U[t % U.length],
 		detail: e.note.trim() || W(e.amount)
-	})), eo = Pe.map((e, t) => ({
+	})), to = Pe.map((e, t) => ({
 		label: e.name.trim() || "未命名负债",
 		value: e.amount,
 		color: U[(t + 4) % U.length]
-	})), to = Be.map((e, t) => ({
+	})), no = Be.map((e, t) => ({
 		label: e.name,
 		value: e.current,
 		max: e.target,
 		color: U[t % U.length],
 		detail: `预期 ${W(e.monthly)} / 实际 ${W(e.actualMonthly)}`
-	})), no = Be.reduce((e, t) => e + t.current, 0), X = Be.reduce((e, t) => e + t.target, 0), ro = He.reduce((e, t) => e + t.monthly, 0), io = Be.reduce((e, t) => e + t.actualMonthly, 0), ao = Math.max(0, Ta.findIndex((e) => e.id === O)), oo = Ta.map((e, t) => ({
+	})), X = Be.reduce((e, t) => e + t.current, 0), ro = Be.reduce((e, t) => e + t.target, 0), io = He.reduce((e, t) => e + t.monthly, 0), ao = Be.reduce((e, t) => e + t.actualMonthly, 0), oo = Math.max(0, Ta.findIndex((e) => e.id === O)), so = Ta.map((e, t) => ({
 		label: or(e.label),
-		value: e.id === O ? io : ro,
+		value: e.id === O ? ao : io,
 		color: e.id === O ? U[1] : U[t % U.length],
 		detail: e.id === O ? "实际投入" : "预期准备"
-	})), so = Ta.map((e, t) => ({
-		label: or(e.label),
-		value: jn(e) + (e.id === O ? io : ro),
-		color: e.id === O ? U[2] : U[t % U.length],
-		detail: `支出 ${W(jn(e))}`
 	})), co = Ta.map((e, t) => ({
 		label: or(e.label),
-		value: Math.min(X, no + io + ro * Math.max(0, t - ao - 1))
-	})), lo = Ue.map((e, t) => {
+		value: jn(e) + (e.id === O ? ao : io),
+		color: e.id === O ? U[2] : U[t % U.length],
+		detail: `支出 ${W(jn(e))}`
+	})), lo = Ta.map((e, t) => ({
+		label: or(e.label),
+		value: Math.min(ro, X + ao + io * Math.max(0, t - oo - 1))
+	})), uo = Ue.map((e, t) => {
 		let n = e.actualDate ? 0 : Math.max(0, e.target - e.current), r = e.dueDate < Oe(), i = Dr(Oe().slice(0, 7), e.dueDate);
 		return {
 			...e,
@@ -16119,42 +16119,42 @@ function Vr() {
 			monthlyNeed: r ? 0 : n / i,
 			status: e.actualDate ? "已按实际日期登记" : n <= 0 ? "已覆盖" : r ? "日期已过，状态待核实" : i <= 2 ? "紧急补齐" : "持续准备"
 		};
-	}), uo = lo.reduce((e, t) => e + t.current, 0), fo = lo.reduce((e, t) => e + t.target, 0), po = lo.reduce((e, t) => e + t.gap, 0), mo = lo.filter((e) => e.gap > 0 && e.dueDate >= Oe() && e.monthsLeft <= 2).reduce((e, t) => e + t.gap, 0), ho = lo.reduce((e, t) => e + t.monthlyNeed, 0), go = Cr.available, _o = t.rows.find((e) => e.id === "investment")?.[t.mode] ?? 0, vo = _o ? G.investmentReserve / _o : 0, yo = G.monthlySurplus, bo = Cr.deductions.map((e, t) => ({
+	}), fo = uo.reduce((e, t) => e + t.current, 0), po = uo.reduce((e, t) => e + t.target, 0), mo = uo.reduce((e, t) => e + t.gap, 0), ho = uo.filter((e) => e.gap > 0 && e.dueDate >= Oe() && e.monthsLeft <= 2).reduce((e, t) => e + t.gap, 0), go = uo.reduce((e, t) => e + t.monthlyNeed, 0), _o = Cr.available, vo = t.rows.find((e) => e.id === "investment")?.[t.mode] ?? 0, yo = vo ? G.investmentReserve / vo : 0, bo = G.monthlySurplus, xo = Cr.deductions.map((e, t) => ({
 		label: e.name,
 		value: e.amount,
 		color: U[t % U.length],
 		detail: e.source
-	})), xo = lo.filter((e) => e.gap > 0).sort((e, t) => e.dueDate.localeCompare(t.dueDate)).map((e, t) => ({
+	})), So = uo.filter((e) => e.gap > 0).sort((e, t) => e.dueDate.localeCompare(t.dueDate)).map((e, t) => ({
 		label: e.name,
 		value: e.gap,
 		color: e.monthsLeft <= 2 ? U[4] : U[(t + 2) % U.length],
 		detail: `${e.dueDate} / 每月需 ${W(e.monthlyNeed)}`
-	})), So = lo.filter((e) => e.gap > 0).map((e, t) => ({
+	})), Co = uo.filter((e) => e.gap > 0).map((e, t) => ({
 		label: e.name,
 		value: e.monthlyNeed,
 		color: e.monthsLeft <= 2 ? U[4] : U[t % U.length],
 		detail: `${e.monthsLeft} 个月内`
-	})), Co = [
+	})), wo = [
 		{
 			title: "现金流安全",
-			tone: G.monthlySurplus < 0 ? "red" : yo < ho ? "amber" : "green",
+			tone: G.monthlySurplus < 0 ? "red" : bo < go ? "amber" : "green",
 			summary: `扣除消费与基金预留后可用 ${W(G.monthlySurplus)}`,
 			detail: `收入 ${W(Mn)}，实际消费 ${W(G.spendingActual)}，投资预留 ${W(G.budgetUsage.investment)}，应急预留 ${W(G.budgetUsage.emergency)}；已记入消费的家用不再扣一次。`,
-			action: G.monthlySurplus < 0 ? "先把当月余额转正，暂停非必要小旅行和新增非刚性支出。" : yo < ho ? "未来大花费项目每月需求高于可用现金，优先压缩可调整项目或生活支出。" : "现金流可以覆盖当前安排，继续保持每月复盘。"
+			action: G.monthlySurplus < 0 ? "先把当月余额转正，暂停非必要小旅行和新增非刚性支出。" : bo < go ? "未来大花费项目每月需求高于可用现金，优先压缩可调整项目或生活支出。" : "现金流可以覆盖当前安排，继续保持每月复盘。"
 		},
 		{
 			title: "大花费项目覆盖",
-			tone: go < 0 ? "red" : mo > 0 ? "amber" : "green",
-			summary: `大花费项目缺口 ${W(po)}，未分配现金 ${W(go)}`,
-			detail: `手动项目实际 ${W(uo)} / 目标 ${W(fo)}；投资待投金 ${W(G.investmentReserve)} 单独锁定。`,
-			action: go < 0 ? "资金标签超过可动用现金，需要减少已锁定金额或重新分配账户用途。" : mo > 0 ? "两个月内到期的大花费项目仍有缺口，优先补齐搬家、分期和近期旅行。" : "大花费项目结构健康，按截止日期继续补齐缺口。"
+			tone: _o < 0 ? "red" : ho > 0 ? "amber" : "green",
+			summary: `大花费项目缺口 ${W(mo)}，未分配现金 ${W(_o)}`,
+			detail: `手动项目实际 ${W(fo)} / 目标 ${W(po)}；投资待投金 ${W(G.investmentReserve)} 单独锁定。`,
+			action: _o < 0 ? "资金标签超过可动用现金，需要减少已锁定金额或重新分配账户用途。" : ho > 0 ? "两个月内到期的大花费项目仍有缺口，优先补齐搬家、分期和近期旅行。" : "大花费项目结构健康，按截止日期继续补齐缺口。"
 		},
 		{
 			title: "投资纪律",
-			tone: vo >= 2 ? "green" : vo >= 1 ? "amber" : "red",
-			summary: `待投资金可覆盖 ${vo.toFixed(1)} 个月计划`,
-			detail: `A股待投 ${W(G.aShareInvestmentReserve)}，美股待投 ${W(G.usShareInvestmentReserve)}，当前每月投资预算 ${W(_o)}。`,
-			action: vo >= 2 ? "不需要额外加速投入；保持只用待投资金，不动应急、旅行和家庭责任资金。" : "待投资金覆盖不足，新增投入前先确认应急金和大花费项目不被挤占。"
+			tone: yo >= 2 ? "green" : yo >= 1 ? "amber" : "red",
+			summary: `待投资金可覆盖 ${yo.toFixed(1)} 个月计划`,
+			detail: `A股待投 ${W(G.aShareInvestmentReserve)}，美股待投 ${W(G.usShareInvestmentReserve)}，当前每月投资预算 ${W(vo)}。`,
+			action: yo >= 2 ? "不需要额外加速投入；保持只用待投资金，不动应急、旅行和家庭责任资金。" : "待投资金覆盖不足，新增投入前先确认应急金和大花费项目不被挤占。"
 		},
 		{
 			title: "应急与负债",
@@ -16163,25 +16163,25 @@ function Vr() {
 			detail: `应急目标 ${W(G.emergencyTarget)}，当前 ${W(G.currentEmergencyFund)}；总负债率 ${ir(G.debtRatio)}。`,
 			action: G.emergencyCoverage < 1 ? "先把硬应急金做到 1 个月必要支出，再追求更高投资速度。" : `应急金继续向 ${R} 个月、${W(G.emergencyTarget)} 的统一目标推进；分期余额按实际核对。`
 		}
-	], wo = pt(pn), To = [
+	], To = pt(pn), Eo = [
 		`${H.label}财务分析报告`,
 		"",
-		`1. 净资产与现金：总资产 ${W(G.totalAssets)}，净资产 ${W(G.netWorth)}，可提取现金 ${W(Cr.liquidCash)}，扣除专项后可自由动用 ${W(go)}。`,
+		`1. 净资产与现金：总资产 ${W(G.totalAssets)}，净资产 ${W(G.netWorth)}，可提取现金 ${W(Cr.liquidCash)}，扣除专项后可自由动用 ${W(_o)}。`,
 		`2. 收支：收入 ${W(Mn)}，实际消费 ${W(G.spendingActual)}，投资及应急预留 ${W(G.budgetUsage.reserved)}，含预留支出 ${W(G.budgetUsage.spending)}，当月可用结余 ${W(G.monthlySurplus)}。预留仍属个人资产，每月扣一次。`,
 		`3. 家庭责任：父母 ${W(G.parentAllocation)}，伴侣 ${W(G.partnerAllocation)}，合计占收入 ${ir((G.parentAllocation + G.partnerAllocation) / Math.max(Mn, 1))}。`,
-		`4. 大花费项目：目标 ${W(fo)}，实际 ${W(uo)}，缺口 ${W(po)}，其中两个月内缺口 ${W(mo)}。`,
-		`5. 投资：投资市值 ${W(G.investmentValue)}，待投资金 ${W(G.investmentReserve)}，计划覆盖 ${vo.toFixed(1)} 个月，浮动盈亏 ${W(G.investmentPnL)}。`,
+		`4. 大花费项目：目标 ${W(po)}，实际 ${W(fo)}，缺口 ${W(mo)}，其中两个月内缺口 ${W(ho)}。`,
+		`5. 投资：投资市值 ${W(G.investmentValue)}，待投资金 ${W(G.investmentReserve)}，计划覆盖 ${yo.toFixed(1)} 个月，浮动盈亏 ${W(G.investmentPnL)}。`,
 		`6. 应急与负债：应急覆盖 ${G.emergencyCoverage.toFixed(1)} 个月，总负债 ${W(G.totalDebt)}，负债率 ${ir(G.debtRatio)}。`,
-		`7. 学习用途：已归类学习净支出 ${L(wo.total)}；${wo.rows.length ? wo.rows.map((e) => `${e.name} ${L(e.actual)}（${e.note?.trim() || "用途待补"}）`).join("；") : "暂无已归类明细，不能据此判断没有学习支出"}。${wo.unassigned === 0 ? "" : `另有 ${L(wo.unassigned)} 支出待归类。`}`,
+		`7. 学习用途：已归类学习净支出 ${L(To.total)}；${To.rows.length ? To.rows.map((e) => `${e.name} ${L(e.actual)}（${e.note?.trim() || "用途待补"}）`).join("；") : "暂无已归类明细，不能据此判断没有学习支出"}。${To.unassigned === 0 ? "" : `另有 ${L(To.unassigned)} 支出待归类。`}`,
 		"",
 		"行动建议：",
-		...Co.map((e, t) => `${t + 1}. ${e.title}：${e.action}`)
-	].join("\n"), Eo = ze.map((t, n) => ({
+		...wo.map((e, t) => `${t + 1}. ${e.title}：${e.action}`)
+	].join("\n"), Do = ze.map((t, n) => ({
 		label: t.name,
 		value: t.amount,
 		color: U[n % U.length],
 		detail: Ae(t.date, e)
-	})), Do = ze.flatMap((t, n) => {
+	})), Oo = ze.flatMap((t, n) => {
 		let r = ke(t.date, e);
 		return r === null || r < 0 ? [] : [{
 			label: t.name,
@@ -16189,7 +16189,7 @@ function Vr() {
 			color: U[n % U.length],
 			detail: `${t.date} / ${Ae(t.date, e)}`
 		}];
-	}), Oo = [
+	}), ko = [
 		{
 			id: "salary",
 			name: "工资",
@@ -16326,14 +16326,14 @@ function Vr() {
 		{
 			id: "fund-bucket-gap",
 			name: "大花费项目缺口",
-			amount: po,
+			amount: mo,
 			flow: "大花费项目",
 			source: "大花费项目目标 - 实际金额"
 		},
 		{
 			id: "liquid-after-buckets",
 			name: "可自由动用现金",
-			amount: go,
+			amount: _o,
 			flow: "安全垫",
 			source: "可提取账户 - 专项账户占用 - 项目追加锁定（关联后去重）"
 		},
@@ -16344,7 +16344,7 @@ function Vr() {
 			flow: "结余",
 			source: "收入 - 实际消费 - 投资及应急预留；其他分配明细不再扣减"
 		}
-	], ko = [
+	], Ao = [
 		{
 			label: "收入",
 			value: Mn,
@@ -16365,7 +16365,7 @@ function Vr() {
 			value: G.monthlySurplus,
 			color: U[3]
 		}
-	], Ao = N.map((e, t) => {
+	], jo = N.map((e, t) => {
 		let n = Hr(e.value, e.currency, le, de), r = Hr(e.cost, e.currency, le, de), i = G.investmentValue ? n / G.investmentValue * 100 : 0, a = r ? (n - r) / r * 100 : 0;
 		return {
 			label: e.market,
@@ -16374,11 +16374,11 @@ function Vr() {
 			value: `${a.toFixed(1)}% / ${i.toFixed(0)}%`,
 			color: U[t % U.length]
 		};
-	}), jo = G.health.dimensions.map((e, t) => ({
+	}), Mo = G.health.dimensions.map((e, t) => ({
 		...e,
 		detail: `${e.value.toFixed(0)}分 · 权重 ${e.weight}%`,
 		color: U[t % U.length]
-	})), Mo = [
+	})), No = [
 		{
 			label: "固定支出率",
 			x: nr(G.fixedRatio * 120),
@@ -16395,8 +16395,8 @@ function Vr() {
 		},
 		{
 			label: "预测期末余量",
-			x: nr((Ia * 4 - (qr[qr.length - 1]?.balance ?? 0)) / Math.max(Ia * 4, 1) * 100),
-			y: nr((Ia * 3 - (qr[qr.length - 1]?.balance ?? 0)) / Math.max(Ia * 3, 1) * 100),
+			x: nr((La * 4 - (qr[qr.length - 1]?.balance ?? 0)) / Math.max(La * 4, 1) * 100),
+			y: nr((La * 3 - (qr[qr.length - 1]?.balance ?? 0)) / Math.max(La * 3, 1) * 100),
 			value: W(qr[qr.length - 1]?.balance ?? 0),
 			color: U[0]
 		},
@@ -16414,33 +16414,33 @@ function Vr() {
 			value: W(G.investmentPnL),
 			color: G.investmentPnL >= 0 ? U[1] : U[4]
 		}
-	], No = Ge.map((e, t) => ({
+	], Po = Ge.map((e, t) => ({
 		label: e.name,
 		value: e.score,
 		color: U[t % U.length]
-	})), Po = Kr.map((e, t) => ({
+	})), Fo = Kr.map((e, t) => ({
 		label: or(e.label),
 		value: e.income,
 		color: e.monthId === O ? U[0] : U[t % U.length],
 		detail: e.monthId === O && !Lr ? "当前预览" : "已存档"
-	})), Fo = Kr.map((e, t) => ({
+	})), Io = Kr.map((e, t) => ({
 		label: or(e.label),
 		value: e.spending,
 		color: e.monthId === O ? U[4] : U[(t + 4) % U.length],
 		detail: e.monthId === O && !Lr ? "当前预览" : "已存档"
-	})), Io = Kr.map((e) => ({
-		label: or(e.label),
-		value: e.netWorth
 	})), Lo = Kr.map((e) => ({
 		label: or(e.label),
-		value: e.accountTotal
+		value: e.netWorth
 	})), Ro = Kr.map((e) => ({
 		label: or(e.label),
+		value: e.accountTotal
+	})), zo = Kr.map((e) => ({
+		label: or(e.label),
 		value: e.surplus
-	})), zo = Vr.income - (J?.income ?? 0), Bo = Vr.spending - (J?.spending ?? 0), Vo = Vr.accountTotal - (J?.accountTotal ?? 0), Ho = Vr.netWorth - (J?.netWorth ?? 0);
-	async function Uo() {
+	})), Bo = Vr.income - (J?.income ?? 0), Vo = Vr.spending - (J?.spending ?? 0), Ho = Vr.accountTotal - (J?.accountTotal ?? 0), Uo = Vr.netWorth - (J?.netWorth ?? 0);
+	async function Wo() {
 		try {
-			await navigator.clipboard.writeText(To), wt("报告已复制到剪贴板");
+			await navigator.clipboard.writeText(Eo), wt("报告已复制到剪贴板");
 		} catch {
 			wt("复制失败，可以直接选中文本复制");
 		}
@@ -16736,7 +16736,7 @@ function Vr() {
 									className: "analytics-section",
 									children: [/* @__PURE__ */ (0, b.jsx)("div", {
 										className: "section-title compact",
-										children: /* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("h2", { children: "图表分析区" }), /* @__PURE__ */ (0, b.jsx)("p", { children: "年度预算与本月账本分开统计；本月支出含投资和应急预留，账户余额按最新数据统计。" })] })
+										children: /* @__PURE__ */ (0, b.jsxs)("div", { children: [/* @__PURE__ */ (0, b.jsx)("h2", { children: "图表分析区" }), /* @__PURE__ */ (0, b.jsxs)("p", { children: [H.label, " · 实际收支与预算分开统计，账户余额按最新数据统计。"] })] })
 									}), /* @__PURE__ */ (0, b.jsxs)("div", {
 										className: "chart-grid four",
 										children: [
@@ -16744,34 +16744,37 @@ function Vr() {
 												title: "资产结构",
 												summary: `总资产 ${W(G.totalAssets)}`,
 												children: /* @__PURE__ */ (0, b.jsx)(hi, {
-													data: za,
+													data: Ba,
 													centerLabel: "总资产",
 													centerValue: W(G.totalAssets)
 												})
 											}),
-											Xa,
+											Za,
 											/* @__PURE__ */ (0, b.jsx)(q, {
-												title: "本月支出与基金预留",
-												summary: `${H.label} / 合计 ${W(G.budgetUsage.spending)}`,
+												title: "本月实际支出",
+												summary: `${H.label} / 合计 ${W(G.spendingActual)}`,
 												className: "spending-top-panel",
-												children: /* @__PURE__ */ (0, b.jsx)(_i, {
-													data: Ma,
+												children: Na.length ? /* @__PURE__ */ (0, b.jsx)(_i, {
+													data: Na,
 													valueFormatter: W
+												}) : /* @__PURE__ */ (0, b.jsx)("p", {
+													className: "muted",
+													children: "本月暂无实际支出"
 												})
 											}),
 											/* @__PURE__ */ (0, b.jsx)(q, {
 												title: "账本健康维度",
 												summary: `${H.label} / 综合 ${G.score} 分`,
 												children: /* @__PURE__ */ (0, b.jsx)(_i, {
-													data: jo,
+													data: Mo,
 													valueFormatter: (e) => `${e.toFixed(0)}分`,
 													percentMode: !0
 												})
 											}),
 											/* @__PURE__ */ (0, b.jsx)(q, {
 												title: "本月收支现金瀑布",
-												summary: `${H.label} / 含基金预留；非账户余额`,
-												children: /* @__PURE__ */ (0, b.jsx)(Ci, { data: Ka })
+												summary: `${H.label} / 实际收支，不含预算预留`,
+												children: /* @__PURE__ */ (0, b.jsx)(Ci, { data: qa })
 											}),
 											/* @__PURE__ */ (0, b.jsx)(q, {
 												title: "账本现金流日历",
@@ -16782,13 +16785,13 @@ function Vr() {
 												title: "账本风险矩阵",
 												summary: `${H.label}账本模型`,
 												className: "wide risk-panel",
-												children: /* @__PURE__ */ (0, b.jsx)(wi, { data: Mo })
+												children: /* @__PURE__ */ (0, b.jsx)(wi, { data: No })
 											}),
 											/* @__PURE__ */ (0, b.jsx)(q, {
-												title: "本月资金去向",
-												summary: `已记消费及预留 ${W(G.budgetUsage.spending)}`,
+												title: "本月预算分配",
+												summary: `计划 ${W(G.budgetUsage.budget)} / 含投资与应急预留`,
 												children: /* @__PURE__ */ (0, b.jsx)(_i, {
-													data: ja,
+													data: Ma,
 													valueFormatter: W
 												})
 											})
@@ -16962,31 +16965,37 @@ function Vr() {
 												className: "chart-grid two",
 												children: [
 													/* @__PURE__ */ (0, b.jsx)(q, {
-														title: "支出与基金预留分类",
-														summary: `合计 ${W(G.budgetUsage.spending)}`,
+														title: "实际支出分类",
+														summary: `合计 ${W(G.spendingActual)}`,
 														className: "spending-top-panel",
-														children: /* @__PURE__ */ (0, b.jsx)(_i, {
-															data: Ma,
+														children: Na.length ? /* @__PURE__ */ (0, b.jsx)(_i, {
+															data: Na,
 															valueFormatter: W
+														}) : /* @__PURE__ */ (0, b.jsx)("p", {
+															className: "muted",
+															children: "本月暂无实际支出"
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
-														title: "支出与预留占比",
-														summary: "已记净消费 + 当前基金预留",
-														children: Pa.some((e) => e.value < 0) ? /* @__PURE__ */ (0, b.jsx)(_i, {
-															data: Pa,
+														title: "实际支出占比",
+														summary: "账本净消费与未重复记账的大花费实付",
+														children: Fa.length ? Fa.some((e) => e.value < 0) ? /* @__PURE__ */ (0, b.jsx)(_i, {
+															data: Fa,
 															valueFormatter: W
 														}) : /* @__PURE__ */ (0, b.jsx)(hi, {
-															data: Pa,
-															centerLabel: "含基金预留",
-															centerValue: W(G.budgetUsage.spending)
+															data: Fa,
+															centerLabel: "实际支出",
+															centerValue: W(G.spendingActual)
+														}) : /* @__PURE__ */ (0, b.jsx)("p", {
+															className: "muted",
+															children: "本月暂无实际支出"
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "分类预算执行",
-														summary: "已记消费或基金预留 / 当前预算",
+														summary: "已发生净支出 / 当前预算",
 														children: /* @__PURE__ */ (0, b.jsx)(_i, {
-															data: Na,
+															data: Pa,
 															valueFormatter: W
 														})
 													}),
@@ -16994,7 +17003,7 @@ function Vr() {
 														title: "当前月预算结构",
 														summary: er,
 														children: /* @__PURE__ */ (0, b.jsx)(hi, {
-															data: qa,
+															data: Ja,
 															centerLabel: "全部预算",
 															centerValue: W(G.budgetUsage.budget)
 														})
@@ -17047,9 +17056,9 @@ function Vr() {
 												/* @__PURE__ */ (0, b.jsx)(ti, {
 													accountTotal: Cr.available,
 													addCashflowCustomItem: Pi,
-													monthlyInflow: Fa,
-													monthlyOutflow: Ia,
-													rows: Ra
+													monthlyInflow: Ia,
+													monthlyOutflow: La,
+													rows: za
 												}),
 												/* @__PURE__ */ (0, b.jsx)(si, {
 													baseDate: e,
@@ -17066,22 +17075,22 @@ function Vr() {
 														title: "可动用余量情景",
 														summary: `${er} × 6 个完整周期`,
 														children: /* @__PURE__ */ (0, b.jsx)(yi, {
-															data: Ha,
+															data: Ua,
 															valueFormatter: W
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "月度流出压力",
-														summary: `每月流出 ${W(Ia)}`,
+														summary: `每月流出 ${W(La)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(vi, {
-															data: Ua,
+															data: Wa,
 															valueFormatter: W
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "现金瀑布",
 														summary: "一个完整预算周期",
-														children: /* @__PURE__ */ (0, b.jsx)(Ci, { data: Wa })
+														children: /* @__PURE__ */ (0, b.jsx)(Ci, { data: Ga })
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "现金流日历",
@@ -17222,19 +17231,19 @@ function Vr() {
 											charts: /* @__PURE__ */ (0, b.jsxs)("div", {
 												className: "chart-grid two",
 												children: [
-													Xa,
+													Za,
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: `${er}分类分配`,
 														summary: `合计 ${W(Wn.totalOutflow)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(_i, {
-															data: qa,
+															data: Ja,
 															valueFormatter: W
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: `${er}现金流核对`,
 														summary: "工资预算口径 / 不含未到账出差补贴",
-														children: /* @__PURE__ */ (0, b.jsx)(Ci, { data: Ga })
+														children: /* @__PURE__ */ (0, b.jsx)(Ci, { data: Ka })
 													})
 												]
 											})
@@ -17290,7 +17299,7 @@ function Vr() {
 														title: "市场分布",
 														summary: `投资市值 ${W(G.investmentValue)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(hi, {
-															data: Ba,
+															data: Va,
 															centerLabel: "投资",
 															centerValue: W(G.investmentValue)
 														})
@@ -17299,7 +17308,7 @@ function Vr() {
 														title: "盈亏绝对值",
 														summary: `总盈亏 ${W(G.investmentPnL)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(_i, {
-															data: Va,
+															data: Ha,
 															valueFormatter: W
 														})
 													}),
@@ -17307,7 +17316,7 @@ function Vr() {
 														title: "收益率 / 仓位",
 														summary: "横轴仓位，纵轴收益",
 														children: /* @__PURE__ */ (0, b.jsx)(Ti, {
-															data: Ao,
+															data: jo,
 															xLabel: "仓位",
 															yLabel: "收益"
 														})
@@ -17363,7 +17372,7 @@ function Vr() {
 														title: "资产负债对比",
 														summary: `净资产 ${W(G.netWorth)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(_i, {
-															data: Qa,
+															data: $a,
 															valueFormatter: W
 														})
 													}),
@@ -17371,7 +17380,7 @@ function Vr() {
 														title: "负债结构",
 														summary: G.totalDebt ? `负债 ${W(G.totalDebt)}` : "当前无负债",
 														children: /* @__PURE__ */ (0, b.jsx)(hi, {
-															data: eo,
+															data: to,
 															centerLabel: "负债",
 															centerValue: W(G.totalDebt)
 														})
@@ -17380,7 +17389,7 @@ function Vr() {
 														title: "资产项结构",
 														summary: `补录资产 ${W(G.manualAssetTotal)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(hi, {
-															data: $a,
+															data: eo,
 															centerLabel: "资产项",
 															centerValue: W(G.manualAssetTotal)
 														})
@@ -17389,7 +17398,7 @@ function Vr() {
 														title: "净资产趋势",
 														summary: "按 6 个月现金预测推演",
 														children: /* @__PURE__ */ (0, b.jsx)(yi, {
-															data: Za,
+															data: Qa,
 															valueFormatter: W
 														})
 													})
@@ -17535,7 +17544,7 @@ function Vr() {
 														title: "提醒金额",
 														summary: "避免漏扣",
 														children: /* @__PURE__ */ (0, b.jsx)(_i, {
-															data: Eo,
+															data: Do,
 															valueFormatter: W
 														})
 													}),
@@ -17543,7 +17552,7 @@ function Vr() {
 														title: "距离到期",
 														summary: `北京时间 ${e} / 仅今日及未来事项`,
 														children: /* @__PURE__ */ (0, b.jsx)(vi, {
-															data: Do,
+															data: Oo,
 															valueFormatter: (e) => `${e.toFixed(0)}天`
 														})
 													}),
@@ -17578,13 +17587,13 @@ function Vr() {
 														title: "目标进度",
 														summary: "当前 / 目标",
 														children: /* @__PURE__ */ (0, b.jsx)(xi, {
-															data: to,
+															data: no,
 															valueFormatter: W
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "每月预期准备结构",
-														summary: `预期 ${W(ro)}`,
+														summary: `预期 ${W(io)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(hi, {
 															data: He.map((e, t) => ({
 																label: e.name,
@@ -17592,14 +17601,14 @@ function Vr() {
 																color: U[t % U.length]
 															})),
 															centerLabel: "每月",
-															centerValue: W(ro)
+															centerValue: W(io)
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "月度实际目标投入",
-														summary: `实际投入 ${W(io)}`,
+														summary: `实际投入 ${W(ao)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(vi, {
-															data: oo,
+															data: so,
 															valueFormatter: W
 														})
 													}),
@@ -17607,15 +17616,15 @@ function Vr() {
 														title: "支出与投入压力",
 														summary: "实际支出 + 实际投入",
 														children: /* @__PURE__ */ (0, b.jsx)(vi, {
-															data: so,
+															data: co,
 															valueFormatter: W
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "累计准备变化",
-														summary: `当前 ${W(no)}`,
+														summary: `当前 ${W(X)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(yi, {
-															data: co,
+															data: lo,
 															valueFormatter: W
 														})
 													})
@@ -17629,12 +17638,12 @@ function Vr() {
 										children: /* @__PURE__ */ (0, b.jsx)(Ur, {
 											data: /* @__PURE__ */ (0, b.jsxs)(b.Fragment, { children: [/* @__PURE__ */ (0, b.jsx)(ui, { liquidity: Cr }), /* @__PURE__ */ (0, b.jsx)(li, {
 												accounts: M,
-												buckets: lo,
+												buckets: uo,
 												addFundBucket: sa,
 												deleteFundBucket: ca,
 												investmentReserve: G.investmentReserve,
-												liquidAfterBuckets: go,
-												monthlyNeed: ho,
+												liquidAfterBuckets: _o,
+												monthlyNeed: go,
 												updateFundBucket: oa
 											})] }),
 											charts: /* @__PURE__ */ (0, b.jsxs)("div", {
@@ -17644,33 +17653,33 @@ function Vr() {
 														title: "已锁定资金",
 														summary: "可提取现金中的占用，已去重",
 														children: /* @__PURE__ */ (0, b.jsx)(hi, {
-															data: bo,
+															data: xo,
 															centerLabel: "已锁定",
 															centerValue: W(Cr.reserved)
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "大花费项目缺口",
-														summary: `总缺口 ${W(po)}`,
+														summary: `总缺口 ${W(mo)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(_i, {
-															data: xo,
-															valueFormatter: W
-														})
-													}),
-													/* @__PURE__ */ (0, b.jsx)(q, {
-														title: "每月补齐压力",
-														summary: `每月需 ${W(ho)}`,
-														children: /* @__PURE__ */ (0, b.jsx)(vi, {
 															data: So,
 															valueFormatter: W
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
+														title: "每月补齐压力",
+														summary: `每月需 ${W(go)}`,
+														children: /* @__PURE__ */ (0, b.jsx)(vi, {
+															data: Co,
+															valueFormatter: W
+														})
+													}),
+													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "大花费项目结论",
-														summary: go < 0 || Cr.overallocated > 0 || Cr.unlinkedCount > 0 ? "占用待核对" : "占用已核算",
+														summary: _o < 0 || Cr.overallocated > 0 || Cr.unlinkedCount > 0 ? "占用待核对" : "占用已核算",
 														children: /* @__PURE__ */ (0, b.jsxs)("div", {
 															className: "fund-bucket-note",
-															children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: go < 0 || Cr.overallocated > 0 ? "存在资金占用缺口" : Cr.unlinkedCount > 0 ? "存在未关联账户的项目" : "当前余额可覆盖已锁定金额" }), /* @__PURE__ */ (0, b.jsx)("span", { children: "未准备的项目缺口不冒充已锁定资金。待付账单是否包含在预算内，仍需核对。" })]
+															children: [/* @__PURE__ */ (0, b.jsx)("strong", { children: _o < 0 || Cr.overallocated > 0 ? "存在资金占用缺口" : Cr.unlinkedCount > 0 ? "存在未关联账户的项目" : "当前余额可覆盖已锁定金额" }), /* @__PURE__ */ (0, b.jsx)("span", { children: "未准备的项目缺口不冒充已锁定资金。待付账单是否包含在预算内，仍需核对。" })]
 														})
 													})
 												]
@@ -17789,20 +17798,20 @@ function Vr() {
 														}),
 														/* @__PURE__ */ (0, b.jsx)(K, {
 															label: "项目后现金",
-															value: W(go)
+															value: W(_o)
 														})
 													]
 												}),
 												/* @__PURE__ */ (0, b.jsx)(di, {
 													copyStatus: Ct,
-													reportText: To,
-													sections: Co,
-													onCopy: Uo
+													reportText: Eo,
+													sections: wo,
+													onCopy: Wo
 												}),
 												/* @__PURE__ */ (0, b.jsx)(fi, {
 													allocation: G.budgetUsage.reserved,
 													income: Mn,
-													rows: Oo,
+													rows: ko,
 													spending: G.budgetUsage.spending,
 													surplus: G.monthlySurplus
 												})
@@ -17814,7 +17823,7 @@ function Vr() {
 														title: "本月资金流向",
 														summary: `基金预留占收入 ${ir(G.savingsRate)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(vi, {
-															data: ko,
+															data: Ao,
 															valueFormatter: W
 														})
 													}),
@@ -17830,19 +17839,19 @@ function Vr() {
 														title: "现金流未来趋势",
 														summary: `6个月末 ${W(qr[qr.length - 1]?.balance ?? 0)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(yi, {
-															data: Ha,
+															data: Ua,
 															valueFormatter: W
 														})
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "资金瀑布复盘",
-														summary: `${H.label} / 已记消费及基金预留`,
-														children: /* @__PURE__ */ (0, b.jsx)(Ci, { data: Ka })
+														summary: `${H.label} / 实际收支，不含预算预留`,
+														children: /* @__PURE__ */ (0, b.jsx)(Ci, { data: qa })
 													}),
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "风险矩阵",
 														summary: "下月关注点",
-														children: /* @__PURE__ */ (0, b.jsx)(wi, { data: Mo })
+														children: /* @__PURE__ */ (0, b.jsx)(wi, { data: No })
 													})
 												]
 											})
@@ -17865,19 +17874,19 @@ function Vr() {
 													children: [
 														/* @__PURE__ */ (0, b.jsx)(K, {
 															label: "收入变化",
-															value: J ? kr(zo) : "待对比"
-														}),
-														/* @__PURE__ */ (0, b.jsx)(K, {
-															label: "支出变化",
 															value: J ? kr(Bo) : "待对比"
 														}),
 														/* @__PURE__ */ (0, b.jsx)(K, {
-															label: "账户变化",
+															label: "支出变化",
 															value: J ? kr(Vo) : "待对比"
 														}),
 														/* @__PURE__ */ (0, b.jsx)(K, {
-															label: "净资产变化",
+															label: "账户变化",
 															value: J ? kr(Ho) : "待对比"
+														}),
+														/* @__PURE__ */ (0, b.jsx)(K, {
+															label: "净资产变化",
+															value: J ? kr(Uo) : "待对比"
 														})
 													]
 												}),
@@ -17901,7 +17910,7 @@ function Vr() {
 														title: "存档收入趋势",
 														summary: `${Kr.length} 个月 / 当前 ${W(Mn)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(vi, {
-															data: Po,
+															data: Fo,
 															valueFormatter: W
 														})
 													}),
@@ -17909,7 +17918,7 @@ function Vr() {
 														title: "存档支出趋势",
 														summary: `当前支出 ${W(G.spendingActual)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(vi, {
-															data: Fo,
+															data: Io,
 															valueFormatter: W
 														})
 													}),
@@ -17917,7 +17926,7 @@ function Vr() {
 														title: "账户余额变化",
 														summary: `当前账户 ${W(G.accountTotal)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(yi, {
-															data: Lo,
+															data: Ro,
 															valueFormatter: W
 														})
 													}),
@@ -17925,7 +17934,7 @@ function Vr() {
 														title: "净资产变化",
 														summary: `当前净资产 ${W(G.netWorth)}`,
 														children: /* @__PURE__ */ (0, b.jsx)(yi, {
-															data: Io,
+															data: Lo,
 															valueFormatter: W
 														})
 													}),
@@ -17933,7 +17942,7 @@ function Vr() {
 														title: "当月余额变化",
 														summary: "收入 - 支出 - 分配",
 														children: /* @__PURE__ */ (0, b.jsx)(yi, {
-															data: Ro,
+															data: zo,
 															valueFormatter: W
 														})
 													})
@@ -18052,7 +18061,7 @@ function Vr() {
 														title: "健康维度拆解",
 														summary: "五项分数",
 														children: /* @__PURE__ */ (0, b.jsx)(_i, {
-															data: jo,
+															data: Mo,
 															valueFormatter: (e) => `${e.toFixed(0)}分`,
 															percentMode: !0
 														})
@@ -18061,7 +18070,7 @@ function Vr() {
 														title: "资产抗风险结构",
 														summary: "账户 / 应急 / 负债",
 														children: /* @__PURE__ */ (0, b.jsx)(hi, {
-															data: za,
+															data: Ba,
 															centerLabel: "覆盖",
 															centerValue: `${G.emergencyCoverage.toFixed(1)}月`
 														})
@@ -18069,7 +18078,7 @@ function Vr() {
 													/* @__PURE__ */ (0, b.jsx)(q, {
 														title: "风险矩阵",
 														summary: "影响 × 紧迫",
-														children: /* @__PURE__ */ (0, b.jsx)(wi, { data: Mo })
+														children: /* @__PURE__ */ (0, b.jsx)(wi, { data: No })
 													})
 												]
 											})
@@ -18089,7 +18098,7 @@ function Vr() {
 													title: "能力成熟度",
 													summary: "未来模块占位评分",
 													children: /* @__PURE__ */ (0, b.jsx)(_i, {
-														data: No,
+														data: Po,
 														valueFormatter: (e) => `${e.toFixed(0)}分`,
 														percentMode: !0
 													})
@@ -18097,7 +18106,7 @@ function Vr() {
 													title: "规则覆盖路线",
 													summary: "自动分类 / 校验 / 提醒",
 													children: /* @__PURE__ */ (0, b.jsx)(bi, {
-														data: No,
+														data: Po,
 														valueFormatter: (e) => `${e.toFixed(0)}分`
 													})
 												})]

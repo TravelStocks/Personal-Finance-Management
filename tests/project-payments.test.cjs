@@ -21,7 +21,7 @@ test('only actual date assigns a payment; edit, clear, ledger inclusion and rest
   const model=financeChartData(13000,[{group:'daily',actual:100}],initialAnnualBudgetPlan,month(paid,'2026-11'));
   assert.equal(model.usage.spending,4584.56);assert.equal(model.usage.surplus,8415.44);
   assert.equal(model.monthly.find(row=>row.id==='project-payments').value,1234.56);
-  assert.equal(model.waterfall.at(-1).value,8415.44);
+  assert.equal(model.waterfall.at(-1).value,11665.44);
 });
 test('paid projects stop reserving cash; plan year respects payment date and duplicate flag',()=>{
   const paid={...project,actualDate:'2026-11-13'};

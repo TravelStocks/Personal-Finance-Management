@@ -7,15 +7,17 @@ const row=(group,actual)=>({id:group,name:group,group,actual,plan:0,required:fal
 const budgets=[row('rent',2750),row('parents',2000),row('learning',1000),row('travel',1000),row('partner',1000)];
 const sum=rows=>Math.round(rows.reduce((total,row)=>total+row.value,0)*100)/100;
 
-test('monthly charts reconcile screenshot consumption plus each reserve exactly once',()=>{
+test('actual charts exclude budget reserves and zero rows while budget retains all plans',()=>{
   const result=financeChartData(13000,budgets,initialAnnualBudgetPlan);
-  assert.equal(sum(result.monthly),11000);
+  assert.equal(sum(result.monthly),7750);
   assert.equal(result.usage.surplus,2000);
-  assert.equal(result.monthly.length,9);
-  for(const id of ['small','daily']) assert.equal(result.monthly.find(row=>row.id===id).value,0);
-  assert.equal(result.monthly.find(row=>row.id==='investment').value,2750);
-  assert.equal(result.monthly.find(row=>row.id==='emergency').value,500);
-  assert.equal(waterfallSteps(result.waterfall).at(-1).after,2000);
+  assert.equal(result.monthly.length,5);
+  for(const id of ['small','daily','investment','emergency']) assert.equal(result.monthly.find(row=>row.id===id),undefined);
+  assert.equal(result.budget.find(row=>row.id==='investment').value,2750);
+  assert.equal(result.budget.find(row=>row.id==='emergency').value,500);
+  assert.equal(sum(result.budget),13000);
+  assert.equal(waterfallSteps(result.waterfall).at(-1).after,5250);
+  assert.equal(result.waterfall.length,3);
 });
 test('annual slices match allocation total and never include speculative income or surplus',()=>{
   const plan=structuredClone(initialAnnualBudgetPlan);
@@ -33,7 +35,7 @@ test('new ledger amounts, category edits, reserve changes and restored plans imm
   plan.rows.find(row=>row.id==='emergency').normal=700;
   const changed=[...budgets,row('small',123.45),row('daily',456.78),row('unassigned',90.12)];
   const result=financeChartData(14000,changed,plan);
-  assert.equal(sum(result.monthly),result.usage.spending);
+  assert.equal(sum(result.monthly),result.usage.consumption);
   assert.equal(result.usage.spending,11870.35);
   assert.equal(result.usage.surplus,2129.65);
   assert.equal(result.monthly.find(row=>row.id==='unassigned').value,90.12);
@@ -44,15 +46,30 @@ test('new ledger amounts, category edits, reserve changes and restored plans imm
 test('refunds, overspending, zero and decimal movements preserve waterfall reconciliation',()=>{
   for(const [income,amount] of [[0,0],[100,200],[0,-10.01],[0.3,0.1]]) {
     const result=financeChartData(income,[row('daily',amount)],initialAnnualBudgetPlan);
-    assert.equal(sum(result.monthly),result.usage.spending);
+    assert.equal(sum(result.monthly),result.usage.consumption);
     const bars=waterfallSteps(result.waterfall);
-    assert.equal(bars.at(-1).after,result.usage.surplus);
+    assert.equal(bars.at(-1).after,Math.round((income-amount)*100)/100);
     assert.equal(bars.at(-1).before,0);
   }
   const bars=waterfallSteps([{label:'start',kind:'start',value:1},
     {label:'in',kind:'positive',value:0.1},{label:'out',kind:'negative',value:-0.2},
     {label:'end',kind:'end',value:999}]);
   assert.equal(bars.at(-1).value,0.9);
+});
+test('budget edits cannot change actual charts or cashflow, including project payments and refunds',()=>{
+  const plan=structuredClone(initialAnnualBudgetPlan);
+  const actual=[row('daily',128),row('small',0),row('travel',-10)];
+  const before=financeChartData(13000,actual,plan,500);
+  assert.equal(sum(before.monthly),618);
+  assert.equal(before.monthly.find(r=>r.id==='travel').value,-10);
+  assert.equal(before.monthly.find(r=>r.id==='project-payments').value,500);
+  for(const r of plan.rows) r.normal=9999;
+  const after=financeChartData(13000,actual,plan,500);
+  assert.deepEqual(after.monthly.map(({plan,...r})=>r),before.monthly.map(({plan,...r})=>r));
+  assert.deepEqual(after.waterfall,before.waterfall);
+  assert.notDeepEqual(after.budget,before.budget);
+  assert.equal(waterfallSteps(after.waterfall).at(-1).value,12382);
+  assert.deepEqual(financeChartData(0,[],plan).monthly,[]);
 });
 test('health total is the weighted sum of displayed dimensions and reacts to current data',()=>{
   const result=financeHealth(13000,2000,3250,2000/4750,6,0,10000,10000);

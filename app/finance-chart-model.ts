@@ -7,12 +7,11 @@ export type WaterfallStep = {label: string; value: number; kind: "start" | "posi
 
 export function financeChartData(income: number, budgets: SpendingBudget[], plan: AnnualBudgetPlan, projectPaid = 0) {
   const usage = monthlyBudgetUsage(income, sum([...budgets.map(row => row.actual),projectPaid]), plan);
-  const monthly = plan.rows.map(row => ({
+  const budget = plan.rows.map(row => ({id: row.id, label: row.name, value: row[plan.mode]}));
+  const monthly = plan.rows.filter(row => row.kind === "consumption").map(row => ({
     id: row.id, label: row.name, plan: row[plan.mode],
-    value: row.kind === "consumption"
-      ? sum(budgets.filter(item => getSpendingGroup(item) === row.id).map(item => item.actual))
-      : row[plan.mode],
-    detail: row.kind === "consumption" ? "已记净消费" : "本月预算预留，非重复消费",
+    value: sum(budgets.filter(item => getSpendingGroup(item) === row.id).map(item => item.actual)),
+    detail: "已记净消费",
   }));
   const unassigned = budgets.filter(row => getSpendingGroup(row) === "unassigned");
   if(projectPaid) monthly.push({id:"project-payments",label:"大花费项目实付",plan:0,value:projectPaid,detail:"按实际日期，不含已记账项目"});
@@ -20,13 +19,11 @@ export function financeChartData(income: number, budgets: SpendingBudget[], plan
     value: sum(unassigned.map(row => row.actual)), detail: "原账本未归类金额"});
   const annual = calculateAnnualBudgetPlan(plan).rows.map(row => ({id: row.id, label: row.name, value: row.annual}));
   const waterfall: WaterfallStep[] = [
-    {label: "已记收入", value: income, kind: "positive"},
-    {label: "净消费", value: -usage.consumption, kind: usage.consumption < 0 ? "positive" : "negative"},
-    {label: "投资预留", value: -usage.investment, kind: "negative"},
-    {label: "应急预留", value: -usage.emergency, kind: "negative"},
-    {label: "收支结余", value: usage.surplus, kind: "end"},
+    {label: "实际收入", value: income, kind: income < 0 ? "negative" : "positive"},
+    {label: "实际净支出", value: -usage.consumption, kind: usage.consumption < 0 ? "positive" : "negative"},
+    {label: "实际结余", value: sum([income, -usage.consumption]), kind: "end"},
   ];
-  return {monthly, annual, waterfall, usage};
+  return {monthly: monthly.filter(row => row.value !== 0), budget, annual, waterfall, usage};
 }
 
 export function waterfallSteps<T extends WaterfallStep>(data: T[]) {
