@@ -12064,13 +12064,6 @@ function Xt({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 					className: "data-actions",
 					children: [
 						/* @__PURE__ */ (0, b.jsx)("button", {
-							className: "primary-button",
-							type: "button",
-							disabled: !x,
-							onClick: y,
-							children: "下载本地完整备份"
-						}),
-						/* @__PURE__ */ (0, b.jsx)("button", {
 							className: "secondary-button",
 							type: "button",
 							onClick: bn,
@@ -12106,11 +12099,6 @@ function Xt({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 						})
 					]
 				})]
-			}),
-			S && /* @__PURE__ */ (0, b.jsx)("p", {
-				className: "review-status review-backup-status",
-				role: "status",
-				children: S
 			}),
 			nt && /* @__PURE__ */ (0, b.jsx)("p", {
 				className: "review-status",
@@ -12896,20 +12884,37 @@ function Xt({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 								className: "review-caption",
 								children: "账本已记录的金额须先补日期，避免再次记账。投资与应急划拨不计消费，期末余额直接替换，不再加减收支。预算和计划不变。"
 							}),
-							/* @__PURE__ */ (0, b.jsx)("button", {
-								className: "primary-button",
-								type: "submit",
-								children: Ct ? "提交原周修订并更新看板" : wt ? "全部保存并更新看板" : "保存历史报告并分析"
-							}),
-							w.type !== "week" && /* @__PURE__ */ (0, b.jsx)("button", {
-								className: "secondary-button",
-								type: "button",
-								onClick: _n,
-								children: "从已有记录汇总"
+							/* @__PURE__ */ (0, b.jsxs)("div", {
+								className: "data-actions review-save-actions",
+								children: [
+									/* @__PURE__ */ (0, b.jsx)("button", {
+										className: "primary-button",
+										type: "submit",
+										children: Ct ? "提交原周修订并更新看板" : wt ? "全部保存并更新看板" : "保存历史报告并分析"
+									}),
+									/* @__PURE__ */ (0, b.jsx)("button", {
+										className: "secondary-button",
+										type: "button",
+										disabled: !x,
+										onClick: y,
+										children: "下载本地完整备份"
+									}),
+									w.type !== "week" && /* @__PURE__ */ (0, b.jsx)("button", {
+										className: "secondary-button",
+										type: "button",
+										onClick: _n,
+										children: "从已有记录汇总"
+									})
+								]
 							})
 						]
 					})
 				]
+			}),
+			S && /* @__PURE__ */ (0, b.jsx)("p", {
+				className: "review-status review-backup-status",
+				role: "status",
+				children: S
 			}),
 			We === "report" && (!z || !gt ? /* @__PURE__ */ (0, b.jsx)("p", { children: "尚无复盘记录。" }) : /* @__PURE__ */ (0, b.jsxs)("section", {
 				"aria-label": "周期对比报告",
@@ -12940,17 +12945,27 @@ function Xt({ records: e, weeklyNotes: t = {}, onSaveNote: n, plan: r, accounts:
 							})]
 						}), /* @__PURE__ */ (0, b.jsxs)("div", {
 							className: "data-actions",
-							children: [/* @__PURE__ */ (0, b.jsx)("button", {
-								className: "secondary-button",
-								type: "button",
-								onClick: () => ln(an, "修订会替换当前未保存的输入，是否继续？", () => Tn(z)),
-								children: "修订本期"
-							}), /* @__PURE__ */ (0, b.jsx)("button", {
-								className: "secondary-button",
-								type: "button",
-								onClick: () => qt(`finance-${z.type}-${z.start}.md`, Ye(z, e, f.projects), "text/markdown;charset=utf-8"),
-								children: "下载报告"
-							})]
+							children: [
+								/* @__PURE__ */ (0, b.jsx)("button", {
+									className: "secondary-button",
+									type: "button",
+									onClick: () => ln(an, "修订会替换当前未保存的输入，是否继续？", () => Tn(z)),
+									children: "修订本期"
+								}),
+								/* @__PURE__ */ (0, b.jsx)("button", {
+									className: "secondary-button",
+									type: "button",
+									onClick: () => qt(`finance-${z.type}-${z.start}.md`, Ye(z, e, f.projects), "text/markdown;charset=utf-8"),
+									children: "下载报告"
+								}),
+								/* @__PURE__ */ (0, b.jsx)("button", {
+									className: "secondary-button",
+									type: "button",
+									disabled: !x,
+									onClick: y,
+									children: "下载本地完整备份"
+								})
+							]
 						})]
 					}),
 					/* @__PURE__ */ (0, b.jsx)("p", {

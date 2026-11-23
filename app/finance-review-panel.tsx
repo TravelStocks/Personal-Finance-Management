@@ -451,14 +451,12 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
         <button type="button" className={view === "report" ? "active" : ""} aria-pressed={view === "report"} onClick={() => setView("report")}>前后对比</button>
       </div>
       <div className="data-actions">
-        <button className="primary-button" type="button" disabled={!backupReady} onClick={onExportBackup}>下载本地完整备份</button>
         <button className="secondary-button" type="button" onClick={downloadTemplate}>下载模板</button>
         <button className="secondary-button" type="button" onClick={() => fileInput.current?.click()}>导入复盘</button>
         <button className="secondary-button" type="button" disabled={!records.length} onClick={() => download("finance-reviews.json", JSON.stringify({app:"personal-finance-review", version:1, records}, null, 2), "application/json")}>导出记录</button>
         <input className="visually-hidden" ref={fileInput} type="file" accept=".json,application/json" aria-label="导入周期复盘文件" onChange={event => {const file = event.target.files?.[0]; if (file) void importFile(file);}}/>
       </div>
     </div>
-    {backupStatus && <p className="review-status review-backup-status" role="status">{backupStatus}</p>}
     {status && <p className="review-status" role="status">{status}</p>}
     {view === "entry" && <form noValidate onSubmit={event => {
       event.preventDefault();
@@ -566,16 +564,21 @@ export default function FinanceReviewPanel({records, weeklyNotes = {}, onSaveNot
         {draft.type==="week"&&!pastRevision&&<label className="field"><span>保存范围</span><select aria-label="复盘保存范围" value={publish?"dashboard":"history"} onChange={event=>setSyncDashboard(event.target.value==="dashboard")}><option value="dashboard" disabled={!canPublish}>更新本期看板并保留历史</option><option value="history">仅保存历史报告</option></select></label>}
         {pastRevision?<p>修订归入原周，重算关联账本与趋势。后来核对的账户余额不变。</p>:!canPublish&&draft.type==="week"&&<p>本期早于已有最新一期或属于未来日期，仅保存历史报告，不覆盖当前看板。</p>}
         {draft.type==="week"&&<p className="review-caption">账本已记录的金额须先补日期，避免再次记账。投资与应急划拨不计消费，期末余额直接替换，不再加减收支。预算和计划不变。</p>}
-        <button className="primary-button" type="submit">{pastRevision?"提交原周修订并更新看板":publish?"全部保存并更新看板":"保存历史报告并分析"}</button>
-        {draft.type !== "week" && <button className="secondary-button" type="button" onClick={aggregate}>从已有记录汇总</button>}
+        <div className="data-actions review-save-actions">
+          <button className="primary-button" type="submit">{pastRevision?"提交原周修订并更新看板":publish?"全部保存并更新看板":"保存历史报告并分析"}</button>
+          <button className="secondary-button" type="button" disabled={!backupReady} onClick={onExportBackup}>下载本地完整备份</button>
+          {draft.type !== "week" && <button className="secondary-button" type="button" onClick={aggregate}>从已有记录汇总</button>}
+        </div>
       </div>
     </form>}
+    {backupStatus && <p className="review-status review-backup-status" role="status">{backupStatus}</p>}
     {view === "report" && (!selected || !analysis ? <p>尚无复盘记录。</p> : <section aria-label="周期对比报告">
       {reportHasPendingModules&&<p className="review-status" role="status">本期有模块已单独更新；此报告仍是上次全部保存的版本。</p>}
       <div className="review-toolbar">
         <label className="field"><span>报告期间</span><select aria-label="报告期间" value={selected.id} onChange={event => setSelectedId(event.target.value)}>{records.map(record => <option key={record.id} value={record.id}>{reviewTypeNames[record.type]} · {record.start} 至 {record.end}</option>)}</select></label>
         <div className="data-actions"><button className="secondary-button" type="button" onClick={() => confirmOrRun(hasDraft, "修订会替换当前未保存的输入，是否继续？", () => reviseSelected(selected))}>修订本期</button>
-          <button className="secondary-button" type="button" onClick={() => download(`finance-${selected.type}-${selected.start}.md`,financeReviewReport(selected,records,focusSource.projects),"text/markdown;charset=utf-8")}>下载报告</button></div>
+          <button className="secondary-button" type="button" onClick={() => download(`finance-${selected.type}-${selected.start}.md`,financeReviewReport(selected,records,focusSource.projects),"text/markdown;charset=utf-8")}>下载报告</button>
+          <button className="secondary-button" type="button" disabled={!backupReady} onClick={onExportBackup}>下载本地完整备份</button></div>
       </div>
       <p className="review-caption">{analysis.previous ? `对比上期：${analysis.previous.start} 至 ${analysis.previous.end}` : "首次基准，暂无上期对比"}</p>
       {selected.type === "week" && selected.overallChange && <section aria-label="整体变化说明情况"><h3>整体变化说明情况</h3>
