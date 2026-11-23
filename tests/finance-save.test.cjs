@@ -21,11 +21,34 @@ test('local full backup retains all ledger and history fields without changing t
     snapshots:[{data:data()}],monthlyArchives:[{monthId:'2026-10'}]};
   const original=JSON.stringify(backup);
   const file=m.localFinanceBackupFile(backup,'test-a');
-  assert.deepEqual(JSON.parse(file.content),backup);
+  const {backupSummary,...restored}=JSON.parse(file.content);
+  assert.deepEqual(restored,backup);
+  assert.deepEqual(backupSummary,{ledgerMonths:1,datedEntries:1,reviews:1,updates:1,weeklyNotes:1,snapshots:1,monthlyArchives:1});
   assert.equal(JSON.stringify(backup),original);
   assert.match(file.name,/^personal-finance-full-2026-11-23T19-30-11-123Z-test-a\.json$/);
   assert.notEqual(file.name,m.localFinanceBackupFile(backup,'test-b').name);
   assert.throws(()=>m.localFinanceBackupFile({...backup,exportedAt:'invalid'},'test'));
+});
+
+test('full backup preserves every historical entry beyond old retention limits and keeps both sides of revisions',()=>{
+  const rows=Array.from({length:125},(_,i)=>({id:`row-${i}`,before:{amount:i},after:{amount:i+1}}));
+  const backup={version:1,exportedAt:'2026-11-23T00:00:00Z',data:{...data(),monthlyRecords:rows,
+    financeReviews:rows,reviewUpdates:rows,datedEntries:rows},snapshots:rows.map(row=>({...row,data:data()})),monthlyArchives:rows};
+  const saved=JSON.parse(m.localFinanceBackupFile(backup,'all').content);
+  for(const key of ['monthlyRecords','financeReviews','reviewUpdates','datedEntries'])assert.deepEqual(saved.data[key],backup.data[key]);
+  assert.deepEqual(saved.snapshots,backup.snapshots);
+  assert.deepEqual(saved.monthlyArchives,backup.monthlyArchives);
+  assert.equal(saved.backupSummary.updates,125);
+  assert.equal(saved.backupSummary.snapshots,125);
+  assert.equal(saved.backupSummary.monthlyArchives,125);
+});
+
+test('monthly charts use only the newest version while the full archive remains unchanged',()=>{
+  const rows=[{id:'old',monthId:'2026-10',savedAt:'2026-10-30T00:00:00Z'},
+    {id:'new',monthId:'2026-10',savedAt:'2026-11-01T00:00:00Z'},
+    {id:'nov',monthId:'2026-11',savedAt:'2026-11-23T00:00:00Z'}];
+  assert.deepEqual(m.latestMonthlyArchiveVersions(rows).map(x=>x.id),['new','nov']);
+  assert.equal(rows.length,3);
 });
 
 test('manual and periodic saves round-trip emergency settings and linked balances including zero', () => {

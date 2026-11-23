@@ -24,7 +24,7 @@ import {goalKind, goalBalanceSource, syncAccountGoals, parseParentReviewAmounts}
 import {changeDatedEntry, parseDatedEntries, preserveDatedSalaries, type DatedEntry, type EntryMode} from "./dated-ledger-model";
 import {parseFinanceReviews, rollPaidReminder, reviewDayDistance, reviewDeadlineLabel, reviewMoney, reviewToday, reviewInvestmentTotal, type FinanceReview} from "./finance-review-model";
 import {useFinanceToday} from "./use-finance-today";
-import {financeBackupSignature, financeDataOnly, financeSaveConflict, hasPendingFinanceSave, localFinanceBackupFile, markFinanceCloudSaved, writeLocalFinanceData} from "./finance-save-model";
+import {financeBackupSignature, financeDataOnly, financeSaveConflict, hasPendingFinanceSave, latestMonthlyArchiveVersions, localFinanceBackupFile, markFinanceCloudSaved, writeLocalFinanceData} from "./finance-save-model";
 import {applySalaryFromMonth, confirmedMonthlySalary, migrateSalarySettings, salarySettingsVersion} from "./salary-model";
 import {addSpendingDetailPresets, getSpendingGroup, nextMonthSpendingRows, spendingGroups, summarizeLearning, type SpendingBudget as Budget} from "./spending-detail-model";
 
@@ -496,8 +496,6 @@ const financeMonthlyArchiveKey = "personal-finance-management-monthly-archives-v
 const financeCloudSyncKey = "personal-finance-management-cloud-sync-v1";
 const financeCloudPassphraseKey = "personal-finance-management-cloud-passphrase-v1";
 const cloudSyncFileName = "personal-finance-management-sync.json";
-const maxSnapshots = 20;
-const maxMonthlyArchives = 48;
 
 const moduleList: Array<{ id: ModuleId; title: string; desc: string }> = [
   { id: "income", title: "收入", desc: "税后工资、实际到账、炒股月结算记录" },
@@ -823,8 +821,7 @@ function normalizeMonthlyArchives(value: unknown) {
       };
     })
     .filter((item): item is MonthlyArchive => item !== null)
-    .sort((a, b) => b.monthId.localeCompare(a.monthId) || b.savedAt.localeCompare(a.savedAt))
-    .slice(0, maxMonthlyArchives);
+    .sort((a, b) => b.monthId.localeCompare(a.monthId) || b.savedAt.localeCompare(a.savedAt));
 }
 
 function normalizeCloudSyncSettings(value: unknown): CloudSyncSettings {
@@ -1253,7 +1250,7 @@ export default function FinanceDashboard() {
           }
           if (rawSnapshots) {
             const savedSnapshots = JSON.parse(rawSnapshots) as FinanceSnapshot[];
-            if (Array.isArray(savedSnapshots)) setSnapshots(savedSnapshots.slice(0, maxSnapshots));
+            if (Array.isArray(savedSnapshots)) setSnapshots(savedSnapshots);
           }
           if (rawMonthlyArchives) setMonthlyArchives(normalizeMonthlyArchives(JSON.parse(rawMonthlyArchives)));
           if (rawCloudSync) {
@@ -1423,10 +1420,15 @@ export default function FinanceDashboard() {
       createdAt: new Date().toISOString(),
       data: getPersistedFinanceData(),
     };
-    const nextSnapshots = [snapshot, ...snapshots].slice(0, maxSnapshots);
+    const nextSnapshots = [snapshot, ...snapshots];
+    try {
+      persistLocalFinanceData(snapshot.data);
+      window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(nextSnapshots));
+    } catch {
+      setSaveStatus("新快照未保存，已有历史未裁剪。请下载本地完整备份并检查浏览器存储空间。");
+      return;
+    }
     setSnapshots(nextSnapshots);
-    window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(nextSnapshots));
-    persistLocalFinanceData(snapshot.data);
     setHistoryOpen(true);
     setSaveStatus("历史版本已保存，正在同步云端…");
     const uploaded = await uploadCloudSync(false, getCloudSyncBackup({ data: snapshot.data, snapshots: nextSnapshots }));
@@ -1459,7 +1461,8 @@ export default function FinanceDashboard() {
         anchor.remove();
         window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-      const message = `已发起本地完整备份下载：${backup.name}。包含已保存账本及全部历史，不含未提交的复盘输入；本次导出未上传云端。`;
+      const counts = backup.summary;
+      const message = `已发起本地完整备份下载：${backup.name}。${counts.ledgerMonths} 个月账本、${counts.datedEntries} 笔日期明细、${counts.reviews} 期复盘、${counts.updates} 次更新前后记录、${counts.weeklyNotes} 条独立周说明、${counts.snapshots} 个历史快照、${counts.monthlyArchives} 条月度存档。包含当前仍保留的全部历史，不含未提交的复盘输入；本次导出未上传云端。`;
       setSaveStatus(message);
       setLocalBackupStatus(message);
     } catch {
@@ -1488,7 +1491,7 @@ export default function FinanceDashboard() {
       applyPersistedFinanceData(backup.data);
       persistLocalFinanceData(backup.data as PersistedFinanceData);
       if (Array.isArray(backup.snapshots)) {
-        const importedSnapshots = backup.snapshots.slice(0, maxSnapshots);
+        const importedSnapshots = backup.snapshots;
         setSnapshots(importedSnapshots);
         window.localStorage.setItem(financeSnapshotsKey, JSON.stringify(importedSnapshots));
       }
@@ -1528,7 +1531,7 @@ export default function FinanceDashboard() {
 
   function applyCloudSyncBackup(backup: CloudSyncBackup) {
     applyPersistedFinanceData(backup.data);
-    const importedSnapshots = Array.isArray(backup.snapshots) ? backup.snapshots.slice(0, maxSnapshots) : [];
+    const importedSnapshots = Array.isArray(backup.snapshots) ? backup.snapshots : [];
     const importedMonthlyArchives = normalizeMonthlyArchives(backup.monthlyArchives);
     setSnapshots(importedSnapshots);
     setMonthlyArchives(importedMonthlyArchives);
@@ -1823,12 +1826,17 @@ export default function FinanceDashboard() {
     const archive = createMonthlyArchive(savedAt, `${selectedMonth}-${savedAt}`);
     const nextArchives = normalizeMonthlyArchives([
       archive,
-      ...monthlyArchives.filter((item) => item.monthId !== selectedMonth),
+      ...monthlyArchives,
     ]);
+    try {
+      persistLocalFinanceData();
+      window.localStorage.setItem(financeMonthlyArchiveKey, JSON.stringify(nextArchives));
+    } catch {
+      setSaveStatus("新月报未保存，已有存档未裁剪。请下载本地完整备份并检查浏览器存储空间。");
+      return;
+    }
     setMonthlyArchives(nextArchives);
-    window.localStorage.setItem(financeMonthlyArchiveKey, JSON.stringify(nextArchives));
     setActiveModules((items) => (items.includes("monthlyArchive") ? items : [...items, "monthlyArchive"]));
-    persistLocalFinanceData();
     setSaveStatus(`${activeMonth.label} 月报已保存，正在同步云端…`);
     const uploaded = await uploadCloudSync(false, getCloudSyncBackup({ monthlyArchives: nextArchives }));
     setSaveStatus(uploaded ? `${activeMonth.label} 月报已保存并上传云端` : `${activeMonth.label} 月报已保存到本机，云端未更新`);
@@ -1845,10 +1853,10 @@ export default function FinanceDashboard() {
   const monthlyArchiveForComparison = savedSelectedMonthlyArchive ?? currentMonthlyArchive;
   const previousSelectedMonthlyArchive = previousMonthlyArchive(monthlyArchives, selectedMonth);
   const monthlyArchiveTimeline = sortMonthlyArchivesAsc(
-    normalizeMonthlyArchives([
+    latestMonthlyArchiveVersions(normalizeMonthlyArchives([
       currentMonthlyArchive,
       ...monthlyArchives.filter((archive) => archive.monthId !== selectedMonth),
-    ]),
+    ])),
   );
 
   const forecast = (() => {
@@ -2967,7 +2975,7 @@ export default function FinanceDashboard() {
             <div className="history-heading">
               <div>
                 <h2>历史版本</h2>
-                <p>最多保留最近 {maxSnapshots} 个手动快照。恢复前可以先保存当前版本。</p>
+                <p>已保存 {snapshots.length} 个手动快照。</p>
               </div>
               <button className="secondary-button" type="button" onClick={() => setHistoryOpen(false)}>关闭</button>
             </div>

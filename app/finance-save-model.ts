@@ -48,8 +48,27 @@ export function financeBackupSignature(backup: {data: object; snapshots: unknown
 export function localFinanceBackupFile(backup: {version: 1; exportedAt: string; data: object; snapshots: unknown[]; monthlyArchives: unknown[]}, uniqueId: string) {
   const stamp = new Date(backup.exportedAt).toISOString().replace(/[:.]/g, "-");
   const {version, exportedAt, data, snapshots, monthlyArchives} = backup;
+  const rows = data as Record<string, unknown>;
+  const count = (key: string) => Array.isArray(rows[key]) ? rows[key].length : 0;
+  const backupSummary = {
+    ledgerMonths: count("monthlyRecords"), datedEntries: count("datedEntries"),
+    reviews: count("financeReviews"), updates: count("reviewUpdates"),
+    weeklyNotes: rows.weeklyNotes && typeof rows.weeklyNotes === "object" ? Object.keys(rows.weeklyNotes).length : 0,
+    snapshots: snapshots.length, monthlyArchives: monthlyArchives.length,
+  };
   return {
     name: `personal-finance-full-${stamp}-${uniqueId}.json`,
-    content: JSON.stringify({version, exportedAt, data, snapshots, monthlyArchives}, null, 2),
+    content: JSON.stringify({version, exportedAt, data, snapshots, monthlyArchives, backupSummary}, null, 2),
+    summary: backupSummary,
   };
+}
+
+// Keep every archive version in storage, but one latest observation per month in charts.
+export function latestMonthlyArchiveVersions<T extends {monthId: string; savedAt: string}>(archives: T[]): T[] {
+  const latest = new Map<string, T>();
+  for (const archive of archives) {
+    const previous = latest.get(archive.monthId);
+    if (!previous || archive.savedAt > previous.savedAt) latest.set(archive.monthId, archive);
+  }
+  return [...latest.values()];
 }
