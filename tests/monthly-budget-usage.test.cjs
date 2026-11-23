@@ -34,7 +34,7 @@ test('overview, expenditure and reports share computed usage without changing ac
   assert.doesNotMatch(source,/actualIncome - spendingActual - assetOutflow/);
 });
 
-test('monthly spending card includes paid projects and both monthly reserves once',()=>{
+test('monthly actual spending card includes paid projects but not budget reserves',()=>{
   const {projectPayments}=loadModel('project-payments');
   const payments=projectPayments([{current:5577.78,actualDate:'2026-11-13'},
     {current:300,actualDate:'2026-11-12',includedInLedger:true},{current:200,dueDate:'2026-11-01'}],'2026-11-01','2026-11-30');
@@ -43,6 +43,13 @@ test('monthly spending card includes paid projects and both monthly reserves onc
   assert.equal(usage.spending,16688.62);
   const source=fs.readFileSync(path.join(__dirname,'../app/page.tsx'),'utf8');
   const card=source.split('id: "monthly-overview-living"')[1].split('tone:')[0];
-  assert.match(card,/value: reviewMoney\(totals\.budgetUsage\.spending\)/);
-  assert.match(card,/投资预留.*应急预留/);
+  assert.match(card,/value: reviewMoney\(totals\.spendingActual\)/);
+  assert.doesNotMatch(card,/budgetUsage|投资预留|应急预留/);
+  const surplusCard=source.split('id: "monthly-overview-surplus"')[1].split('tone:')[0];
+  assert.match(surplusCard,/actualIncome - totals.spendingActual/);
+  assert.doesNotMatch(surplusCard,/totals.monthlySurplus/);
+  const screenshot=monthlyBudgetUsage(13000,128,initialAnnualBudgetPlan);
+  assert.equal(screenshot.consumption,128);
+  assert.equal(13000-screenshot.consumption,12872);
+  assert.equal(screenshot.remaining,9622);
 });

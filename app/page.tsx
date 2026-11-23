@@ -2403,16 +2403,16 @@ export default function FinanceDashboard() {
     },
     {
       id: "monthly-overview-living",
-      title: "所选月支出（含基金预留）",
-      value: reviewMoney(totals.budgetUsage.spending),
-      detail: `${activeMonth.label} / 账本消费 ${reviewMoney(recordSpendingActual(activeMonth))} + 大花费项目实付 ${reviewMoney(monthPayments.total)} + 投资预留 ${money(totals.budgetUsage.investment)} + 应急预留 ${money(totals.budgetUsage.emergency)}`,
+      title: "所选月实际支出",
+      value: reviewMoney(totals.spendingActual),
+      detail: `${activeMonth.label} / 账本实际支出 ${reviewMoney(recordSpendingActual(activeMonth))} + 大花费项目实付 ${reviewMoney(monthPayments.total)}`,
       tone: "green" as Tone,
     },
     {
       id: "monthly-overview-surplus",
-      title: "所选月收支结余",
-      value: reviewMoney(totals.monthlySurplus),
-      detail: "收入 - 实际消费 - 投资及应急预留；基金每月扣一次，不减少净资产",
+      title: "所选月实际收支结余",
+      value: reviewMoney(Math.round((actualIncome - totals.spendingActual) * 100) / 100),
+      detail: "已录收入 - 实际支出；预算预留仅在可花预算剩余中扣除",
       tone: "violet" as Tone,
     },
     {

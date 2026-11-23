@@ -15782,16 +15782,16 @@ function Vr() {
 		},
 		{
 			id: "monthly-overview-living",
-			title: "所选月支出（含基金预留）",
-			value: L(G.budgetUsage.spending),
-			detail: `${H.label} / 账本消费 ${L(ur(H))} + 大花费项目实付 ${L(bn.total)} + 投资预留 ${W(G.budgetUsage.investment)} + 应急预留 ${W(G.budgetUsage.emergency)}`,
+			title: "所选月实际支出",
+			value: L(G.spendingActual),
+			detail: `${H.label} / 账本实际支出 ${L(ur(H))} + 大花费项目实付 ${L(bn.total)}`,
 			tone: "green"
 		},
 		{
 			id: "monthly-overview-surplus",
-			title: "所选月收支结余",
-			value: L(G.monthlySurplus),
-			detail: "收入 - 实际消费 - 投资及应急预留；基金每月扣一次，不减少净资产",
+			title: "所选月实际收支结余",
+			value: L(Math.round((Mn - G.spendingActual) * 100) / 100),
+			detail: "已录收入 - 实际支出；预算预留仅在可花预算剩余中扣除",
 			tone: "violet"
 		},
 		{
