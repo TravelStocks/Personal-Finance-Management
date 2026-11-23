@@ -3084,11 +3084,18 @@ export default function FinanceDashboard() {
               <ChartPanel title="账本现金流日历" summary={`${activeMonth.label}账本及提醒记录`}>
                 <CashflowCalendar events={ledgerEvents} />
               </ChartPanel>
+              <ChartPanel title="本月实际收支" summary={activeMonth.label} className="monthly-actual-panel">
+                <section className="monthly-actual-section" aria-label="本月实际收入">
+                  <div className="monthly-actual-heading"><h3>本月实际收入</h3><strong className="positive">{reviewMoney(actualIncome)}</strong></div>
+                  {incomeChartData.some(item => item.value !== 0) ? <HorizontalBarChart data={incomeChartData.filter(item => item.value !== 0)} valueFormatter={money} /> : <p className="muted">本月暂无实际收入</p>}
+                </section>
+                <section className="monthly-actual-section" aria-label="本月实际支出">
+                  <div className="monthly-actual-heading"><h3>本月实际支出</h3><strong className="negative">{reviewMoney(totals.spendingActual)}</strong></div>
+                  {topSpendingData.length ? <HorizontalBarChart data={topSpendingData} valueFormatter={money} /> : <p className="muted">本月暂无实际支出</p>}
+                </section>
+              </ChartPanel>
               <ChartPanel title="本月收支现金瀑布" summary={`${activeMonth.label} / 实际收支，不含预算预留`}>
                 <WaterfallChart data={monthlyWaterfall} />
-              </ChartPanel>
-              <ChartPanel title="本月实际支出" summary={`${activeMonth.label} / 合计 ${money(totals.spendingActual)}`} className="spending-top-panel">
-                {topSpendingData.length ? <HorizontalBarChart data={topSpendingData} valueFormatter={money} /> : <p className="muted">本月暂无实际支出</p>}
               </ChartPanel>
               <ChartPanel title="本月预算分配" summary={`计划 ${money(totals.budgetUsage.budget)} / 含投资与应急预留`}>
                 <HorizontalBarChart data={monthlyBudgetData} valueFormatter={money} />

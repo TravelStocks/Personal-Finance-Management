@@ -16769,22 +16769,48 @@ function Ur() {
 												summary: `${H.label}账本及提醒记录`,
 												children: /* @__PURE__ */ (0, b.jsx)(wi, { events: Zr })
 											}),
+											/* @__PURE__ */ (0, b.jsxs)(q, {
+												title: "本月实际收支",
+												summary: H.label,
+												className: "monthly-actual-panel",
+												children: [/* @__PURE__ */ (0, b.jsxs)("section", {
+													className: "monthly-actual-section",
+													"aria-label": "本月实际收入",
+													children: [/* @__PURE__ */ (0, b.jsxs)("div", {
+														className: "monthly-actual-heading",
+														children: [/* @__PURE__ */ (0, b.jsx)("h3", { children: "本月实际收入" }), /* @__PURE__ */ (0, b.jsx)("strong", {
+															className: "positive",
+															children: R(Pn)
+														})]
+													}), Ea.some((e) => e.value !== 0) ? /* @__PURE__ */ (0, b.jsx)(yi, {
+														data: Ea.filter((e) => e.value !== 0),
+														valueFormatter: W
+													}) : /* @__PURE__ */ (0, b.jsx)("p", {
+														className: "muted",
+														children: "本月暂无实际收入"
+													})]
+												}), /* @__PURE__ */ (0, b.jsxs)("section", {
+													className: "monthly-actual-section",
+													"aria-label": "本月实际支出",
+													children: [/* @__PURE__ */ (0, b.jsxs)("div", {
+														className: "monthly-actual-heading",
+														children: [/* @__PURE__ */ (0, b.jsx)("h3", { children: "本月实际支出" }), /* @__PURE__ */ (0, b.jsx)("strong", {
+															className: "negative",
+															children: R(G.spendingActual)
+														})]
+													}), Ia.length ? /* @__PURE__ */ (0, b.jsx)(yi, {
+														data: Ia,
+														valueFormatter: W
+													}) : /* @__PURE__ */ (0, b.jsx)("p", {
+														className: "muted",
+														children: "本月暂无实际支出"
+													})]
+												})]
+											}),
 											/* @__PURE__ */ (0, b.jsx)(q, {
 												title: "本月收支现金瀑布",
 												summary: `${H.label} / 实际收支，不含预算预留`,
 												children: /* @__PURE__ */ (0, b.jsx)(Y, { data: Xa })
-											}),
-											/* @__PURE__ */ (0, b.jsx)(q, {
-												title: "本月实际支出",
-												summary: `${H.label} / 合计 ${W(G.spendingActual)}`,
-												className: "spending-top-panel",
-												children: Ia.length ? /* @__PURE__ */ (0, b.jsx)(yi, {
-													data: Ia,
-													valueFormatter: W
-												}) : /* @__PURE__ */ (0, b.jsx)("p", {
-													className: "muted",
-													children: "本月暂无实际支出"
-												})
 											}),
 											/* @__PURE__ */ (0, b.jsx)(q, {
 												title: "本月预算分配",

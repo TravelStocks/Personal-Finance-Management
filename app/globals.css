@@ -1065,6 +1065,31 @@ select {
   gap: 10px;
 }
 
+.monthly-actual-section + .monthly-actual-section {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 20px;
+}
+
+.monthly-actual-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.monthly-actual-heading h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.monthly-actual-heading strong {
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
 .budget-completion-value {
   display: inline-flex;
   align-items: center;
