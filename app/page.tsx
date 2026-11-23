@@ -18,6 +18,7 @@ import {projectPayments} from "./project-payments";
 import {planYearLabel, planYearProgress} from "./plan-year";
 import {financeChartData, financeHealth, waterfallSteps} from "./finance-chart-model";
 import {billCalendarEvents} from "./bill-calendar-model";
+import {budgetCompletion} from "./budget-completion-model";
 import ReviewUpdateHistory from "./review-update-history";
 import {commitReviewUpdate, dashboardSourceSignature, parseReviewUpdates, type ReviewUpdate} from "./review-dashboard-sync";
 import {commitReviewModule, reviewModuleLabels, reviewModuleSignature, type ReviewModule} from "./review-module-sync";
@@ -281,6 +282,8 @@ type ChartDatum = {
   color?: string;
   detail?: string;
   max?: number;
+  completed?: boolean;
+  completionDetail?: string;
 };
 
 type LinePoint = {
@@ -2481,7 +2484,10 @@ export default function FinanceDashboard() {
   const chartModel = financeChartData(actualIncome, budgets, annualBudgetPlan, monthPayments.total);
   const monthlyFundData = chartModel.monthly.map((item, index) => ({...item, color: palette[index % palette.length],
     detail: money(item.value)}));
-  const monthlyBudgetData = chartModel.budget.map((item, index) => ({...item, color: palette[index % palette.length]}));
+  const budgetStatus = budgetCompletion(annualBudgetPlan, budgets, selectedMonth, financeReviews, reviewUpdates);
+  const monthlyBudgetData = chartModel.budget.map((item, index) => ({...item, color: palette[index % palette.length],
+    completed: budgetStatus[item.id].completed,
+    completionDetail: `本月已记录 ${reviewMoney(budgetStatus[item.id].actual)}`}));
   const topSpendingData = [...monthlyFundData].sort((a, b) => b.value - a.value);
   const spendingChartData = monthlyFundData.map(item => ({...item,
     max: Math.max(item.plan, Math.abs(item.value), 1), detail: `${money(item.value)} / ${money(item.plan)}`}));
@@ -5546,7 +5552,12 @@ function HorizontalBarChart({
           <div className="bar-row" key={item.label}>
             <div className="bar-meta">
               <span>{item.label}</span>
-              <strong>{item.detail ?? valueFormatter(item.value)}</strong>
+              <strong className={item.completed === undefined ? undefined : "budget-completion-value"}>
+                {item.detail ?? valueFormatter(item.value)}
+                {item.completed !== undefined && <input className="budget-completion-checkbox" type="checkbox" disabled checked={item.completed}
+                  aria-label={`${item.label}${item.completed ? "已完成" : "未完成"}`}
+                  title={`${item.completed ? "已完成" : "未完成"} · ${item.completionDetail}；按实际记录自动更新，不要求达到预算金额`} />}
+              </strong>
             </div>
             <div className="bar-track" aria-label={`${item.label} ${valueFormatter(item.value)}`}>
               <span

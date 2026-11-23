@@ -1065,6 +1065,24 @@ select {
   gap: 10px;
 }
 
+.budget-completion-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.budget-completion-value .budget-completion-checkbox {
+  appearance: auto;
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  min-width: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: #087754;
+  opacity: 1;
+}
+
 .calendar-event {
   display: grid;
   gap: 4px;
